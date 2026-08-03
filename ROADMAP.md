@@ -51,18 +51,18 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       `src/test/php/d4np/utils/` (RFC-0001) — route: fast / low
 - [x] 1.3 Add formatter + linter configs (PHP-CS-Fixer PSR-12; PHPStan max level — Psalm not
       adopted per RFC-0001) at the repo root — route: fast / low
-- [ ] 1.4 Stand up the CI matrix (Linux: PHP 8.1, 8.2, 8.3) with build + test + format + lint
+- [x] 1.4 Stand up the CI matrix (Linux: PHP 8.1, 8.2, 8.3) with build + test + format + lint
       (RFC-0001) — route: standard / medium
-- [ ] 1.5 Seed the version constant (`public const VERSION = 'X.Y.Z'`) in `Version.php`
+- [x] 1.5 Seed the version constant (`public const VERSION = 'X.Y.Z'`) in `Version.php`
       (RFC-0001) — route: fast / low
 - [x] 1.6 Pin composer.json identity: name `egl/utils`, PSR-4 `D4np\Utils\` →
       `src/main/php/d4np/utils/`, require `php>=8.1` + `ext-pdo` + `ext-fileinfo` +
       `psr/container` + `psr/log` (RFC-0001 naming mapping + R-3) — route: standard / medium
       *(same file as 1.1: the identity IS the content of the composer.json 1.1 creates)*
-- [ ] 1.7 CI toolchain→version map written explicitly (the profile's 2-way ternary must not
+- [x] 1.7 CI toolchain→version map written explicitly (the profile's 2-way ternary must not
       silently map 8.1 to 8.3 — RFC-0001 A-3) plus the `composer update --prefer-lowest` job —
       route: standard / medium
-- [ ] 1.8 Fix the doubled `version_file` path in `tools/consistency_lint.py` `CONFIG`
+- [x] 1.8 Fix the doubled `version_file` path in `tools/consistency_lint.py` `CONFIG`
       (`src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php` — the scaffold manifest
       passed a full path where the template prepends `SRC_MAIN`). Benign while the file is
       absent, but it silently disarms `version-lockstep` the moment 1.5 lands — the lesson

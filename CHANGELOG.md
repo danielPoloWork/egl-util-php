@@ -26,9 +26,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `src/main/php/d4np/utils/` and `src/test/php/d4np/utils/`. `ergebnis/composer-normalize`
   keeps `composer.json` canonical (CI `hygiene` job). `.gitattributes` normalizes line endings
   to LF so Windows checkouts match what CI lints.
+- `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
+  released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
 
 ### Changed
 
+- **Milestone 1 (`v0.1.0`) complete** — build system, test harness, formatter/linter,
+  version constant, CI matrix, and the benchmark job are all in place and green.
 - CI `benchmark` job hardened: it now self-enables on the presence of a phpbench config (the
   same step-level guard as the `deptrac` and `Infection` jobs) instead of failing until the
   harness lands, pins its interpreter to PHP 8.3 per spec NFR-06 rather than through a
@@ -39,6 +43,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- `tools/consistency_lint.py`'s `version_file` path was doubled
+  (`src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php`), which would have silently
+  disarmed `version-lockstep` — the check falls back to the README badge when the configured
+  path does not exist, so the bug was invisible until this PR created `Version.php`. Fixed at
+  the source (the manifest's `toolchain.version_file`) and re-rendered.
 
 ### Security
 

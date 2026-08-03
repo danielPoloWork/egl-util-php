@@ -59,7 +59,9 @@ toolchain:                   # Step-1 derivation: profiles/php.yaml defaults + R
   coverage_tool:   "PHPUnit + Xdebug/PCOV"
   coverage_target: 90                      # OVERRIDE — spec §8 floor (profile/template default is 80)
   doc_tool:        "phpDocumentor"
-  version_file:    "src/main/php/d4np/utils/Version.php"
+  version_file:    "Version.php"           # relative to {{SRC_MAIN}} — the lint template composes
+                                            # "{{SRC_MAIN}}/{{VERSION_FILE}}"; a full path here
+                                            # doubles src/main/php/d4np/utils/ (roadmap item 1.8)
   version_const_hint: "public const VERSION = 'X.Y.Z'"
   package_ecosystem: "composer"
   commands:
