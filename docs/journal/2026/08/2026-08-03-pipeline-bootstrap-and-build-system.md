@@ -61,16 +61,61 @@ reverted, watched it pass again.
 `vendor/bin/phpunit` step — verify on the PR run rather than assuming (the 1.1 prediction was
 wrong once already). `quality`, `hygiene`, and `benchmark` are untouched by this item.
 
+## Item 1.3 — formatter, linter, and composer normalize wired
+
+Added `friendsofphp/php-cs-fixer` (^3.75, installed 3.95.18), `phpstan/phpstan` (initially
+required at ^1.12 per the profile default, then upgraded to **^2.2** after the tool's own
+deprecation notice — an enterprise repo should not launch on a stale major), and
+`ergebnis/composer-normalize` (^2.44) as dev dependencies.
+
+- **`.php-cs-fixer.dist.php`** — `@PSR12` + `@PSR12:risky`, `declare_strict_types`,
+  `strict_comparison`/`strict_param`, import ordering, single quotes — scoped to
+  `src/main/php/d4np/utils/` and `src/test/php/d4np/utils/`.
+- **`phpstan.neon`** — `level: max`, same two paths, its own `tmpDir`.
+- **`ergebnis/composer-normalize`** required an explicit `allow-plugins` entry (it ships a
+  Composer plugin); added deliberately rather than answering the interactive prompt, since a
+  plugin-execution decision under the enterprise posture belongs in a reviewable diff, not an
+  interactive `y`.
+
+**Verified non-vacuously, not just "the command exited 0":**
+- PHPStan: planted a throwaway class returning a string where `int` was declared, confirmed
+  `analyse` reports exactly that `return.type` error, removed it, confirmed clean again.
+- PHP-CS-Fixer's only reported diff is a **Windows-local artifact**: `core.autocrlf=true`
+  converts the repo's LF-stored files to CRLF on checkout (confirmed against `git show HEAD:`
+  and a fresh detached worktree — both come back CRLF locally, LF in the object store), and
+  the fixer's line-ending rule flags it. It will not reproduce on the Linux CI runner, which
+  checks out LF by default. Added **`.gitattributes`** (`* text=auto eol=lf`) so this stops
+  being local noise for any future Windows contributor, rather than leaving it to rediscover.
+- `composer normalize --dry-run` found one real issue (require-dev block ordering) — fixed
+  with `composer normalize`, re-checked clean.
+- `composer validate --strict` and `composer audit` — both clean.
+
+**Effect on the red set from 1.1:** `quality` (php-cs-fixer + phpstan) and `hygiene` (composer
+normalize + audit) passed as predicted.
+
+**A real defect the CI matrix caught.** The first push of this item broke `build /
+php-8.1`: dependency resolution ran on the local machine's PHP 8.3, so the lock file picked
+`symfony/console` et al. at `v7.4.x`, which require PHP `>=8.2` — silently incompatible with
+the declared `php>=8.1` floor and the CI matrix's own 8.1 cell, until that cell actually ran.
+This is exactly the gap `lowest-deps` exists to catch for *version* floors, but it doesn't
+catch a *resolved-on-a-newer-interpreter* floor violation, because that job also runs on
+whatever PHP its own step sets up. Fixed by pinning `config.platform.php` to `8.1.34` in
+`composer.json` and re-running `composer update` — Composer then resolves (and future
+`composer update` runs keep resolving) against the declared floor regardless of which PHP
+version the maintainer's or CI's shell happens to run, not just the version installed when a
+dependency was first added. `symfony/*` relocked from `v7.4.x` to `v6.4.x`; full local
+verification (PHPUnit, PHPStan, PHP-CS-Fixer, `composer validate`/`normalize`/`audit`)
+re-ran clean.
+
 ## How the next session resumes
 
-1. **Item 1.3** — `.php-cs-fixer.dist.php` + `phpstan.neon` (plus `ergebnis/composer-normalize`
-   for `hygiene`). Clears `quality` and `hygiene`; `benchmark` still needs item 1.9.
-2. **Item 1.5 + 1.8 together** — the version constant and the doubled `version_file` path in
+1. **Item 1.5 + 1.8 together** — the version constant and the doubled `version_file` path in
    `tools/consistency_lint.py` `CONFIG`. Fixing 1.5 without 1.8 leaves `version-lockstep`
    silently disarmed (it would keep falling back to the README badge). Prove the gate can fail.
-3. **Item 1.9** — the `benchmark` job; not cleared by 1.2 or 1.3.
-4. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
+2. **Item 1.9** — the `benchmark` job; the only red from item 1.1 that 1.2 and 1.3 do not clear.
+   At that point the CI matrix should be fully green.
+3. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
    toolchain→version map, the `--prefer-lowest` job) but their checkboxes are unflipped; the
    maintainer's call whether "stood up but never executed" counts as done.
-5. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
+4. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
    branch protection on `master`, squash-only, label import from `.github/labels.yml`.
