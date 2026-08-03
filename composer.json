@@ -28,8 +28,13 @@
         "psr/log": "^3.0"
     },
     "require-dev": {
+        "ergebnis/composer-normalize": "^2.44",
+        "friendsofphp/php-cs-fixer": "^3.75",
+        "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^10.5"
     },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
     "autoload": {
         "psr-4": {
             "D4np\\Utils\\": "src/main/php/d4np/utils/"
@@ -40,9 +45,10 @@
             "D4np\\Utils\\Tests\\": "src/test/php/d4np/utils/"
         }
     },
-    "minimum-stability": "stable",
-    "prefer-stable": true,
     "config": {
+        "allow-plugins": {
+            "ergebnis/composer-normalize": true
+        },
         "sort-packages": true
     },
     "scripts": {

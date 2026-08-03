@@ -49,7 +49,7 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       `src/main/php/d4np/utils/` (RFC-0001) — route: standard / medium
 - [x] 1.2 Wire the test framework (PHPUnit) with one passing smoke test under
       `src/test/php/d4np/utils/` (RFC-0001) — route: fast / low
-- [ ] 1.3 Add formatter + linter configs (PHP-CS-Fixer PSR-12; PHPStan max level — Psalm not
+- [x] 1.3 Add formatter + linter configs (PHP-CS-Fixer PSR-12; PHPStan max level — Psalm not
       adopted per RFC-0001) at the repo root — route: fast / low
 - [ ] 1.4 Stand up the CI matrix (Linux: PHP 8.1, 8.2, 8.3) with build + test + format + lint
       (RFC-0001) — route: standard / medium

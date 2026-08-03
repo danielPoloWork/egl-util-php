@@ -1,0 +1,7 @@
+parameters:
+    level: max
+    paths:
+        - src/main/php/d4np/utils
+        - src/test/php/d4np/utils
+    tmpDir: .phpstan.cache
+    treatPhpDocTypesAsCertain: false

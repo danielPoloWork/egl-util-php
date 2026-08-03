@@ -21,6 +21,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - Test harness: PHPUnit 10.5 wired via `phpunit.xml.dist` (`src/test/php/d4np/utils/`,
   coverage source `src/main/php/d4np/utils/`), with a `BootstrapTest` smoke suite proving the
   PHP version floor and the PSR-4 autoloader wiring.
+- Formatter + linter: PHP-CS-Fixer 3.95 (`@PSR12`/`@PSR12:risky`, `declare_strict_types`,
+  `strict_comparison`/`strict_param`) and PHPStan 2.2 at `level: max`, both scoped to
+  `src/main/php/d4np/utils/` and `src/test/php/d4np/utils/`. `ergebnis/composer-normalize`
+  keeps `composer.json` canonical (CI `hygiene` job). `.gitattributes` normalizes line endings
+  to LF so Windows checkouts match what CI lints.
 
 ### Changed
 
