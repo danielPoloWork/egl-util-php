@@ -62,6 +62,14 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
 - [ ] 1.7 CI toolchain→version map written explicitly (the profile's 2-way ternary must not
       silently map 8.1 to 8.3 — RFC-0001 A-3) plus the `composer update --prefer-lowest` job —
       route: standard / medium
+- [ ] 1.9 Harden the `benchmark / reproducible perf` CI job, which went red on item 1.1 and is
+      **not** fixed by 1.2/1.3: (a) it runs `vendor/bin/phpbench`, a dev dependency no M1 item
+      introduces — give it the same step-level config guard as `layering`/`mutation` so it
+      self-enables when the benchmark suite lands (3.5 / 7.1); (b) its `php-version` expression
+      reads `matrix.toolchain` but the job declares **no matrix**, so the ternary silently falls
+      through to `'8.3'` — a rendering artifact of the profile setup steps being injected into a
+      non-matrix job. Correct by hand (ADR-0003: this repo is never re-rendered) —
+      route: standard / medium
 - [ ] 1.8 Fix the doubled `version_file` path in `tools/consistency_lint.py` `CONFIG`
       (`src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php` — the scaffold manifest
       passed a full path where the template prepends `SRC_MAIN`). Benign while the file is

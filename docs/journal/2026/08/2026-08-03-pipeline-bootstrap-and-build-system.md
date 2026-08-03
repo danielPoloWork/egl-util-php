@@ -29,9 +29,16 @@ working build system, in one session, through the full EADOS delivery pipeline.
 
 ## Where the project stands
 
-- **Green:** `consistency / lint`, `bootstrap / is the build system in place?`
-- **Red from this PR until 1.2 + 1.3 land:** `build` (matrix ×3), `quality`, `hygiene`,
-  `lowest-deps` — expected, by the decision above.
+- **Green:** `consistency / lint`, `bootstrap / is the build system in place?`, and — thanks to
+  the step-level config guard added during scaffold — `quality / deptrac layer rules` and
+  `quality / infection mutation score`, which self-skip until their configs land.
+- **Red, fixed by 1.2 + 1.3:** `build` (matrix ×3) and `lowest-deps` fail at `vendor/bin/phpunit`;
+  `quality` fails at `php-cs-fixer`; `hygiene` fails at `composer normalize`.
+- **Red, NOT fixed by 1.2 + 1.3:** `benchmark / reproducible perf` fails at `vendor/bin/phpbench`,
+  a dev dependency no M1 item introduces. The agent's initial prediction of the red set omitted
+  this job and wrongly claimed 1.2 + 1.3 would restore a fully green matrix; corrected here and
+  filed as item **1.9**, which also records that the job's `php-version` expression reads
+  `matrix.toolchain` in a job that declares no matrix.
 - Verified locally: `composer validate --strict` passes; dependency resolution works
   (`psr/container` 2.0.2, `psr/log` 3.0.2); the PSR-4 prefix `D4np\Utils\` resolves to
   `src/main/php/d4np/utils/` and a probe class in `Support/` autoloads through it.
@@ -39,12 +46,14 @@ working build system, in one session, through the full EADOS delivery pipeline.
 ## How the next session resumes
 
 1. **Item 1.2** — PHPUnit + `phpunit.xml.dist` + one smoke test, and **1.3** — `.php-cs-fixer.dist.php`
-   + `phpstan.neon`. Together they turn the whole matrix green; take them first.
+   + `phpstan.neon` (plus `ergebnis/composer-normalize` for the `hygiene` job). Together they
+   clear every red **except** `benchmark`; take them first.
 2. **Item 1.5 + 1.8 together** — the version constant and the doubled `version_file` path in
    `tools/consistency_lint.py` `CONFIG`. Fixing 1.5 without 1.8 leaves `version-lockstep`
    silently disarmed (it would keep falling back to the README badge). Prove the gate can fail.
-3. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
+3. **Item 1.9** — the `benchmark` job, the one red that 1.2/1.3 do not clear.
+4. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
    toolchain→version map, the `--prefer-lowest` job) but their checkboxes are unflipped; the
    maintainer's call whether "stood up but never executed" counts as done.
-4. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
+5. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
    branch protection on `master`, squash-only, label import from `.github/labels.yml`.
