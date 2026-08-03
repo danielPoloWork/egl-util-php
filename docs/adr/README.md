@@ -19,3 +19,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [0002](0002-adopt-cross-language-source-layout.md) | Adopt the cross-language source layout | Accepted |
 | [0003](0003-pin-ci-actions-by-commit-sha.md) | Pin CI actions by commit SHA | Accepted |
+| [0004](0004-root-the-exception-hierarchy-on-an-interface.md) | Root the exception hierarchy on an interface, and close its leaves | Accepted |

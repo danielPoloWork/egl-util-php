@@ -28,6 +28,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- Exception hierarchy under `D4np\Utils\Support\` (**ADR-0004**): the `UtilsThrowable`
+  interface every exception implements — `catch (UtilsThrowable $e)` catches anything this
+  library raises — over `UtilsException extends \RuntimeException`, with
+  `DatabaseException`, `HttpException`, `FileException`, `JsonException` (wrapping PHP's native
+  one via `wrap()`, original preserved as `getPrevious()`), and `HydrationException` carrying
+  the failing property path, with `UnknownKeyException`, `MissingKeyException` and
+  `TypeMismatchException` under it. Concrete leaves are `final`; `UtilsException` and
+  `HydrationException` are the documented extension points.
 
 ### Changed
 
