@@ -177,6 +177,24 @@ jobs:
         run: vendor/bin/infection --min-msi=70 --only-covered
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
+  #
+  # Self-enables when the phpbench harness lands (roadmap 3.5 / 7.1), via the same step-level
+  # config guard as `layering` and `mutation`: hashFiles() is runner-only and cannot gate a
+  # job-level `if` without failing the whole workflow at startup.
+  #
+  # The PHP setup below is written FOR THIS JOB rather than inherited from the build matrix.
+  # The generated version injected the matrix's setup steps verbatim into a job that declares
+  # no matrix, leaving two defects (roadmap 1.9):
+  #   - `php-version: ${{ matrix.toolchain == 'php-8.1' && ... || '8.3' }}` — `matrix` is null
+  #     here, so the ternary always fell through to '8.3'. Verified on run 30811447268: the job
+  #     installed PHP 8.3.33. That happens to match the methodology below, which is worse than
+  #     a visible error — it was right by accident, and would have silently selected the wrong
+  #     interpreter the moment anyone gave this job a matrix.
+  #   - `coverage: pcov` — coverage instrumentation distorts the very measurements this job
+  #     exists to take.
+  # Spec NFR-06 pins the benchmark interpreter to PHP 8.3; the rest of that methodology
+  # (10 iterations x 100 revs, 5% retry threshold, OPcache + JIT off, >10% regression fails)
+  # lands with the harness in roadmap item 7.1.
   benchmark:
     name: benchmark / reproducible perf
     needs: bootstrap
@@ -185,14 +203,27 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check for a phpbench config (job self-enables when the harness lands)
+        id: cfg
+        shell: bash
+        run: |
+          if [ -f phpbench.json ] || [ -f phpbench.json.dist ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Benchmarks pending::No phpbench config yet, so the benchmark suite is skipped. It starts running by itself once roadmap item 3.5 lands the harness."
+          fi
       - name: Set up PHP
+        if: steps.cfg.outputs.present == 'true'
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.toolchain == 'php-8.1' && '8.1' || matrix.toolchain == 'php-8.2' && '8.2' || '8.3' }}
-          coverage: pcov
+          php-version: '8.3'   # spec NFR-06 benchmark methodology — not the build matrix
+          coverage: none       # instrumentation would distort the measurements
       - name: Install dependencies
+        if: steps.cfg.outputs.present == 'true'
         run: composer install --no-interaction --prefer-dist
       - name: Run the benchmark suite
+        if: steps.cfg.outputs.present == 'true'
         shell: bash
         run: vendor/bin/phpbench run --report=aggregate
 

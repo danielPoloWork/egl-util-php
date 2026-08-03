@@ -62,7 +62,12 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
 - [ ] 1.7 CI toolchain→version map written explicitly (the profile's 2-way ternary must not
       silently map 8.1 to 8.3 — RFC-0001 A-3) plus the `composer update --prefer-lowest` job —
       route: standard / medium
-- [ ] 1.9 Harden the `benchmark / reproducible perf` CI job, which went red on item 1.1 and is
+- [ ] 1.8 Fix the doubled `version_file` path in `tools/consistency_lint.py` `CONFIG`
+      (`src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php` — the scaffold manifest
+      passed a full path where the template prepends `SRC_MAIN`). Benign while the file is
+      absent, but it silently disarms `version-lockstep` the moment 1.5 lands — the lesson
+      L-0008 failure class. Fix with 1.5 and prove the gate can fail — route: standard / medium
+- [x] 1.9 Harden the `benchmark / reproducible perf` CI job, which went red on item 1.1 and is
       **not** fixed by 1.2/1.3: (a) it runs `vendor/bin/phpbench`, a dev dependency no M1 item
       introduces — give it the same step-level config guard as `layering`/`mutation` so it
       self-enables when the benchmark suite lands (3.5 / 7.1); (b) its `php-version` expression
@@ -70,11 +75,16 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       through to `'8.3'` — a rendering artifact of the profile setup steps being injected into a
       non-matrix job. Correct by hand (ADR-0003: this repo is never re-rendered) —
       route: standard / medium
-- [ ] 1.8 Fix the doubled `version_file` path in `tools/consistency_lint.py` `CONFIG`
-      (`src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php` — the scaffold manifest
-      passed a full path where the template prepends `SRC_MAIN`). Benign while the file is
-      absent, but it silently disarms `version-lockstep` the moment 1.5 lands — the lesson
-      L-0008 failure class. Fix with 1.5 and prove the gate can fail — route: standard / medium
+- [ ] 1.10 Decide and record the **CI action-pinning policy** as an ADR, then make
+      `.github/workflows/*.yml` consistent with it. Today the same action is pinned two ways in
+      one file: the template-generated steps use a commit SHA with a version comment
+      (`actions/checkout@3d3c42e5… # v7.0.1`) while the manifest-authored quality jobs use a
+      floating tag (`actions/checkout@v7`). Under the enterprise posture a supply-chain choice
+      is a security-relevant decision and needs an ADR (§7) — including whether
+      `shivammathur/setup-php@v2` stays deliberately tag-pinned and Dependabot-managed.
+      Checked first (lesson L-0004): no ADR in this repo decides it — EADOS's own ADR-0009
+      governs the factory, not this self-governing repository — so it is genuinely open, not a
+      re-discovered trade-off — route: standard / medium
 
 ---
 
