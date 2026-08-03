@@ -29,6 +29,8 @@ __pycache__/
 *.profraw
 .coverage
 htmlcov/
+/.phpunit.cache/
+.phpunit.result.cache
 
 # IDE / editor
 /.idea/

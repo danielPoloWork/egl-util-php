@@ -27,7 +27,7 @@ working build system, in one session, through the full EADOS delivery pipeline.
   on the same grounds as lesson L-0010 (a repo's first CI signal should not teach that red is
   normal); the maintainer chose the minimal scope. Recorded, not relitigated.
 
-## Where the project stands
+## Where the project stood after item 1.1 (PR #5, merged)
 
 - **Green:** `consistency / lint`, `bootstrap / is the build system in place?`, and — thanks to
   the step-level config guard added during scaffold — `quality / deptrac layer rules` and
@@ -36,22 +36,39 @@ working build system, in one session, through the full EADOS delivery pipeline.
   `quality` fails at `php-cs-fixer`; `hygiene` fails at `composer normalize`.
 - **Red, NOT fixed by 1.2 + 1.3:** `benchmark / reproducible perf` fails at `vendor/bin/phpbench`,
   a dev dependency no M1 item introduces. The agent's initial prediction of the red set omitted
-  this job and wrongly claimed 1.2 + 1.3 would restore a fully green matrix; corrected here and
+  this job and wrongly claimed 1.2 + 1.3 would restore a fully green matrix; corrected and
   filed as item **1.9**, which also records that the job's `php-version` expression reads
   `matrix.toolchain` in a job that declares no matrix.
 - Verified locally: `composer validate --strict` passes; dependency resolution works
   (`psr/container` 2.0.2, `psr/log` 3.0.2); the PSR-4 prefix `D4np\Utils\` resolves to
   `src/main/php/d4np/utils/` and a probe class in `Support/` autoloads through it.
 
+## Item 1.2 — PHPUnit wired, smoke suite green
+
+Added `phpunit/phpunit` (^10.5) as a dev dependency, `autoload-dev` for the test namespace
+(`D4np\Utils\Tests\` → `src/test/php/d4np/utils/`), and `phpunit.xml.dist` (source coverage
+scoped to `src/main/php/d4np/utils/`, `failOnWarning`/`failOnRisky`/`failOnDeprecation` on).
+
+`BootstrapTest` is the one smoke suite the item calls for — two tests proving the harness
+itself is wired, deliberately silent on any component's behavior (that belongs to M2–M6):
+the PHP version floor, and that Composer's autoloader resolves `D4np\Utils\` to the expected
+directory (recovered from the SPL autoload stack, since PHPUnit's own bootstrap has already
+consumed `vendor/autoload.php`'s first-load return value). Proved non-vacuous locally: flipped
+the version-floor assertion to an impossible bound, watched it fail with the expected message,
+reverted, watched it pass again.
+
+**Effect on the red set from 1.1:** `build` ×3 and `lowest-deps` should now pass their
+`vendor/bin/phpunit` step — verify on the PR run rather than assuming (the 1.1 prediction was
+wrong once already). `quality`, `hygiene`, and `benchmark` are untouched by this item.
+
 ## How the next session resumes
 
-1. **Item 1.2** — PHPUnit + `phpunit.xml.dist` + one smoke test, and **1.3** — `.php-cs-fixer.dist.php`
-   + `phpstan.neon` (plus `ergebnis/composer-normalize` for the `hygiene` job). Together they
-   clear every red **except** `benchmark`; take them first.
+1. **Item 1.3** — `.php-cs-fixer.dist.php` + `phpstan.neon` (plus `ergebnis/composer-normalize`
+   for `hygiene`). Clears `quality` and `hygiene`; `benchmark` still needs item 1.9.
 2. **Item 1.5 + 1.8 together** — the version constant and the doubled `version_file` path in
    `tools/consistency_lint.py` `CONFIG`. Fixing 1.5 without 1.8 leaves `version-lockstep`
    silently disarmed (it would keep falling back to the README badge). Prove the gate can fail.
-3. **Item 1.9** — the `benchmark` job, the one red that 1.2/1.3 do not clear.
+3. **Item 1.9** — the `benchmark` job; not cleared by 1.2 or 1.3.
 4. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
    toolchain→version map, the `--prefer-lowest` job) but their checkboxes are unflipped; the
    maintainer's call whether "stood up but never executed" counts as done.

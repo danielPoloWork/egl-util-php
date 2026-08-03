@@ -18,6 +18,9 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `src/main/php/d4np/utils/`, requiring PHP >= 8.1 with `ext-pdo` and `ext-fileinfo`, plus the
   interface-only `psr/container` and `psr/log`. Component-group skeleton laid out per
   RFC-0001 (`Dto`, `Container`, `Database`, `Security`, `Http`, `Errors`, `Support`).
+- Test harness: PHPUnit 10.5 wired via `phpunit.xml.dist` (`src/test/php/d4np/utils/`,
+  coverage source `src/main/php/d4np/utils/`), with a `BootstrapTest` smoke suite proving the
+  PHP version floor and the PSR-4 autoloader wiring.
 
 ### Changed
 
