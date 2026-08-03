@@ -19,5 +19,6 @@ _(newest first)_
 
 #### August
 
+- [2026-08-03 — Str::slug() / uuid() / random()](2026/08/2026-08-03-str-slug-uuid-random.md)
 - [2026-08-03 — Milestone 2 opens: the exception hierarchy](2026/08/2026-08-03-m2-exception-hierarchy.md)
 - [2026-08-03 — EADOS pipeline run and the Composer build system](2026/08/2026-08-03-pipeline-bootstrap-and-build-system.md)
