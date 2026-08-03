@@ -13,8 +13,10 @@ At the close of a state-changing session, the agent:
 
 ## Index
 
-_No checkpoints yet._
-
 ### 2026
 
 _(newest first)_
+
+#### August
+
+- [2026-08-03 — EADOS pipeline run and the Composer build system](2026/08/2026-08-03-pipeline-bootstrap-and-build-system.md)
