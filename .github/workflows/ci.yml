@@ -89,6 +89,9 @@ jobs:
     name: consistency / lint
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # The action-pin step resolves each version comment against its upstream repository, so it
+    # needs the API. GITHUB_TOKEN is read-only here (`permissions: contents: read` above) and
+    # only lifts the unauthenticated rate limit.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -98,6 +101,13 @@ jobs:
           python-version: '3.12'
       - name: Run the consistency lint
         run: python tools/consistency_lint.py
+      # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
+      # shape, and a version comment that lies is invisible to any purely local check when the
+      # error is applied uniformly. CI is where the truthful half must run.
+      - name: Enforce the CI action-pinning policy (ADR-0003)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python tools/action_pin_lint.py --verify-upstream
 
   # ---------------------------------------------------------------------------
   # Language-specific quality jobs (format, lint, sanitizers, …) from the profile.

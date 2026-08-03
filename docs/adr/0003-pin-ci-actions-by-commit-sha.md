@@ -109,11 +109,18 @@ Two rules govern the comment, which exists to make the pin reviewable:
 - Dependabot PRs become slightly noisier to read (a SHA diff rather than `v7` → `v8`) — the
   version comment is what keeps them legible, which is why its truthfulness is a rule above
   and not a convention.
-- The policy is currently enforced by **review, not by a gate**. `tools/consistency_lint.py`
-  checks cross-artifact congruence and does not inspect workflow files. Stating this honestly
-  matters more than implying coverage that does not exist: a mechanical check
-  (assert every `uses:` matches `@[0-9a-f]{40} # .+`) is a natural follow-up, filed as roadmap
-  item **1.11** rather than left as an unwritten intention.
+- The policy is enforced **mechanically**, by
+  [`tools/action_pin_lint.py`](../../tools/action_pin_lint.py) (roadmap item 1.11, landed
+  immediately after this ADR). It runs in the `consistency / lint` CI job and splits into two
+  checks with deliberately different reach: `pin-shape` is offline and always runs;
+  `pin-label-truth` resolves every version comment against its upstream repository and runs
+  only with `--verify-upstream`, which CI passes. A run without it says, in its own output,
+  that comment truthfulness went unverified — partial verification presented as complete would
+  be a dishonest gate.
+
+  *(When this ADR was accepted the policy was enforced by review only, and this section said
+  so rather than implying coverage that did not exist. Item 1.11 closed that gap in the
+  following PR; the paragraph is updated rather than rewritten to hide the interval.)*
 
 **Risks and limits**
 
@@ -125,7 +132,8 @@ Two rules govern the comment, which exists to make the pin reviewable:
 
 ## References
 
-- ROADMAP item 1.10 (this decision) and item 1.11 (the mechanical check it defers)
+- ROADMAP item 1.10 (this decision) and item 1.11 (the mechanical check that now enforces it,
+  [`tools/action_pin_lint.py`](../../tools/action_pin_lint.py))
 - [GitHub — Security hardening for GitHub Actions: *use commit SHA*](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions)
 - [OpenSSF Scorecard — *Pinned-Dependencies* check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies)
 - EADOS ADR-0009 (upstream, governs the factory) and the upstream lessons `L-0004`

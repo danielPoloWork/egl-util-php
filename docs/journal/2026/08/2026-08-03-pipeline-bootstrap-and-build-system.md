@@ -207,14 +207,50 @@ tomorrow.
 *Consequences* rather than implying coverage that does not exist, and item **1.11** files the
 mechanical check.
 
+## Item 1.11 — the gate for ADR-0003, and what it can honestly observe
+
+`tools/action_pin_lint.py`, stdlib-only, wired into the `consistency / lint` CI job. Kept as
+its own tool rather than folded into `consistency_lint.py`: that file is generated from the
+EADOS templates and is about cross-artifact congruence, while this is a supply-chain policy
+check with an entirely different failure mode.
+
+The design point worth recording is **the split in observability**:
+
+- `pin-shape` is **offline and always runs** — every `uses:` names a 40-hex SHA and carries a
+  version comment. Pure text.
+- `pin-label-truth` **needs the network** and runs only with `--verify-upstream` (which CI
+  passes) — it resolves each version comment against its own upstream repository.
+
+These are not interchangeable, and the tool never lets the cheap half stand in for the whole:
+a run without `--verify-upstream` prints, in its own output, that comment truthfulness went
+unverified. That is lesson **L-0006**'s rule — *a checkpoint that can observe only part of what
+it governs must state the unobservable part in its own output* — applied at design time rather
+than discovered later.
+
+**Proved it can fail before trusting it,** three ways, each restored afterwards with
+`git checkout --` and the tree confirmed clean:
+
+1. A mutable tag in place of a SHA → `pin-shape` fails, naming the action and the reason.
+2. A SHA with its version comment removed → `pin-shape` fails.
+3. **A comment that lies, applied uniformly** — every `# v7.0.1` rewritten to `# v7.0.0` while
+   the SHAs stayed correct. The offline run **passes** (the shape genuinely is fine) and says
+   it did not check truthfulness; the `--verify-upstream` run catches all nine occurrences and
+   prints the SHA the claimed version actually resolves to upstream. This is exactly lesson
+   **L-0011**'s scenario — *a cross-file consistency check cannot see an error applied
+   consistently* — reproduced on demand, which is what makes the assertion non-vacuous rather
+   than merely green.
+
+ADR-0003's *Consequences* section was updated in the same PR: it had said the policy was
+enforced by review rather than by a gate, and that is no longer true. The paragraph records
+that the gap existed and was closed, rather than being rewritten to hide the interval.
+
 ## How the next session resumes
 
 1. **Milestone 2 (`v0.2.0`) — Support layer**: the exception hierarchy, `Str`, `File`, `Env`,
    `Json`, and the shared reflection-metadata cache. The first items with actual behavior to
    write; T-05 property tests land alongside them.
-2. **Item 1.11** — the mechanical gate for ADR-0003, whenever it is convenient; small, and it
-   turns a review-time rule into a checked one.
-3. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
+2. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
    branch protection on `master`, squash-only, label import from `.github/labels.yml`. The
-   label import matters more now: every PR in this milestone has carried `enhancement` as a
-   stand-in because the repo's own type labels (`build`, `test`, `ci`, `docs`) do not exist yet.
+   label import matters more now: every PR in this milestone has carried `enhancement` or
+   `documentation` as a stand-in because the repo's own type labels (`build`, `test`, `ci`,
+   `docs`) do not exist yet.
