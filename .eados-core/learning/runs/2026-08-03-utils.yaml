@@ -1,0 +1,24 @@
+# Run record — appended by tools/record_run.py; a fact about a past run, never edited
+# after the fact. `phase` is the delivery phase that produced it (#215).
+slug: "utils"
+date: "2026-08-03"
+phase: "design"
+lang: "php"
+kind: "library"
+outcome: "ok"
+overrides:
+  - key: "governance.posture"
+    default: "standard"
+    chosen: "enterprise"
+  - key: "ownership.assignee"
+    default: "@me"
+    chosen: "danielPoloWork"
+  - key: "ownership.default_branch"
+    default: "main"
+    chosen: "master"
+  - key: "spec.provenance"
+    default: "coauthor"
+    chosen: "import"
+lessons_applied: []
+failures: []
+rubric: {}

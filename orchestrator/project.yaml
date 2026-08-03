@@ -49,8 +49,124 @@ language:
   comment_lang:    "en"
   public_include_hint: 'use D4np\Utils\Dto\DataTransferObject;'
 
+toolchain:                   # Step-1 derivation: profiles/php.yaml defaults + RFC-0001 A-4 overrides
+  build_tool:      "Composer (PSR-4 autoload)"
+  pkg_manager:     "Composer (composer.lock committed)"
+  test_framework:  "PHPUnit (Pest optional)"
+  formatter:       "PHP-CS-Fixer (PSR-12)"
+  linter:          "PHPStan (max level)"   # OVERRIDE — Psalm not adopted, single static-analysis authority (RFC-0001)
+  sanitizers:      "PHPStan max level (type soundness); PCOV for coverage"   # profile text minus Psalm (RFC-0001)
+  coverage_tool:   "PHPUnit + Xdebug/PCOV"
+  coverage_target: 90                      # OVERRIDE — spec §8 floor (profile/template default is 80)
+  doc_tool:        "phpDocumentor"
+  version_file:    "src/main/php/d4np/utils/Version.php"
+  version_const_hint: "public const VERSION = 'X.Y.Z'"
+  package_ecosystem: "composer"
+  commands:
+    build:        "composer install --optimize-autoloader"
+    test:         "vendor/bin/phpunit"
+    format_check: "vendor/bin/php-cs-fixer fix --dry-run --diff"
+    lint:         "vendor/bin/phpstan analyse"
+    bench:        "vendor/bin/phpbench run --report=aggregate"
+
+ci:                          # RFC-0001 A-3: 3-cell matrix with an EXPLICIT toolchain->version map —
+                             # the profile's 2-way ternary would silently map php-8.1 to 8.3.
+  tier1_platforms: "Linux (PHP 8.1, 8.2, 8.3)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: php-8.1, preset: default }
+    - { os: ubuntu-24.04, toolchain: php-8.2, preset: default }
+    - { os: ubuntu-24.04, toolchain: php-8.3, preset: default }
+  build_manifest: composer.json   # #313 bootstrap guard: toolchain jobs SKIP until roadmap 1.1 lands this
+  setup_steps: |
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.toolchain == 'php-8.1' && '8.1' || matrix.toolchain == 'php-8.2' && '8.2' || '8.3' }}
+        coverage: pcov
+    - name: Install dependencies
+      run: composer install --no-interaction --prefer-dist
+  extra_jobs: |
+    quality:
+      name: quality / cs-fixer + phpstan
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: shivammathur/setup-php@v2
+          with: { php-version: '8.3' }
+        - run: composer install --no-interaction --prefer-dist
+        - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+        - run: vendor/bin/phpstan analyse
+    hygiene:
+      name: quality / composer normalize + audit
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: shivammathur/setup-php@v2
+          with: { php-version: '8.3' }
+        - run: composer install --no-interaction --prefer-dist
+        - run: composer normalize --dry-run
+        - run: composer audit
+    lowest-deps:
+      name: quality / prefer-lowest install + test
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: shivammathur/setup-php@v2
+          with: { php-version: '8.1' }
+        - run: composer update --no-interaction --prefer-lowest
+        - run: vendor/bin/phpunit
+    layering:
+      name: quality / deptrac layer rules
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true' && hashFiles('deptrac.yaml') != ''
+      steps:
+        - uses: actions/checkout@v6
+        - uses: shivammathur/setup-php@v2
+          with: { php-version: '8.3' }
+        - run: composer install --no-interaction --prefer-dist
+        - run: vendor/bin/deptrac analyse
+    mutation:
+      name: quality / infection mutation score
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true' && hashFiles('infection.json5') != ''
+      steps:
+        - uses: actions/checkout@v6
+        - uses: shivammathur/setup-php@v2
+          with: { php-version: '8.3', coverage: pcov }
+        - run: composer install --no-interaction --prefer-dist
+        - run: vendor/bin/infection --min-msi=70 --only-covered
+
 governance:
   posture: enterprise        # Q0.5 — asked; deliberately raised from the `standard` default (ADR-0015)
+  scopes: [dto, container, database, security, http, errors, support, bench, build, tests, docs, ci]
+  version_start: "pre-1.0 milestone-driven"   # plan decision: one minor per milestone (v0.1.0..v0.7.0)
+  start_version: "0.0.0"
+  house_rules: ""                             # config/house-rules.md verified empty at init
+  capabilities:
+    bench:      true          # RFC-0001 A-4: phpbench harness + nightly (spec §4/NFR-06)
+    threading:  false         # PHP request-isolated; profile race_job empty
+    public_api: true
+    i18n:       false
+    packaging:  true          # RFC-0001 A-4: Packagist + signed tags (spec §8)
+    service:    false
+    announce:   false
+    layered:    false         # library keeps the flat shape (interview Q5.4a)
+    api_spec:   false
+
+i18n:                        # Q4.7 authoring languages — defaults stated, not silent (ADR-0016)
+  default_lang: "en"
+  targets: []
+
+announce:                    # Q4.8 — default off
+  channels: []
 
 spec:                        # Imported (Q5.0 = import) from .specs/d4np-php.md v2.0, validated by RFC-0001.
   provenance: import
@@ -184,3 +300,7 @@ interview:
     ownership: imported    # git remote, git config, LICENSE (design, 2026-08-03)
     language: asked        # package/namespace/bridge naming decisions at RFC-0001 import
     spec: imported         # Q5.0 = import; .specs/d4np-php.md v2.0 validated by RFC-0001
+    toolchain: imported    # RFC-0001 A-4 scaffold handoff (PHPStan-only, coverage 90); rest = profile
+    ci: imported           # RFC-0001 A-3/A-4: 3-cell matrix, explicit version map, guarded extra jobs
+    i18n: defaulted        # Q4.7 asked-as-default: docs en, comments en, no translations (ADR-0016)
+    announce: defaulted    # Q4.8 default off
