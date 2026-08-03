@@ -13,7 +13,8 @@ capacity; no parallel streams; no calendar dates by decision).
 - **Versioning start:** pre-1.0 milestone-driven — one minor per milestone
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
-- **Session journal:** see `docs/journal/` (seeded at scaffold). Latest checkpoint: _none yet_.
+- **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
+  [2026-08-03 — EADOS pipeline run and the Composer build system](docs/journal/2026/08/2026-08-03-pipeline-bootstrap-and-build-system.md).
 
 ## Model & effort routing (advisory)
 
@@ -44,7 +45,7 @@ labels exist is `python .eados-core/tools/route_advice.py --issue <N>`.
 
 The thinnest slice that compiles, tests, and ships under the full quality bar (RFC-0001).
 
-- [ ] 1.1 Lay down the build system (Composer, PSR-4 autoload) and a buildable skeleton under
+- [x] 1.1 Lay down the build system (Composer, PSR-4 autoload) and a buildable skeleton under
       `src/main/php/d4np/utils/` (RFC-0001) — route: standard / medium
 - [ ] 1.2 Wire the test framework (PHPUnit) with one passing smoke test under
       `src/test/php/d4np/utils/` (RFC-0001) — route: fast / low
@@ -54,12 +55,18 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       (RFC-0001) — route: standard / medium
 - [ ] 1.5 Seed the version constant (`public const VERSION = 'X.Y.Z'`) in `Version.php`
       (RFC-0001) — route: fast / low
-- [ ] 1.6 Pin composer.json identity: name `egl/utils`, PSR-4 `D4np\Utils\` →
+- [x] 1.6 Pin composer.json identity: name `egl/utils`, PSR-4 `D4np\Utils\` →
       `src/main/php/d4np/utils/`, require `php>=8.1` + `ext-pdo` + `ext-fileinfo` +
       `psr/container` + `psr/log` (RFC-0001 naming mapping + R-3) — route: standard / medium
+      *(same file as 1.1: the identity IS the content of the composer.json 1.1 creates)*
 - [ ] 1.7 CI toolchain→version map written explicitly (the profile's 2-way ternary must not
       silently map 8.1 to 8.3 — RFC-0001 A-3) plus the `composer update --prefer-lowest` job —
       route: standard / medium
+- [ ] 1.8 Fix the doubled `version_file` path in `tools/consistency_lint.py` `CONFIG`
+      (`src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php` — the scaffold manifest
+      passed a full path where the template prepends `SRC_MAIN`). Benign while the file is
+      absent, but it silently disarms `version-lockstep` the moment 1.5 lands — the lesson
+      L-0008 failure class. Fix with 1.5 and prove the gate can fail — route: standard / medium
 
 ---
 
