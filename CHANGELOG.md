@@ -58,6 +58,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   quality jobs — so a re-pointed upstream tag could have changed what CI executes with no diff
   here. Dependabot (already configured for the `github-actions` ecosystem) keeps the pins and
   their comments current.
+- `tools/action_pin_lint.py` enforces ADR-0003 mechanically in CI: `pin-shape` offline, and
+  `pin-label-truth` resolving every version comment against its upstream repository — the half
+  no purely local check can perform, since a comment that lies uniformly leaves nothing for a
+  cross-file comparison to disagree with.
 
 ---
 

@@ -83,7 +83,9 @@ decisions, stricter review, and a maintained compliance-docs surface. The raised
 │   ├── workflow/                   # git, documentation, release & maintenance conventions
 │   ├── journal/                    # dated session checkpoints
 │   └── bugs/                       # in-repo bug ledger
-├── tools/consistency_lint.py       # agent-runnable cross-artifact congruence checker
+├── tools/
+│   ├── consistency_lint.py         # agent-runnable cross-artifact congruence checker
+│   └── action_pin_lint.py          # ADR-0003 gate: CI actions pinned by SHA, comments truthful
 └── .github/                        # CI + release workflows, PR/issue templates, CODEOWNERS, Dependabot
 ```
 
@@ -196,6 +198,18 @@ It asserts cross-artifact congruence (version lockstep, ADR index ↔ files, cat
 patterns backed by an ADR + code, spec coverage map, README ↔ ROADMAP milestone agreement,
 bug-ledger integrity). CI re-runs it; running locally first avoids a red round-trip.
 
+**Pre-PR action-pin check** — required whenever the PR touches `.github/workflows/`:
+
+```bash
+python tools/action_pin_lint.py                    # pin shape, offline
+python tools/action_pin_lint.py --verify-upstream  # + comment truth (network; CI runs this)
+```
+
+It enforces [ADR-0003](docs/adr/0003-pin-ci-actions-by-commit-sha.md). The offline run checks
+only that each `uses:` names a 40-hex SHA with a version comment; whether that comment is
+*true* can only be settled against the upstream repository, and the tool says so in its own
+output rather than letting the cheap half stand in for the whole.
+
 ## 7. Documentation Maintenance
 
 Documentation is part of the deliverable. Every PR ships its own doc updates.
@@ -274,6 +288,7 @@ Every PR must clear, at minimum:
 | Performance claims | backed by a reproducible benchmark under `src/bench/` |
 | Versioning | SemVer; `CHANGELOG.md` updated for user-visible changes |
 | Congruence | `python tools/consistency_lint.py` passes |
+| CI action pinning | `python tools/action_pin_lint.py` passes; CI runs it with `--verify-upstream` (ADR-0003) |
 | Review (enterprise) | **two** approving reviews before merge; a security-relevant change also requires the `security-auditor`'s sign-off |
 | Security ADR (enterprise) | every security-relevant decision carries an ADR (§7) — no undocumented judgment calls |
 | Compliance (enterprise) | `docs/compliance/` control register current; a touched control's row updated in the same PR |

@@ -88,7 +88,7 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       *(route corrected when the item was taken: it was filed as `standard / medium`, but an
       item whose deliverable IS a decision is decision-heavy by definition — `os/routing`
       resolves `label:adr` to frontier-reasoning/extra. Settled by ADR-0003.)*
-- [ ] 1.11 Gate the ADR-0003 pinning policy mechanically instead of by review: assert every
+- [x] 1.11 Gate the ADR-0003 pinning policy mechanically instead of by review: assert every
       `uses:` in `.github/workflows/*.yml` matches `@[0-9a-f]{40} # <version>`, and that the
       version comment resolves to that SHA upstream (lesson L-0011 — a label nobody resolves
       lies for as long as nobody resolves it). Prove the check can fail before trusting it —
