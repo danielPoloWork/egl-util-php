@@ -138,14 +138,41 @@ apparent inconsistency, see whether a governing ADR already decided it): this re
 ADR-0001 and ADR-0002, and EADOS's ADR-0009 governs the *factory*, not this self-governing
 repository — so it is genuinely open, not a re-discovered trade-off.
 
+## Item 1.5 + 1.8 — the version constant, and the lint bug it exposed
+
+Fixed **1.8 before 1.5**, not after: creating `Version.php` first would have made
+`version-lockstep` compare against the doubled path silently returning "use the README badge"
+(the check falls back to the badge whenever the configured file does not exist) — the exact
+lesson **L-0008** shape, a gate that stays green while asserting nothing.
+
+Root cause, confirmed by reading the template rather than guessing: `templates/tools/consistency_lint.py`
+composes `"{{SRC_MAIN}}/{{VERSION_FILE}}"`. The `toolchain.version_file` field this project's
+manifest set at scaffold (RFC-0001 A-4) was the **full path**
+(`src/main/php/d4np/utils/Version.php`) where the template already prepends `SRC_MAIN` — the
+profile's own reference value is just `"Version.php"`. Fixed in `orchestrator/project.yaml`
+(the source of truth, not the generated file) and re-rendered `tools/consistency_lint.py` to
+staging; diffed staged output against the working copy (after stripping the CRLF this Windows
+checkout adds) to confirm the version-file line was the *only* change before applying it.
+
+Then **1.5**: `src/main/php/d4np/utils/Version.php` — `Version::VERSION = '0.0.0'`, matching
+the manifest's `governance.start_version` and the README badge. Proved the now-fixed gate
+non-vacuous the same way as the earlier items: flipped the constant to an impossible value
+(`9.9.9`), confirmed `version-lockstep` reports exactly `README badge v0.0.0 != version file
+... (9.9.9)`, reverted, confirmed clean. Also loaded the class through the real autoloader
+(`D4np\Utils\Version::VERSION` resolves to `0.0.0`) rather than trusting the file exists.
+
+**Bookkeeping, folded into this same PR:** flipped **1.4** and **1.7** — both were delivered
+by PR #3 / the #7 fix commit and are now verified *executing*, not just present (the CI matrix
+runs for real, `lowest-deps` passes) — closing the open question from the last two entries.
+**Milestone 1 is complete**: every M1 item is checked except **1.10** (the action-pinning ADR,
+filed, deliberately open).
+
 ## How the next session resumes
 
-1. **Item 1.5 + 1.8 together** — the version constant and the doubled `version_file` path in
-   `tools/consistency_lint.py` `CONFIG`. Fixing 1.5 without 1.8 leaves `version-lockstep`
-   silently disarmed (it would keep falling back to the README badge). Prove the gate can fail.
-2. **Item 1.10** — the action-pinning ADR + making the workflows consistent with it.
-3. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
-   toolchain→version map, the `--prefer-lowest` job) but their checkboxes are unflipped; the
-   maintainer's call whether "stood up but never executed" counts as done.
-4. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
+1. **Item 1.10** — decide and record the CI action-pinning policy as an ADR, then reconcile
+   `.github/workflows/*.yml` with it.
+2. **Milestone 2 (`v0.2.0`) — Support layer**: the exception hierarchy, `Str`, `File`, `Env`,
+   `Json`, and the shared reflection-metadata cache. First items with actual behavior; T-05
+   property tests land alongside.
+3. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
    branch protection on `master`, squash-only, label import from `.github/labels.yml`.

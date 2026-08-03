@@ -44,7 +44,7 @@ CONFIG = {
     # The file holding the version constant, relative to the repo root, or None if the
     # version lives only in a build manifest the lint should not parse. When None (or the
     # file is absent), version-lockstep derives the source version from the README badge.
-    "version_file": "src/main/php/d4np/utils/src/main/php/d4np/utils/Version.php",
+    "version_file": "src/main/php/d4np/utils/Version.php",
     # A regex with a single (\d+\.\d+\.\d+) group that extracts the version from that file.
     "version_regex": r"(\d+\.\d+\.\d+)",
     # The source root that pattern code-locations must live under.
