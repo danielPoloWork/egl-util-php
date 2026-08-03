@@ -108,7 +108,7 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
@@ -120,7 +120,7 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
@@ -132,7 +132,7 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.1' }
       - run: composer update --no-interaction --prefer-lowest
@@ -146,7 +146,7 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check for deptrac.yaml (job self-enables when it lands)
         id: cfg
         run: echo "present=$([ -f deptrac.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -164,7 +164,7 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check for infection.json5 (job self-enables when it lands)
         id: cfg
         run: echo "present=$([ -f infection.json5 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
