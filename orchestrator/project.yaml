@@ -1,0 +1,185 @@
+# project.yaml — the single source of truth for this project (egl-util-php).
+#
+# Filled at /eados design (import path, Q5.0 = import): identity/domain/posture from the
+# init interview (2026-08-03); ownership from repository facts (git remote, LICENSE);
+# language from the maintainer's naming decisions at RFC-0001 import; spec from the
+# imported specification .specs/d4np-php.md (v2.0) as validated by RFC-0001.
+# toolchain / ci / i18n / announce are left for their phases (scaffold interview);
+# blanks fall through to profiles/php.yaml. Template:
+# .eados-core/orchestrator/project.yaml.template
+
+schema_version: 1
+manifest_rev: 3
+domain: software             # Q0.4 development target -> .eados-core/orchestrator/domains/software.yaml
+
+delivery_state:
+  phase: plan                # init|design|plan|scaffold|audit|migrate
+  checkpoints:               # transition ledger — written by the phase runner on legal moves
+    - { from: init, to: design, gates: ['manifest-valid'], at: 2026-08-03, confirmed_by: danielPoloWork, gate_results: { manifest-valid: OK } }
+    - { from: design, to: plan, gates: ['rfc-approved'], at: 2026-08-03, confirmed_by: danielPoloWork, gate_results: { rfc-approved: OK } }
+  refs: { rfcs: ['RFC-0001'], milestones: [], prs: [], releases: [] }
+
+identity:
+  project_name:    "egl-util-php"        # carried from the existing GitHub repository
+  project_slug:    "utils"               # single-word id for paths/namespace (maintainer's choice)
+  project_title:   "EGL PHP Utility Library"
+  project_tagline: "General-purpose PHP utility helpers shared across EGL projects"
+  project_series:  ""                    # no project family (maintainer: EGL is a prefix, not a series)
+  project_kind:    library               # Q0.2
+
+ownership:
+  owner:           "danielPoloWork"      # git remote origin (github.com/danielPoloWork/egl-util-php)
+  maintainer:      "Daniel Polo"         # git config user.name
+  author:          "Daniel Polo"         # LICENSE copyright line
+  year:            "2026"                # LICENSE copyright year
+  license_id:      MIT                   # LICENSE file (MIT License header)
+  default_branch:  master                # actual repo default branch (differs from the `main` template default)
+  assignee:        "danielPoloWork"      # Q4.5 rule: the owner, never @me
+
+language:
+  lang:            php
+  lang_name:       "PHP 8.1+"
+  lang_standard:   "PHP 8.1 (minimum version floor; tested on 8.1/8.2/8.3)"
+  secondary_lang:  ""
+  group_path:      "d4np"                # from the maintainer's namespace decision (RFC-0001 Alternatives #5)
+  group_dotted:    "d4np"
+  namespace:       'D4np\Utils'          # PSR-4 root — {group_dotted}\{slug} in StudlyCase (profiles/php.yaml)
+  src_ext:         php
+  comment_lang:    "en"
+  public_include_hint: 'use D4np\Utils\Dto\DataTransferObject;'
+
+governance:
+  posture: enterprise        # Q0.5 — asked; deliberately raised from the `standard` default (ADR-0015)
+
+spec:                        # Imported (Q5.0 = import) from .specs/d4np-php.md v2.0, validated by RFC-0001.
+  provenance: import
+  objective: "Provide EGL PHP projects (framework-based and native/legacy) with a modern utilities library — Composer package egl/utils, PSR-4 namespace D4np\\Utils\\, PHP 8.1+ — offering typed readonly DTOs, explicit-mechanism security helpers, safe PDO access, hardened session/CSRF handling, and a minimal PSR-11 DI container, replacing ad-hoc per-project solutions (associative-array DTOs, blocklist sanitizers, string-built SQL, silent PDO error modes)."
+  functional_reqs:
+    - "FR-01 DataTransferObject: hydrate typed readonly DTOs from arrays via reflection with per-class metadata caching; strict mode default (unknown key -> UnknownKeyException), lenient() opt-in; missing non-nullable key -> MissingKeyException (RFC-0001 R-4 addition); nested DTOs and Collection<T> hydrate recursively; type mismatch -> TypeMismatchException naming the path"
+    - "FR-02 WithersTrait: with(...) wither semantics producing modified clones of readonly DTOs, absorbing the PHP 8.1->8.3 readonly-clone difference per version"
+    - "FR-03 Collection<T>: functional array wrapper (map/filter/reduce); genericity static-analysis-level only (@template + PHPStan max); optional runtime instanceof guard flag"
+    - "FR-04 Container: minimal PSR-11 container — constructor autowiring (cached reflection), singletons/factories, no compilation; non-goals per imported ADR-001 (no attributes, no lazy proxies, circular deps throw with path)"
+    - "FR-05 ServiceProvider: abstract base for registering container definitions"
+    - "FR-06 DatabaseConnection: PDO wrapper with pinned safe defaults — ERRMODE_EXCEPTION, utf8mb4 on MySQL, real prepares (EMULATE_PREPARES=false), FETCH_ASSOC"
+    - "FR-07 QueryBuilder: fluent SQL builder — values always bound as parameters; identifiers allowlisted (^[A-Za-z_][A-Za-z0-9_]*$) and driver-quoted; ORDER BY direction is an enum; LIMIT/OFFSET cast to non-negative int"
+    - "FR-08 Transaction: closure-scoped transactions — automatic rollback on any exception and rethrow; nested calls use savepoints"
+    - "FR-09 Escaper: context-aware output escaping — html() (ENT_QUOTES|ENT_SUBSTITUTE, UTF-8), attr(), js() (hex), url() (rawurlencode)"
+    - "FR-09b Sanitizer::richText(): user-authored HTML delegated to symfony/html-sanitizer (optional dependency) with a curated allowlist profile; no hand-rolled tag stripper"
+    - "FR-10 Sanitizer::sqlLikePattern(): escape %/_/escape-char in user input used inside LIKE patterns (wildcard-injection defense; values still bind as parameters)"
+    - "FR-11 Hash: password_hash wrapper, Argon2id default; availability via defined('PASSWORD_ARGON2ID'); bcryptFallback: true default logged at WARNING or false to fail fast; self-describing hashes; needsRehash() upgrades on login"
+    - "FR-12 CsrfToken: CSPRNG token generation + constant-time validation (hash_equals), per-session storage, optional per-form scoping (lives in the Http group per RFC-0001 R-1 placement note)"
+    - "FR-13 Request: typed superglobal reader ($_GET/$_POST/$_SERVER/$_FILES); optional PSR-7 bridge per imported ADR-002"
+    - "FR-14 Response: headers/JSON/status helpers; same bridge"
+    - "FR-15 Session: secure session API — cookie_httponly, cookie_secure, cookie_samesite=Lax at start; regenerate() wraps session_regenerate_id(true) for login transitions"
+    - "FR-16 Result: success/failure wrapper for application services (map/flatMap/orElseThrow)"
+    - "FR-17 Logger: PSR-3 file/console logger"
+    - "FR-18 ExceptionHandler: fatal-error capture, JSON problem responses for API calls; never leaks traces in production mode (env-gated)"
+    - "FR-19..21 Str: slug() (transliteration via ext-intl when present), uuid() (v4 from random_bytes), random() (CSPRNG alphanumeric tokens)"
+    - "FR-22..23 File: write()/read() flock-guarded, atomic write via temp+rename; mime() via Fileinfo (never trusts extensions)"
+    - "FR-24 Env::get(): env reads with correct boolean coercion ('false' -> false)"
+    - "FR-25 Json: encode()/decode() with JSON_THROW_ON_ERROR; library JsonException wraps and rethrows PHP's native \\JsonException (RFC-0001 R-7)"
+    - "FR-26 Exception hierarchy: UtilsException <- DatabaseException, HydrationException (<- UnknownKeyException, TypeMismatchException, MissingKeyException), HttpException, FileException, JsonException"
+  nonfunctional_reqs:
+    - "NFR-01 DTO hydration (10 scalar props): <= 5 us/DTO warm (cached reflection) and <= 3x manual constructor assignment"
+    - "NFR-02 Container: singleton resolve <= 2 us warm; first autowired resolve <= 30 us"
+    - "NFR-03 QueryBuilder: 5-condition SELECT builds in <= 10 us; 0 queries executed at build time"
+    - "NFR-04 Memory: hydrating 10 000 DTOs <= 16 MB peak delta"
+    - "NFR-05 Hash::make (Argon2id defaults): 50-200 ms on the reference machine (deliberately slow; documented for capacity planning)"
+    - "NFR-06 Benchmark methodology: phpbench, 10 iterations x 100 revs, 5% retry threshold, PHP 8.3 CLI with OPcache+JIT off, reference machine Ryzen 7 5800X, harness in bench/, nightly CI; regression > 10% fails"
+    - "NFR-07 Quality gates: PHPUnit line coverage >= 90%; Infection mutation score >= 70% on Security/Database/Dto namespaces; PHPStan max level; deptrac layer rules; composer-normalize; composer audit; roave/backward-compatibility-check on release PRs"
+    - "NFR-08 Dependency policy: no third-party implementation dependencies in the core (php>=8.1 + ext-pdo + ext-fileinfo; interface-only psr/container and psr/log excepted — RFC-0001 R-3 correction); symfony/html-sanitizer and the PSR-7 bridge are optional"
+  architecture: |
+    Six component groups over a Support layer (C4 component view, spec s3), rule: groups depend
+    downward on Support only, no cross-group imports — enforced by deptrac in CI.
+    Groups (PSR-4 sub-namespaces of D4np\Utils\): Dto (DataTransferObject, WithersTrait,
+    Collection<T>), Container (PSR-11 Container, ServiceProvider), Database (DatabaseConnection,
+    QueryBuilder, Transaction), Security (Escaper, Sanitizer, Hash), Http (Request, Response,
+    Session, CsrfToken — placement per RFC-0001 R-1: CsrfToken needs per-session storage),
+    Errors (Result, Logger, ExceptionHandler), Support (Str, File, Env, Json, exception
+    hierarchy, shared reflection-metadata cache — the hydrator and the Container both consume it;
+    RFC-0001 R-2). Source tree: PSR-4 base dir is the rendered src/main/php/d4np/utils/ and
+    deptrac layer globs are defined against that exact tree (RFC-0001 A-9). Mixed-vendor naming
+    (package egl/utils, namespace D4np\Utils\) is a recorded maintainer decision (RFC-0001
+    Alternatives #5) and must be stated in composer.json and the README.
+  architecture_style: "Layered"
+  patterns: []
+  pattern_discipline: advisory
+  layers: []
+  public_api:
+    - "D4np\\Utils\\Dto\\ — DataTransferObject::fromArray()/lenient(), WithersTrait::with(), Collection<T>"
+    - "D4np\\Utils\\Container\\ — PSR-11 Container (get/has, autowire, singleton/factory), ServiceProvider"
+    - "D4np\\Utils\\Database\\ — DatabaseConnection (pinned PDO defaults), QueryBuilder (fluent, Sort enum), Transaction::run(closure)"
+    - "D4np\\Utils\\Security\\ — Escaper::html/attr/js/url, Sanitizer::richText/sqlLikePattern, Hash::make/verify/needsRehash"
+    - "D4np\\Utils\\Http\\ — Request (typed superglobal reader), Response, Session::regenerate(), CsrfToken; PSR-7 via optional egl/utils-psr7-bridge"
+    - "D4np\\Utils\\Errors\\ — Result::map/flatMap/orElseThrow, PSR-3 Logger, ExceptionHandler"
+    - "D4np\\Utils\\Support\\ — Str::slug/uuid/random, File::write/read/mime, Env::get, Json::encode/decode, UtilsException hierarchy"
+  verification: "Five suites (spec s7): T-01 DTO hydration matrix (nested, collections, nullables, enums, strict/lenient, withers, missing-key cases per RFC-0001 R-4); T-02 injection suite (fuzzed value payloads reach the driver only as bound parameters via query-log assertion; identifier injection throws DatabaseException; LIKE-wildcard escapes); T-03 session/CSRF integration against a real php -S process (cookie flags HttpOnly/Secure/SameSite, session id changes across regenerate(), hash_equals timing, cross-session token rejection); T-04 transaction semantics (exception -> rollback -> rethrow; savepoint nesting); T-05 property tests (Json round-trips, Str::slug idempotence, Env boolean coercion table). Plus: OWASP XSS cheat-sheet corpus per Escaper context (snapshot suite); DOM-bypass corpus for richText(); Hash argon2id/bcrypt-fallback matrix; bridge conversion-fidelity contract tests in egl/utils-psr7-bridge CI (imported ADR-002). CI proves failure via the NFR-07 gate set."
+  milestone1_items:
+    - "Pin composer.json identity: name egl/utils, PSR-4 'D4np\\Utils\\' -> src/main/php/d4np/utils/, require php>=8.1 + ext-pdo + ext-fileinfo + psr/container + psr/log (RFC-0001 naming mapping + R-3)"
+    - "CI matrix covers PHP 8.1/8.2/8.3 with an explicit toolchain->version map (the profile's 2-way ternary must not silently map 8.1 to 8.3 — RFC-0001 A-3) plus a composer --prefer-lowest job"
+  milestones:
+    - number: 2
+      title: "Support layer"
+      goal: "The foundation every group depends on (deptrac-legal bottom layer)"
+      items:
+        - "2.1 Exception hierarchy: UtilsException root + Database/Hydration/Http/File/Json children (incl. MissingKeyException)"
+        - "2.2 Str: slug() with ext-intl transliteration fallback, uuid() v4, random() CSPRNG"
+        - "2.3 File: flock-guarded write()/read(), atomic write via temp+rename, Fileinfo mime()"
+        - "2.4 Env::get() with boolean coercion; Json::encode()/decode() wrapping native \\JsonException"
+        - "2.5 Shared reflection-metadata cache (consumed by Dto hydrator and Container)"
+        - "2.6 T-05 property tests (Json round-trips, slug idempotence, Env coercion table)"
+    - number: 3
+      title: "DTO & data mapping"
+      goal: "Typed, mass-assignment-safe data transfer"
+      items:
+        - "3.1 DataTransferObject: strict/lenient hydration, nested DTOs, Collection<T> properties"
+        - "3.2 WithersTrait with per-version readonly-clone handling"
+        - "3.3 Collection<T> with @template discipline enforced by PHPStan max"
+        - "3.4 T-01 hydration matrix suite"
+        - "3.5 phpbench: NFR-01 hydration and NFR-04 memory benchmarks"
+    - number: 4
+      title: "Database"
+      goal: "Safe-by-default PDO access"
+      items:
+        - "4.1 DatabaseConnection with pinned defaults (ERRMODE_EXCEPTION, utf8mb4, real prepares, FETCH_ASSOC)"
+        - "4.2 QueryBuilder: bound values, identifier allowlist + driver quoting, Sort enum, int-cast LIMIT/OFFSET"
+        - "4.3 Transaction: closure scope, rollback+rethrow, savepoints"
+        - "4.4 T-02 injection suite (values, identifiers, LIKE wildcards) + T-04 transaction semantics"
+        - "4.5 phpbench: NFR-03 build-time benchmark"
+    - number: 5
+      title: "Security"
+      goal: "Explicit-mechanism security helpers"
+      items:
+        - "5.1 Escaper: html/attr/js/url context escaping"
+        - "5.2 Sanitizer::richText() over symfony/html-sanitizer (optional dep) + sqlLikePattern()"
+        - "5.3 Hash: Argon2id default, bcryptFallback policy, needsRehash()"
+        - "5.4 OWASP XSS corpus snapshot suite + DOM-bypass corpus for richText()"
+        - "5.5 Hash matrix tests (argon2id/bcrypt fallback, rehash triggers) + NFR-05 timing"
+    - number: 6
+      title: "HTTP, container, errors"
+      goal: "The application-facing groups"
+      items:
+        - "6.1 Request/Response typed wrappers (PSR-7-mirroring naming)"
+        - "6.2 Session hardening + regenerate(); CsrfToken (CSPRNG, hash_equals, per-form scoping)"
+        - "6.3 T-03 session/CSRF integration suite against real php -S"
+        - "6.4 Container (PSR-11) + ServiceProvider; NFR-02 benchmarks"
+        - "6.5 Result, PSR-3 Logger, ExceptionHandler (env-gated trace policy)"
+    - number: 7
+      title: "Release engineering & bridge"
+      goal: "Ship egl/utils 1.0 and settle the bridge"
+      items:
+        - "7.1 phpbench nightly CI harness (NFR-06 methodology) with >10% regression failure"
+        - "7.2 roave/backward-compatibility-check wired to release PRs; deprecation policy documented"
+        - "7.3 Signed tags -> validated release action -> Packagist publish"
+        - "7.4 egl/utils-psr7-bridge packaging decision (subtree vs second repository — possibly a second EADOS run) + ADR-002 conversion contract tests (RFC-0001 A-8)"
+
+# Interview provenance (#169) — recorded as each phase settles, never retrospectively.
+interview:
+  questionnaire_version: 1
+  provenance:
+    domain: asked          # Q0.4 (init, 2026-08-03)
+    identity: asked        # Q0.1-Q0.3 (init) + slug/series confirmation
+    governance: asked      # Q0.5 posture (init)
+    ownership: imported    # git remote, git config, LICENSE (design, 2026-08-03)
+    language: asked        # package/namespace/bridge naming decisions at RFC-0001 import
+    spec: imported         # Q5.0 = import; .specs/d4np-php.md v2.0 validated by RFC-0001
