@@ -1,0 +1,43 @@
+# Run record — appended by tools/record_run.py; a fact about a past run, never edited
+# after the fact. `phase` is the delivery phase that produced it (#215).
+slug: "utils"
+date: "2026-08-03"
+phase: "scaffold"
+lang: "php"
+kind: "library"
+outcome: "ok"
+overrides:
+  - key: "governance.capabilities.bench"
+    default: false
+    chosen: true
+  - key: "governance.capabilities.packaging"
+    default: false
+    chosen: true
+  - key: "governance.posture"
+    default: "standard"
+    chosen: "enterprise"
+  - key: "ownership.assignee"
+    default: "@me"
+    chosen: "danielPoloWork"
+  - key: "ownership.default_branch"
+    default: "main"
+    chosen: "master"
+  - key: "spec.provenance"
+    default: "coauthor"
+    chosen: "import"
+  - key: "toolchain.coverage_target"
+    default: 80
+    chosen: 90
+lessons_applied: ["L-0001", "L-0002", "L-0007", "L-0010"]
+failures: []
+rubric:
+  spec_measurability: 2
+  spec_ci_traceability: 2
+  architecture_rationale: 2
+  profile_fidelity: 1
+  pattern_fit: 2
+  test_strategy: 2
+  docs_coherence: 2
+  governance_fit: 1
+  capability_hygiene: 2
+  security_posture: 2
