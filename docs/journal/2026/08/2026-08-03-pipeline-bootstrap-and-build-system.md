@@ -107,13 +107,43 @@ dependency was first added. `symfony/*` relocked from `v7.4.x` to `v6.4.x`; full
 verification (PHPUnit, PHPStan, PHP-CS-Fixer, `composer validate`/`normalize`/`audit`)
 re-ran clean.
 
+## Item 1.9 — the benchmark job hardened, and the CI matrix finally all green
+
+The last red from item 1.1. Three defects, one root cause: the profile's *matrix-oriented*
+setup steps were injected verbatim into a job that declares no matrix.
+
+- **It failed instead of waiting.** `vendor/bin/phpbench` is a dev dependency no M1 item
+  introduces, so the job could only go red until the harness lands (3.5 / 7.1). Now guarded
+  the same way as `layering` and `mutation` — a first step probes for `phpbench.json`
+  (or `.dist`) and every later step is conditional on it, emitting a `::notice` while pending.
+  Lesson L-0010's rule, applied to the one job that had escaped it.
+- **`php-version` read `matrix.toolchain` in a job with no matrix.** Verified rather than
+  reasoned: on run 30811447268 the job installed **PHP 8.3.33** — the ternary had fallen
+  through to its final branch, because `matrix` is null here. The value it landed on happens
+  to be the one spec NFR-06 requires, which is *worse* than a visible error: right by
+  accident, and it would have silently selected the wrong interpreter the moment anyone gave
+  this job a matrix. Now a literal `'8.3'` citing NFR-06.
+- **`coverage: pcov` on a performance job.** Coverage instrumentation distorts the very
+  measurements the job exists to take. Now `coverage: none`.
+
+The remaining NFR-06 methodology (10 iterations × 100 revs, 5% retry threshold, OPcache + JIT
+off, >10% regression fails) belongs to the harness in item 7.1 and is noted in the job's own
+comment so it is not silently forgotten.
+
+**Filed, not fixed here (§10):** item **1.10** — the same action is pinned two ways in one
+workflow (`actions/checkout` by SHA in the template-generated steps, by floating tag `@v7` in
+the manifest-authored quality jobs). Under the enterprise posture a supply-chain choice is a
+security-relevant decision and needs an ADR. Checked first per lesson L-0004 (before filing an
+apparent inconsistency, see whether a governing ADR already decided it): this repo has only
+ADR-0001 and ADR-0002, and EADOS's ADR-0009 governs the *factory*, not this self-governing
+repository — so it is genuinely open, not a re-discovered trade-off.
+
 ## How the next session resumes
 
 1. **Item 1.5 + 1.8 together** — the version constant and the doubled `version_file` path in
    `tools/consistency_lint.py` `CONFIG`. Fixing 1.5 without 1.8 leaves `version-lockstep`
    silently disarmed (it would keep falling back to the README badge). Prove the gate can fail.
-2. **Item 1.9** — the `benchmark` job; the only red from item 1.1 that 1.2 and 1.3 do not clear.
-   At that point the CI matrix should be fully green.
+2. **Item 1.10** — the action-pinning ADR + making the workflows consistent with it.
 3. **Bookkeeping** — items 1.4 and 1.7 were delivered by PR #3 (the CI matrix, the explicit
    toolchain→version map, the `--prefer-lowest` job) but their checkboxes are unflipped; the
    maintainer's call whether "stood up but never executed" counts as done.

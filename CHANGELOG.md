@@ -29,6 +29,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- CI `benchmark` job hardened: it now self-enables on the presence of a phpbench config (the
+  same step-level guard as the `deptrac` and `Infection` jobs) instead of failing until the
+  harness lands, pins its interpreter to PHP 8.3 per spec NFR-06 rather than through a
+  matrix expression the job never had, and runs without coverage instrumentation.
+
 ### Deprecated
 
 ### Removed
