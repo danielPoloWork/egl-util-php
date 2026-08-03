@@ -91,7 +91,21 @@ deprecation notice — an enterprise repo should not launch on a stale major), a
 - `composer validate --strict` and `composer audit` — both clean.
 
 **Effect on the red set from 1.1:** `quality` (php-cs-fixer + phpstan) and `hygiene` (composer
-normalize + audit) should now pass. `benchmark` is untouched — item 1.9.
+normalize + audit) passed as predicted.
+
+**A real defect the CI matrix caught.** The first push of this item broke `build /
+php-8.1`: dependency resolution ran on the local machine's PHP 8.3, so the lock file picked
+`symfony/console` et al. at `v7.4.x`, which require PHP `>=8.2` — silently incompatible with
+the declared `php>=8.1` floor and the CI matrix's own 8.1 cell, until that cell actually ran.
+This is exactly the gap `lowest-deps` exists to catch for *version* floors, but it doesn't
+catch a *resolved-on-a-newer-interpreter* floor violation, because that job also runs on
+whatever PHP its own step sets up. Fixed by pinning `config.platform.php` to `8.1.34` in
+`composer.json` and re-running `composer update` — Composer then resolves (and future
+`composer update` runs keep resolving) against the declared floor regardless of which PHP
+version the maintainer's or CI's shell happens to run, not just the version installed when a
+dependency was first added. `symfony/*` relocked from `v7.4.x` to `v6.4.x`; full local
+verification (PHPUnit, PHPStan, PHP-CS-Fixer, `composer validate`/`normalize`/`audit`)
+re-ran clean.
 
 ## How the next session resumes
 
