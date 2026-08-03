@@ -28,6 +28,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Support\File` (**ADR-0005**): `write()` replaces the target **atomically** — a
+  temporary file in the same directory, `rename()`d over — so a reader never observes a
+  half-written file; writers are serialised through an exclusive `flock()` on a `<path>.lock`
+  sidecar, which is where the lock has to live because a handle held on the target makes the
+  replacement fail on Windows. `read()` reads under a shared lock. `mime()` detects from
+  **contents** via `ext-fileinfo`, never from the filename. Every failure throws `FileException`
+  instead of returning `false`.
 - `D4np\Utils\Support\Str`: `slug()` (three-tier ASCII transliteration — `ext-intl`, then
   `iconv`, then a printable-ASCII filter, degrading gracefully rather than throwing; idempotent
   per spec T-05), `uuid()` (RFC 4122 v4 from `random_bytes()`), and `random()` (CSPRNG

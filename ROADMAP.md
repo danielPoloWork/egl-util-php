@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-03 — Str::slug() / uuid() / random()](docs/journal/2026/08/2026-08-03-str-slug-uuid-random.md).
+  [2026-08-03 — File: atomic writes, and a test that was lying](docs/journal/2026/08/2026-08-03-file-atomic-io.md).
 
 ## Model & effort routing (advisory)
 
@@ -105,9 +105,9 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
       route: frontier-reasoning / high · **ADR-0004**
 - [x] 2.2 `Str`: `slug()` with ext-intl transliteration fallback, `uuid()` v4, `random()`
       CSPRNG (RFC-0001) — route: fast / low
-- [ ] 2.3 `File`: flock-guarded `write()`/`read()`, atomic write via temp+rename, Fileinfo
+- [x] 2.3 `File`: flock-guarded `write()`/`read()`, atomic write via temp+rename, Fileinfo
       `mime()` (RFC-0001) (severity:medium — concurrency/atomicity semantics) —
-      route: standard / medium
+      route: standard / medium · **ADR-0005**
 - [ ] 2.4 `Env::get()` with boolean coercion; `Json::encode()/decode()` wrapping native
       `\JsonException` (RFC-0001 R-7) — route: fast / low
 - [ ] 2.5 Shared reflection-metadata cache, consumed by the Dto hydrator and the Container
