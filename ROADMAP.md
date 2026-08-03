@@ -75,7 +75,7 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       through to `'8.3'` — a rendering artifact of the profile setup steps being injected into a
       non-matrix job. Correct by hand (ADR-0003: this repo is never re-rendered) —
       route: standard / medium
-- [ ] 1.10 Decide and record the **CI action-pinning policy** as an ADR, then make
+- [x] 1.10 Decide and record the **CI action-pinning policy** as an ADR, then make
       `.github/workflows/*.yml` consistent with it. Today the same action is pinned two ways in
       one file: the template-generated steps use a commit SHA with a version comment
       (`actions/checkout@3d3c42e5… # v7.0.1`) while the manifest-authored quality jobs use a
@@ -84,7 +84,15 @@ The thinnest slice that compiles, tests, and ships under the full quality bar (R
       `shivammathur/setup-php@v2` stays deliberately tag-pinned and Dependabot-managed.
       Checked first (lesson L-0004): no ADR in this repo decides it — EADOS's own ADR-0009
       governs the factory, not this self-governing repository — so it is genuinely open, not a
-      re-discovered trade-off — route: standard / medium
+      re-discovered trade-off — route: frontier-reasoning / extra (adr, decision-heavy)
+      *(route corrected when the item was taken: it was filed as `standard / medium`, but an
+      item whose deliverable IS a decision is decision-heavy by definition — `os/routing`
+      resolves `label:adr` to frontier-reasoning/extra. Settled by ADR-0003.)*
+- [ ] 1.11 Gate the ADR-0003 pinning policy mechanically instead of by review: assert every
+      `uses:` in `.github/workflows/*.yml` matches `@[0-9a-f]{40} # <version>`, and that the
+      version comment resolves to that SHA upstream (lesson L-0011 — a label nobody resolves
+      lies for as long as nobody resolves it). Prove the check can fail before trusting it —
+      route: standard / medium
 
 ---
 

@@ -52,6 +52,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Security
 
+- Every GitHub Actions `uses:` reference in `.github/workflows/` is now pinned to an immutable
+  commit SHA with a truthful version comment, per **ADR-0003**. Previously the same action was
+  pinned two ways in one file — SHA in the generated steps, floating tag (`@v7`, `@v2`) in the
+  quality jobs — so a re-pointed upstream tag could have changed what CI executes with no diff
+  here. Dependabot (already configured for the `github-actions` ecosystem) keeps the pins and
+  their comments current.
+
 ---
 
 ## Released versions

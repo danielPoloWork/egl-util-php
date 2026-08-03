@@ -167,12 +167,54 @@ runs for real, `lowest-deps` passes) — closing the open question from the last
 **Milestone 1 is complete**: every M1 item is checked except **1.10** (the action-pinning ADR,
 filed, deliberately open).
 
+## Item 1.10 — ADR-0003, the CI action-pinning policy
+
+The first ADR this project decided for itself (0001 and 0002 came seeded from the factory).
+
+**Route mismatch, recorded rather than quietly accepted.** The item was *filed* as
+`standard / medium` — wrong, and corrected in the roadmap when it was taken: `os/routing`
+resolves `label:adr` to **frontier-reasoning / extra**, because an item whose deliverable *is*
+a decision is decision-heavy by definition. `route_advice.py --check` confirmed the session
+model (`opus-5`, standard tier) sits below that route. Surfaced to the maintainer, who holds
+model authority (ADR-0017); work proceeded on their standing decision.
+
+**The decision:** every `uses:` in this repository's workflows is pinned to a 40-character
+commit SHA with a comment naming the version, no exceptions by publisher. The comment must be
+**true** — resolved from the upstream repository, never copied from another local file — and
+Dependabot (already configured for `github-actions`, and already exercised: PR #4) owns the
+routine updates.
+
+The argument that settled it is that **a version tag is not immutable either**. The intuitive
+middle ground `@v7.0.1` *looks* pinned and is an ordinary git ref the publisher can force-push;
+it narrows the window without closing it. Verified while writing the ADR:
+`shivammathur/setup-php@v2` resolves today to `f3e473d1…`, the same commit as release
+`2.37.2` — the value is fine *today*, which is exactly the property nobody can rely on
+tomorrow.
+
+**Applied and verified, in that order:**
+- 20 `uses:` references across both workflows now carry a SHA; a grep for any `@` reference not
+  matching `[0-9a-f]{40}` returns nothing.
+- Every version comment was then **re-resolved against the GitHub API** and compared to the SHA
+  actually written — all four distinct actions truthful. This is lesson **L-0011**'s rule
+  applied at the moment the pins were introduced, not deferred: a cross-file consistency check
+  cannot see an error applied uniformly, so the check has to resolve toward the external
+  source.
+- Both workflows re-parsed as YAML (9 jobs + 1) to confirm no structural regression from the
+  bulk edit.
+
+**Filed, not claimed:** the policy is enforced by **review, not by a gate** —
+`tools/consistency_lint.py` does not inspect workflow files. The ADR says so in its own
+*Consequences* rather than implying coverage that does not exist, and item **1.11** files the
+mechanical check.
+
 ## How the next session resumes
 
-1. **Item 1.10** — decide and record the CI action-pinning policy as an ADR, then reconcile
-   `.github/workflows/*.yml` with it.
-2. **Milestone 2 (`v0.2.0`) — Support layer**: the exception hierarchy, `Str`, `File`, `Env`,
-   `Json`, and the shared reflection-metadata cache. First items with actual behavior; T-05
-   property tests land alongside.
+1. **Milestone 2 (`v0.2.0`) — Support layer**: the exception hierarchy, `Str`, `File`, `Env`,
+   `Json`, and the shared reflection-metadata cache. The first items with actual behavior to
+   write; T-05 property tests land alongside them.
+2. **Item 1.11** — the mechanical gate for ADR-0003, whenever it is convenient; small, and it
+   turns a review-time rule into a checked one.
 3. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
-   branch protection on `master`, squash-only, label import from `.github/labels.yml`.
+   branch protection on `master`, squash-only, label import from `.github/labels.yml`. The
+   label import matters more now: every PR in this milestone has carried `enhancement` as a
+   stand-in because the repo's own type labels (`build`, `test`, `ci`, `docs`) do not exist yet.
