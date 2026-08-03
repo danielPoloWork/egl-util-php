@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: ${{ matrix.toolchain == 'php-8.1' && '8.1' || matrix.toolchain == 'php-8.2' && '8.2' || '8.3' }}
           coverage: pcov
@@ -108,8 +108,8 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
       - run: vendor/bin/php-cs-fixer fix --dry-run --diff
@@ -120,8 +120,8 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
       - run: composer normalize --dry-run
@@ -132,8 +132,8 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with: { php-version: '8.1' }
       - run: composer update --no-interaction --prefer-lowest
       - run: vendor/bin/phpunit
@@ -146,11 +146,11 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check for deptrac.yaml (job self-enables when it lands)
         id: cfg
         run: echo "present=$([ -f deptrac.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         if: steps.cfg.outputs.present == 'true'
         with: { php-version: '8.3' }
       - if: steps.cfg.outputs.present == 'true'
@@ -164,11 +164,11 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check for infection.json5 (job self-enables when it lands)
         id: cfg
         run: echo "present=$([ -f infection.json5 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         if: steps.cfg.outputs.present == 'true'
         with: { php-version: '8.3', coverage: pcov }
       - if: steps.cfg.outputs.present == 'true'
@@ -215,7 +215,7 @@ jobs:
           fi
       - name: Set up PHP
         if: steps.cfg.outputs.present == 'true'
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.3'   # spec NFR-06 benchmark methodology — not the build matrix
           coverage: none       # instrumentation would distort the measurements
