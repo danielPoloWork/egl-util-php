@@ -9,15 +9,16 @@
 # .eados-core/orchestrator/project.yaml.template
 
 schema_version: 1
-manifest_rev: 3
+manifest_rev: 5
 domain: software             # Q0.4 development target -> .eados-core/orchestrator/domains/software.yaml
 
 delivery_state:
-  phase: plan                # init|design|plan|scaffold|audit|migrate
+  phase: scaffold            # init|design|plan|scaffold|audit|migrate
   checkpoints:               # transition ledger — written by the phase runner on legal moves
     - { from: init, to: design, gates: ['manifest-valid'], at: 2026-08-03, confirmed_by: danielPoloWork, gate_results: { manifest-valid: OK } }
     - { from: design, to: plan, gates: ['rfc-approved'], at: 2026-08-03, confirmed_by: danielPoloWork, gate_results: { rfc-approved: OK } }
-  refs: { rfcs: ['RFC-0001'], milestones: [], prs: [], releases: [] }
+    - { from: plan, to: scaffold, gates: ['roadmap-covers-rfcs'], at: 2026-08-03, confirmed_by: danielPoloWork, gate_results: { roadmap-covers-rfcs: OK } }
+  refs: { rfcs: ['RFC-0001'], milestones: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'], prs: [1], releases: [] }
 
 identity:
   project_name:    "egl-util-php"        # carried from the existing GitHub repository
