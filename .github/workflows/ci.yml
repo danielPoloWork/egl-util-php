@@ -138,27 +138,43 @@ jobs:
       - run: composer update --no-interaction --prefer-lowest
       - run: vendor/bin/phpunit
   layering:
+    # Self-enables when deptrac.yaml lands. hashFiles() is runner-only — it is NOT available
+    # in a job-level `if` (startup failure on the whole workflow), so the config-presence
+    # guard lives in a step.
     name: quality / deptrac layer rules
     runs-on: ubuntu-24.04
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true' && hashFiles('deptrac.yaml') != ''
+    if: needs.bootstrap.outputs.ready == 'true'
     steps:
       - uses: actions/checkout@v6
+      - name: Check for deptrac.yaml (job self-enables when it lands)
+        id: cfg
+        run: echo "present=$([ -f deptrac.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
+        if: steps.cfg.outputs.present == 'true'
         with: { php-version: '8.3' }
-      - run: composer install --no-interaction --prefer-dist
-      - run: vendor/bin/deptrac analyse
+      - if: steps.cfg.outputs.present == 'true'
+        run: composer install --no-interaction --prefer-dist
+      - if: steps.cfg.outputs.present == 'true'
+        run: vendor/bin/deptrac analyse
   mutation:
+    # Same step-level guard as `layering`: hashFiles() cannot gate a job-level `if`.
     name: quality / infection mutation score
     runs-on: ubuntu-24.04
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true' && hashFiles('infection.json5') != ''
+    if: needs.bootstrap.outputs.ready == 'true'
     steps:
       - uses: actions/checkout@v6
+      - name: Check for infection.json5 (job self-enables when it lands)
+        id: cfg
+        run: echo "present=$([ -f infection.json5 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
+        if: steps.cfg.outputs.present == 'true'
         with: { php-version: '8.3', coverage: pcov }
-      - run: composer install --no-interaction --prefer-dist
-      - run: vendor/bin/infection --min-msi=70 --only-covered
+      - if: steps.cfg.outputs.present == 'true'
+        run: composer install --no-interaction --prefer-dist
+      - if: steps.cfg.outputs.present == 'true'
+        run: vendor/bin/infection --min-msi=70 --only-covered
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   benchmark:
