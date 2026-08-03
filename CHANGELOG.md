@@ -28,6 +28,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Support\Str`: `slug()` (three-tier ASCII transliteration — `ext-intl`, then
+  `iconv`, then a printable-ASCII filter, degrading gracefully rather than throwing; idempotent
+  per spec T-05), `uuid()` (RFC 4122 v4 from `random_bytes()`), and `random()` (CSPRNG
+  alphanumeric tokens via `random_int()`, custom length and alphabet).
 - Exception hierarchy under `D4np\Utils\Support\` (**ADR-0004**): the `UtilsThrowable`
   interface every exception implements — `catch (UtilsThrowable $e)` catches anything this
   library raises — over `UtilsException extends \RuntimeException`, with

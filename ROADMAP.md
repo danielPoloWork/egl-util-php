@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-03 — Milestone 2 opens: the exception hierarchy](docs/journal/2026/08/2026-08-03-m2-exception-hierarchy.md).
+  [2026-08-03 — Str::slug() / uuid() / random()](docs/journal/2026/08/2026-08-03-str-slug-uuid-random.md).
 
 ## Model & effort routing (advisory)
 
@@ -103,7 +103,7 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
 - [x] 2.1 Exception hierarchy: `UtilsException` root + Database/Hydration/Http/File/Json
       children, incl. `MissingKeyException` (RFC-0001) (sets-pattern) —
       route: frontier-reasoning / high · **ADR-0004**
-- [ ] 2.2 `Str`: `slug()` with ext-intl transliteration fallback, `uuid()` v4, `random()`
+- [x] 2.2 `Str`: `slug()` with ext-intl transliteration fallback, `uuid()` v4, `random()`
       CSPRNG (RFC-0001) — route: fast / low
 - [ ] 2.3 `File`: flock-guarded `write()`/`read()`, atomic write via temp+rename, Fileinfo
       `mime()` (RFC-0001) (severity:medium — concurrency/atomicity semantics) —
@@ -225,6 +225,6 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ⏳ |
 | §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ⏳ |
 | §6 | API example / public interface | 1.6, 3.1 | ⏳ |
-| §7 | Verification & test strategy | 1.2, 2.6, 3.4, 4.4, 6.3 | ⏳ |
+| §7 | Verification & test strategy | 1.2, 2.6, 3.4, 4.4, 6.3 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3 | ⏳ |
 | §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | 🚧 |
