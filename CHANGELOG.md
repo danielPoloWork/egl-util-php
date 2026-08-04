@@ -116,6 +116,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `D4np\Utils\Database\QueryBuilder`, `Sort` and `Operator` (**ADR-0015**) — RFC-0001's second
+  security mechanism: prepared statements bind *values*, never table or column names, so an
+  identifier has nothing to hide behind and the allowlist is the whole defence. Identifiers are
+  **refused** (`DatabaseException`), never sanitised, then driver-quoted (backticks on MySQL,
+  brackets on SQL Server, double quotes elsewhere). Values always bind. `LIMIT`/`OFFSET` are `int`
+  by signature and refused when negative rather than clamped.
+  **Security fix found while building it:** spec FR-07 writes the allowlist as
+  `^[A-Za-z_][A-Za-z0-9_]*$`, and transcribed literally into PHP that is a **bypass** — PCRE's `$`
+  also matches before a trailing newline, so `"id\n"` passed and rendered as
+  `SELECT "id\n" FROM "users"`. The pattern is anchored with `\z` instead, implementing FR-07's
+  intent rather than copying its notation; ADR-0015 records it so nobody restores `$` for spec
+  fidelity. `Operator` is likewise an extension of FR-07 rather than a silent addition: FR-07 makes
+  the `ORDER BY` direction an enum because it is concatenated into the SQL text and cannot be
+  bound, and a comparison operator is concatenated for exactly the same reason.
 - `D4np\Utils\Database\DatabaseConnection` (**ADR-0014**) — opens Milestone 4. Wraps a
   **consumer-owned** `PDO` (RFC-0001: the library opens no connections) and pins spec FR-06's four
   safe defaults: `ERRMODE_EXCEPTION`, real prepares (`EMULATE_PREPARES=false`), `FETCH_ASSOC`, and

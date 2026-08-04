@@ -6,6 +6,7 @@ namespace D4np\Utils\Tests\Database;
 
 use D4np\Utils\Database\DatabaseConnection;
 use D4np\Utils\Support\DatabaseException;
+use D4np\Utils\Tests\Database\Fixture\PretendDriverPdo;
 use D4np\Utils\Tests\Database\Fixture\StubbornlyEmulatingPdo;
 use PDO;
 use PHPUnit\Framework\Attributes\Group;
@@ -112,6 +113,23 @@ final class DatabaseConnectionTest extends TestCase
         $this->expectExceptionMessageMatches('/still emulating prepared statements/');
 
         new DatabaseConnection(new StubbornlyEmulatingPdo());
+    }
+
+    /**
+     * Item 4.1 shipped this line unexecuted by any test, and said so: `SET NAMES utf8mb4` is
+     * MySQL-only and there is no MySQL server in CI. {@see PretendDriverPdo} closes the half that
+     * is closeable — that the statement is issued, and issued *only* for MySQL. It does not prove
+     * a real MySQL server accepts it; that belongs to T-02's driver matrix (item 4.4).
+     */
+    public function testUtf8mb4IsSetOnMysqlOnly(): void
+    {
+        $mysql = new PretendDriverPdo('mysql');
+        new DatabaseConnection($mysql);
+        self::assertContains('SET NAMES utf8mb4', $mysql->executed);
+
+        $pgsql = new PretendDriverPdo('pgsql');
+        new DatabaseConnection($pgsql);
+        self::assertSame([], $pgsql->executed, 'SET NAMES is MySQL-specific and must not be issued elsewhere');
     }
 
     public function testDriverNameIsReported(): void

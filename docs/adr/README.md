@@ -30,3 +30,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0012](0012-enforce-the-layering-rule-by-directory-over-src-main.md) | Enforce RFC-0001's layering rule by directory, over `src/main` only | Accepted |
 | [0013](0013-compile-a-hydration-closure-for-the-scalar-shape.md) | Compile a hydration closure for the scalar shape, keep the interpreter for everything else | Accepted |
 | [0014](0014-pin-pdo-defaults-on-a-consumer-owned-connection.md) | Pin PDO's safe defaults on a consumer-owned connection, and refuse one that will not take them | Accepted |
+| [0015](0015-identifier-allowlist-closed-keywords-and-the-anchor-hole.md) | Refuse identifiers rather than escape them, close every keyword, and anchor the allowlist with `\z` | Accepted |

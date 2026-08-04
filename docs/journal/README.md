@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — The spec's own regex was the vulnerability](2026/08/2026-08-04-querybuilder-allowlist.md)
 - [2026-08-04 — Milestone 4 opens: the security default that fails by returning false](2026/08/2026-08-04-pinned-pdo-defaults.md)
 - [2026-08-04 — Measuring what was reachable before deciding what to build](2026/08/2026-08-04-nfr01-compiled-hydration.md)
 - [2026-08-04 — Enforcing a rule two ADRs had already been obeying by hand](2026/08/2026-08-04-deptrac-layering-gate.md)
