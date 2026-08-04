@@ -116,6 +116,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `D4np\Utils\Database\Transaction` (**ADR-0016**) — closure-scoped transactions: commit on return,
+  roll back and rethrow on any **`Throwable`** (a `TypeError` leaves the same half-written state as
+  an exception). Nested calls use savepoints, which is not an optimisation but the only mechanism
+  available: a second `beginTransaction()` on an open connection **throws** rather than nesting or
+  no-opping. A handled inner failure therefore undoes only the inner work, leaving the enclosing
+  transaction intact. If the rollback *itself* fails its error is swallowed so the closure's
+  exception — the actionable one — still reaches the caller; PHP has no suppressed-exception
+  mechanism, so the choice is strictly between losing the cause and losing the cleanup failure.
+  Savepoint names come from a process-wide monotonic counter and are never caller-influenced.
+  Documented caveat no wrapper can fix: on MySQL, DDL causes an implicit commit mid-closure.
 - `D4np\Utils\Database\QueryBuilder`, `Sort` and `Operator` (**ADR-0015**) — RFC-0001's second
   security mechanism: prepared statements bind *values*, never table or column names, so an
   identifier has nothing to hide behind and the allowlist is the whole defence. Identifiers are
