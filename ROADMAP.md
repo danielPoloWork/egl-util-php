@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Four grammars, and the assumption an escaper cannot check](docs/journal/2026/08/2026-08-04-escaper-contexts.md).
+  [2026-08-04 — The benchmark was measuring the wrong thing, and I wrote it](docs/journal/2026/08/2026-08-04-nfr03-correction.md).
 
 ## Model & effort routing (advisory)
 
@@ -247,11 +247,23 @@ Safe-by-default PDO access (RFC-0001).
       immutability. Same shape as item 3.5's NFR-01 finding; handled the same way per ADR-0011's
       precedent — shipped non-blocking, real number recorded, absolute enforcement stays item
       7.1's job, gap filed as item 4.6 rather than fixed under this item's `fast/medium` route.*
-- [ ] 4.6 Close NFR-03's build-time gap: a 5-condition `QueryBuilder` SELECT currently measures
-      ~23µs against a ≤10µs budget (item 4.5, **ADR-0018**). Most plausibly caching the `driver()`
-      value the constructor already resolves once, rather than the repeated `PDO::getAttribute()`
-      call currently paid per identifier quoted — without weakening the allowlist (ADR-0015) or the
-      immutability guarantee. Needs its own measure-first pass — route: TBD (route at pickup)
+- [x] 4.6 Close NFR-03's build-time gap: a 5-condition `QueryBuilder` SELECT currently measures
+      ~23µs against a ≤10µs budget (item 4.5, **ADR-0018**) — route: fast / medium (run at
+      frontier: the change touches ADR-0015's allowlist, so a perf edit here has a security
+      failure mode; mismatch recorded) · **ADR-0020**. ***The premise was wrong on both counts,
+      and profiling first is what found it.*** *The named hypothesis (`driver()` lookups) is
+      ~1.5-2.5µs of ~23µs, not the gap. More importantly the **workload was wrong**: item 4.5's
+      subject added a 5-column `select()`, `orderBy`, `limit` and `offset` on top of its five
+      conditions — twelve identifiers where NFR-03 names five conditions — so ~2/3 of the reported
+      gap was benchmark scope, not builder cost. Subject corrected (heavier shape **kept and still
+      published**, so this is not a benchmark narrowed until it passed). Two changes: driver
+      resolved once per builder (7→1 and 13→1 lookups, pinned by an exact **count** since the
+      saving is sub-noise) and concatenation over `sprintf`. **14.430 → 12.979µs (−10.1%).**
+      **NFR-03 is still NOT met** — ~30% over, vs the 2.3× reported. Residual deferred to item 7.1
+      because the instruments disagree by ~3.8µs (phpbench 12.979 vs in-process 9.246; an empty
+      phpbench subject costs 0.079µs, so not harness overhead) — more than the ~3.0µs overage, so
+      whether NFR-03 passes depends on which instrument is authoritative, which is NFR-06/7.1's
+      question.*
 
 ---
 

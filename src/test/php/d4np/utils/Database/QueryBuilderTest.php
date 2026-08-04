@@ -9,6 +9,7 @@ use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\Sort;
 use D4np\Utils\Support\DatabaseException;
+use D4np\Utils\Tests\Database\Fixture\DriverLookupCountingPdo;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\PretendDriverPdo;
 use D4np\Utils\Tests\Database\Fixture\QueryLog;
@@ -204,6 +205,37 @@ final class QueryBuilderTest extends TestCase
         self::assertSame('SELECT * FROM "users"', $base->toSql());
         self::assertSame([], $base->bindings());
         self::assertNotSame($base, $filtered);
+    }
+
+    /**
+     * The driver is resolved **once per builder**, however long the fluent chain gets (ADR-0020).
+     *
+     * Pinned by counting rather than by timing. The saving is a fraction of a microsecond per
+     * identifier, which is well inside the noise of an end-to-end benchmark on a loaded machine —
+     * but the *count* is exact and deterministic. A regression that put the `getAttribute()` call
+     * back inside `quote()` would turn 1 into 13 here, and would merely look like noise in a
+     * timing assertion.
+     */
+    public function testTheDriverIsResolvedOncePerBuilderRegardlessOfChainLength(): void
+    {
+        $pdo = new DriverLookupCountingPdo();
+        $connection = new DatabaseConnection($pdo);
+        $pdo->driverLookups = 0; // discount DatabaseConnection's own attribute pinning
+
+        (new QueryBuilder($connection, 'users'))
+            ->select('id', 'name', 'email', 'age', 'status')
+            ->where('status', Operator::Equals, 'active')
+            ->where('age', Operator::GreaterThan, 18)
+            ->where('name', Operator::NotEquals, '')
+            ->whereNotNull('email')
+            ->whereIn('status', ['active', 'pending'])
+            ->orderBy('name', Sort::Asc)
+            ->limit(10)
+            ->offset(0)
+            ->toSql();
+
+        // Twelve identifiers are quoted in that chain; the driver is asked about exactly once.
+        self::assertSame(1, $pdo->driverLookups);
     }
 
     /**
