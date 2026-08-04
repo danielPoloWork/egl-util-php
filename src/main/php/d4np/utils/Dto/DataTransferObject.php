@@ -70,7 +70,13 @@ abstract class DataTransferObject
         return new Hydration(static::class, self::hydrator());
     }
 
-    private static function hydrator(): Hydrator
+    /**
+     * Protected rather than private so {@see WithersTrait} can reach it — the trait declares it
+     * abstract, which is what makes "this trait belongs on a DataTransferObject" a compile-time
+     * requirement instead of a comment. Sharing this one instance is also what keeps imported
+     * ADR-001's *one* metadata cache true: a trait building its own would quietly make two.
+     */
+    protected static function hydrator(): Hydrator
     {
         return self::$hydrator ??= new Hydrator(new ReflectionCache());
     }

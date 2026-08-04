@@ -24,3 +24,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0006](0006-shared-reflection-metadata-cache.md) | Shape the shared reflection-metadata cache as plain instances, without an interface | Accepted |
 | [0007](0007-measure-total-line-coverage-against-a-floor.md) | Enforce the coverage floor as total line coverage, measured once | Accepted |
 | [0008](0008-dto-hydration-strictness-and-shared-hydrator.md) | Strict-by-default hydration, and how a static entry point reaches shared state | Accepted |
+| [0009](0009-withers-rebuild-rather-than-clone.md) | Withers rebuild through the constructor rather than cloning | Accepted |

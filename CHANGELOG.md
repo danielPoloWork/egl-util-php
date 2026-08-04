@@ -28,6 +28,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Dto\WithersTrait` (**ADR-0009**) — `$user->with(name: 'Grace')` returns a modified
+  copy of an immutable DTO, leaving the receiver untouched. It **rebuilds through the
+  constructor** rather than cloning, which works identically on PHP 8.1/8.2/8.3 (8.3's readonly
+  amendment only permits reassignment *inside* `__clone()`) and, independently of versions,
+  keeps any validation the constructor performs applying to the result. Changes route through
+  the same checks as hydration: an undeclared name raises `UnknownKeyException`, a bad value
+  raises `TypeMismatchException`.
 - `D4np\Utils\Dto\DataTransferObject` (**ADR-0008**) — typed, immutable DTOs hydrated from
   arrays: `UserDto::fromArray($data)` is **strict by default** (an undeclared key raises
   `UnknownKeyException`, so a typo or a mass-assignment attempt cannot pass silently), and
