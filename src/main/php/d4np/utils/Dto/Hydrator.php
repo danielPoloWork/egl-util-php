@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Dto;
 
+use BackedEnum;
 use D4np\Utils\Support\HydrationException;
 use D4np\Utils\Support\MissingKeyException;
 use D4np\Utils\Support\ParameterMetadata;
@@ -329,7 +330,54 @@ final class Hydrator
             return $this->hydrateAt($type, $value, $lenient, $path);
         }
 
+        if (is_a($type, BackedEnum::class, true) && (is_int($value) || is_string($value))) {
+            return $this->coerceBackedEnum($value, $type, $path);
+        }
+
         throw TypeMismatchException::at($path, $type, get_debug_type($value));
+    }
+
+    /**
+     * Resolve a backed enum from its scalar backing value.
+     *
+     * `UnitEnum::cases()` has no scalar to key from, so a pure (non-backed) enum stays
+     * instance-only — this branch fires only for `BackedEnum`, which is exactly what
+     * {@see coerceObject()} already checked before calling here.
+     *
+     * `tryFrom()` rather than `from()`: `from()` throws `\ValueError`, which is not part of
+     * ADR-0004's family and would let a bare error escape a hydration call. `tryFrom()` returns
+     * `null` on no match, converted here into the library's own exception with the path.
+     *
+     * @param class-string $type
+     *
+     * @throws TypeMismatchException
+     */
+    private function coerceBackedEnum(int|string $value, string $type, string $path): mixed
+    {
+        $case = $type::tryFrom($value);
+        if ($case === null) {
+            throw TypeMismatchException::at(
+                $path,
+                sprintf('%s (one of: %s)', $type, self::backingValuesOf($type)),
+                get_debug_type($value) . ' ' . var_export($value, true),
+            );
+        }
+
+        return $case;
+    }
+
+    /**
+     * @param class-string $type a `BackedEnum`
+     */
+    private static function backingValuesOf(string $type): string
+    {
+        /** @var list<BackedEnum> $cases */
+        $cases = $type::cases();
+
+        return implode(', ', array_map(
+            static fn (BackedEnum $case): string => var_export($case->value, true),
+            $cases,
+        ));
     }
 
     /**

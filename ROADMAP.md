@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Collection<T>, and changing a decision a previous ADR had already named](docs/journal/2026/08/2026-08-04-collection.md).
+  [2026-08-04 — Checking what T-01 actually still needed, before writing anything](docs/journal/2026/08/2026-08-04-t01-enum-hydration.md).
 
 ## Model & effort routing (advisory)
 
@@ -148,7 +148,12 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
       `Collection<T>` hydration gap item 3.1 deferred here — via a `#[CollectionOf]` attribute
       rather than the docblock parser ADR-0006 anticipated, because a docblock yields an
       unresolvable alias token while an attribute argument arrives already resolved by PHP.*
-- [ ] 3.4 T-01 hydration matrix suite (RFC-0001) — route: fast / low
+- [x] 3.4 T-01 hydration matrix suite (RFC-0001) — route: fast / low. *Most of the matrix
+      (nested, nullables, strict/lenient, withers, missing-key, collections) already existed,
+      landed with items 3.1–3.3. The one gap: spec §7 names "enums" and nothing had hydrated
+      one. Closed here — a backed enum resolves from its scalar value via `tryFrom()`; a pure
+      enum has no scalar to resolve from and stays instance-only, verified by planting a
+      pure-enum fixture and confirming the distinction is enforced.*
 - [ ] 3.5 phpbench: NFR-01 hydration + NFR-04 memory benchmarks (RFC-0001) (step:optimize) —
       route: fast / medium
 - [ ] 3.6 Add `deptrac.yaml` and turn on the layering gate. RFC-0001's dependency rule — *groups
