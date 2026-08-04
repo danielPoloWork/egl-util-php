@@ -116,6 +116,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- Spec §7's **T-02 injection suite** (**ADR-0017**) — 29 fuzzed payloads × 6 value-accepting paths,
+  asserting via a real **query log** (`PDO::ATTR_STATEMENT_CLASS`) that a payload appears in the
+  bound-parameter array and **never** in the statement text. This is stronger than the round-trip
+  assertions items 4.1–4.3 carried, and measurably so: against a planted *correctly-escaping*
+  interpolation, the round-trip assertions passed 28 of 29 times while the query-log assertions
+  failed 28 of 29. The PDO boundary is a sufficient proof point *because* ADR-0014 pins real
+  prepares — with no client-side interpolation, placeholder-only text there is placeholder-only
+  text on the wire. `--group T-02` now runs 321 tests and `--group T-04` 17, making spec §7's named
+  suites runnable units.
+  **T-02 is not complete:** its LIKE-wildcard leg needs `Sanitizer::sqlLikePattern()` (FR-10,
+  roadmap item 5.2, not yet built). A test asserts the current behaviour and names the gap rather
+  than leaving silence — a `LIKE` value binds and cannot inject SQL, but a user-supplied `%` still
+  behaves as a wildcard.
 - `D4np\Utils\Database\Transaction` (**ADR-0016**) — closure-scoped transactions: commit on return,
   roll back and rethrow on any **`Throwable`** (a `TypeError` leaves the same half-written state as
   an exception). Nested calls use savepoints, which is not an optimisation but the only mechanism

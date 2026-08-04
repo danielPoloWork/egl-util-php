@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Transactions: three PDO probes that each decided a design](docs/journal/2026/08/2026-08-04-transaction-savepoints.md).
+  [2026-08-04 — Measuring what the old tests would have missed](docs/journal/2026/08/2026-08-04-t02-injection-suite.md).
 
 ## Model & effort routing (advisory)
 
@@ -226,9 +226,18 @@ Safe-by-default PDO access (RFC-0001).
       cause and losing the cleanup failure. Savepoint names are generated from a monotonic
       counter, never caller-influenced. Documented caveat no wrapper can fix: MySQL DDL causes an
       implicit commit mid-closure.*
-- [ ] 4.4 T-02 injection suite (values / identifiers / LIKE wildcards) + T-04 transaction
+- [x] 4.4 T-02 injection suite (values / identifiers / LIKE wildcards) + T-04 transaction
       semantics (RFC-0001) (security — the protected floor holds in the test step) —
-      route: frontier-reasoning / extra
+      route: frontier-reasoning / extra · **ADR-0017**. *Route mismatch accepted and recorded.
+      T-02's **query-log** clause was the missing piece and is not ceremony: measured, the
+      round-trip assertions items 4.1-4.3 had **miss a correctly-escaping interpolation in 28 of
+      29 cases**, while the query-log assertion catches it in 28 of 29. Proof point is the PDO
+      boundary via `ATTR_STATEMENT_CLASS`, which is sufficient *because* ADR-0014 pins real
+      prepares — with no client-side interpolation, placeholder-only text at that boundary is
+      placeholder-only text on the wire. 29 payloads × 6 value paths. **T-02 is NOT complete:**
+      its LIKE-wildcard leg needs `Sanitizer::sqlLikePattern()` (FR-10, item 5.2) and a test
+      asserts that gap explicitly rather than leaving silence. T-04 needed no new tests — item 4.3
+      delivered it; verified against the spec text rather than padded.*
 - [ ] 4.5 phpbench: NFR-03 build-time benchmark (RFC-0001) (step:optimize) — route: fast / medium
 
 ---
