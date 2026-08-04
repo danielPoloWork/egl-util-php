@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — The spec's own regex was the vulnerability](docs/journal/2026/08/2026-08-04-querybuilder-allowlist.md).
+  [2026-08-04 — Transactions: three PDO probes that each decided a design](docs/journal/2026/08/2026-08-04-transaction-savepoints.md).
 
 ## Model & effort routing (advisory)
 
@@ -217,8 +217,15 @@ Safe-by-default PDO access (RFC-0001).
       hostile payloads × 4 identifier surfaces; suite proved non-vacuous with 4 planted defects.
       Closes half of item 4.1's declared gap: `SET NAMES utf8mb4` is now asserted issued for MySQL
       and not for others.*
-- [ ] 4.3 `Transaction`: closure scope, rollback+rethrow, savepoints (RFC-0001)
-      (severity:medium) — route: standard / medium
+- [x] 4.3 `Transaction`: closure scope, rollback+rethrow, savepoints (RFC-0001)
+      (severity:medium) — route: standard / medium · **ADR-0016**. *Savepoints are not an
+      optimisation but the only mechanism: a nested `beginTransaction()` **throws** (probed), it
+      does not nest or no-op. Catches `Throwable`, not `Exception` — a `TypeError` leaves the same
+      half-written state. A failing rollback is swallowed so the closure's exception survives:
+      PHP has no suppressed-exception mechanism, so the choice is strictly between losing the
+      cause and losing the cleanup failure. Savepoint names are generated from a monotonic
+      counter, never caller-influenced. Documented caveat no wrapper can fix: MySQL DDL causes an
+      implicit commit mid-closure.*
 - [ ] 4.4 T-02 injection suite (values / identifiers / LIKE wildcards) + T-04 transaction
       semantics (RFC-0001) (security — the protected floor holds in the test step) —
       route: frontier-reasoning / extra

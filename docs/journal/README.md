@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — Transactions: three PDO probes that each decided a design](2026/08/2026-08-04-transaction-savepoints.md)
 - [2026-08-04 — The spec's own regex was the vulnerability](2026/08/2026-08-04-querybuilder-allowlist.md)
 - [2026-08-04 — Milestone 4 opens: the security default that fails by returning false](2026/08/2026-08-04-pinned-pdo-defaults.md)
 - [2026-08-04 — Measuring what was reachable before deciding what to build](2026/08/2026-08-04-nfr01-compiled-hydration.md)
