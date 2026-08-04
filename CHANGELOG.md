@@ -105,6 +105,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   the failing property path, with `UnknownKeyException`, `MissingKeyException` and
   `TypeMismatchException` under it. Concrete leaves are `final`; `UtilsException` and
   `HydrationException` are the documented extension points.
+- phpbench benchmarks for NFR-01 (hydration) and NFR-04 (memory) (**ADR-0011**):
+  `HydrationBench` and `MemoryBench` under `src/bench/php/d4np/utils/`, sharing one
+  `TenScalarPropsDto` fixture. `MemoryBench` carries a real, CI-enforced
+  `@Assert('mode(variant.mem.peak) < 16 mebibytes +/- 10%')` — comfortable headroom measured.
+  NFR-01's ≤3× hydration-vs-manual-construction ratio cannot be a phpbench `@Assert` (its
+  `baseline` means a previous tagged run, not a sibling subject in the same run), so
+  `tools/bench_ratio_gate.py` reports it standalone from a `--dump-file` XML report instead of
+  gating CI. Measured: hydration is currently **~15.4×** manual construction, well over budget —
+  recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
+  decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
+  since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `composer.json`'s `config.audit.abandoned` set to `"report"` (was implicitly `"fail"`):
+  phpbench pulls in `doctrine/annotations` as its own transitive dependency, flagged abandoned
+  on Packagist. Not a security vulnerability and not a package this library depends on directly,
+  so `composer audit` now surfaces it in output rather than failing CI on a maintenance-status
+  flag of a dependency-of-a-dependency we cannot swap.
 
 ### Changed
 
