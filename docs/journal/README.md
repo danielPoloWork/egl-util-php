@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — Withers: meeting a "per-version" requirement by not depending on the version](2026/08/2026-08-04-withers-trait.md)
 - [2026-08-04 — Milestone 3 opens: DTO hydration, and PHP disagreeing with the requirement](2026/08/2026-08-04-dto-hydration.md)
 - [2026-08-04 — Closing the coverage floor, and measuring it for the first time](2026/08/2026-08-04-coverage-floor-gate.md)
 - [2026-08-04 — Making spec §7's T-05 suite a mechanical fact](2026/08/2026-08-04-t05-property-suite.md)

@@ -10,6 +10,7 @@ use D4np\Utils\Support\ParameterMetadata;
 use D4np\Utils\Support\ReflectionCache;
 use D4np\Utils\Support\TypeMismatchException;
 use D4np\Utils\Support\UnknownKeyException;
+use ReflectionProperty;
 use TypeError;
 
 /**
@@ -44,6 +45,69 @@ final class Hydrator
     public function hydrate(string $class, array $data, bool $lenient = false): object
     {
         return $this->hydrateAt($class, $data, $lenient, '');
+    }
+
+    /**
+     * A copy of `$source` with `$changes` applied — the engine behind {@see WithersTrait::with()}.
+     *
+     * Rebuilds through the constructor rather than cloning, which is what makes withers work on
+     * the declared PHP 8.1 floor at all: a `readonly` property cannot be reassigned after
+     * `clone`, and PHP 8.3's readonly amendment only relaxes that *inside* `__clone()` — still
+     * an error on 8.1 and 8.2. Rebuilding needs no version branch and behaves identically on all
+     * three (ADR-0009).
+     *
+     * Rebuilding is also the stronger semantics, independently of compatibility: the constructor
+     * runs, so any validation a DTO performs there applies to the result. A clone-based wither
+     * bypasses the constructor entirely and can produce an object the class would have refused
+     * to construct.
+     *
+     * @template T of object
+     *
+     * @param T                    $source
+     * @param array<string, mixed> $changes
+     *
+     * @return T
+     *
+     * @throws HydrationException
+     */
+    public function withChanges(object $source, array $changes): object
+    {
+        $class = $source::class;
+        $meta = $this->cache->for($class);
+
+        $current = [];
+        foreach ($meta->parameters as $parameter) {
+            if ($parameter->isVariadic) {
+                // hydrateAt() refuses these anyway; stopping here keeps the message about the
+                // wither rather than about a payload the caller never wrote.
+                throw new HydrationException(sprintf(
+                    'Cannot apply withers to %s: parameter "%s" is variadic, so the current '
+                    . 'value cannot be read back as a single argument.',
+                    $class,
+                    $parameter->name,
+                ), $parameter->name);
+            }
+
+            if (!property_exists($source, $parameter->name)) {
+                throw new HydrationException(sprintf(
+                    'Cannot apply withers to %s: constructor parameter "%s" has no property of '
+                    . 'the same name to read the current value from. Withers rebuild through the '
+                    . 'constructor, so every parameter must be recoverable — which promoted '
+                    . 'properties always are.',
+                    $class,
+                    $parameter->name,
+                ), $parameter->name);
+            }
+
+            // Reflection rather than `$source->{$name}`: a promoted property may be private, and
+            // this class is not in its scope. Since PHP 8.1 `getValue()` needs no
+            // `setAccessible()`. It costs a reflection lookup per property, which is acceptable
+            // here — withers are not the path NFR-01 measures.
+            $current[$parameter->name] = (new ReflectionProperty($class, $parameter->name))->getValue($source);
+        }
+
+        /** @var T */
+        return $this->hydrateAt($class, array_merge($current, $changes), false, '');
     }
 
     /**
