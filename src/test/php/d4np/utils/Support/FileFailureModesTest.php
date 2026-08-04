@@ -168,6 +168,35 @@ final class FileFailureModesTest extends TestCase
         File::mime($path);
     }
 
+    /**
+     * The second silent trap ADR-0005 records: **`tempnam()` falls back to the system temp
+     * directory** when it cannot use the one it was given. That would put the temporary file on
+     * another filesystem, at which point `rename()` stops being atomic and degrades to
+     * copy-then-delete — the guarantee evaporating with no error anywhere.
+     *
+     * `write()` pre-checks the directory, so this guard is unreachable through the public API —
+     * which is exactly why it needs testing directly. A defence nobody can trigger is a defence
+     * nobody has verified, and this one protects the property the whole class exists for.
+     *
+     * Verified first: `tempnam()` on a non-existent directory really does return a path in the
+     * system temp directory rather than `false`.
+     */
+    public function testTheTempFileGuardRefusesAFallbackToAnotherDirectory(): void
+    {
+        $method = new \ReflectionMethod(File::class, 'createTempFileIn');
+        $method->setAccessible(true);
+
+        $nonExistent = $this->dir . '/no-such-subdirectory';
+
+        try {
+            $method->invoke(null, $nonExistent);
+            self::fail('expected a FileException — tempnam() falls back silently and must be refused');
+        } catch (FileException $e) {
+            self::assertStringContainsString('cross filesystems', $e->getMessage());
+            self::assertStringContainsString('atomicity', $e->getMessage());
+        }
+    }
+
     public function testWritingToAPathWhoseParentIsAFileFailsLoudly(): void
     {
         // dirname() of "<file>/child.txt" is a regular file, so is_dir() is false — the first
