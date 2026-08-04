@@ -94,8 +94,17 @@ needing a different one can use the component directly.
 
 The profile starts from Symfony's own `allowSafeElements()` — delegation applied one level down,
 rather than re-deriving a list of safe elements here — and adds what that alone does not cover:
-link schemes limited to `https`/`http`/`mailto` (this is what refuses `javascript:` and `data:`),
-relative links and media refused, and `rel="noopener noreferrer"` forced onto every link.
+link schemes limited to `https`/`http`/`mailto`, relative links and media refused, and
+`rel="noopener noreferrer"` forced onto every link.
+
+> **Correction (roadmap item 5.4).** This ADR originally said the scheme allowlist "is what refuses
+> `javascript:` and `data:`". That is **half wrong**, and building 5.4's corpus is what exposed it:
+> a probe that added `javascript` to the allowed schemes and re-ran the suite **passed**, because
+> `symfony/html-sanitizer` refuses that scheme unconditionally. The allowlist is the *sole* barrier
+> for `data:` — including `data:text/html`, a real XSS vector, confirmed by the same probe using
+> `data`, which does fail the suite — and *defence in depth* for `javascript:`. The restriction is
+> still correct and still worth having; the causal claim about it was imprecise, and a reader
+> deciding whether to widen the list needs to know which entries are load-bearing.
 
 ### 5. The optional dependency gets its own deptrac layer
 
