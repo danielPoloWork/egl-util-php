@@ -9,6 +9,7 @@ use D4np\Utils\Support\JsonException;
 use D4np\Utils\Support\UtilsThrowable;
 use JsonException as NativeJsonException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /** `Json` — spec §2 item 25, and the T-05 round-trip property test spec §7 names. */
@@ -38,6 +39,8 @@ final class JsonTest extends TestCase
         yield 'array with null and bool members' => [['x' => null, 'y' => true, 'z' => false]];
     }
 
+    /** `#[Group('T-05')]` makes spec §7's named suite runnable: `vendor/bin/phpunit --group T-05`. */
+    #[Group('T-05')]
     #[DataProvider('roundTripValues')]
     public function testRoundTrip(mixed $value): void
     {
