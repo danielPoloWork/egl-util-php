@@ -56,6 +56,18 @@ deptrac:
         - type: directory
           value: src/main/php/d4np/utils/Support/.*
 
+    # The one sanctioned third-party dependency in production code (spec FR-09b: RFC-0001 requires
+    # rich-HTML sanitization be *delegated*, and names the delegate). Declared as its own layer
+    # rather than waved through as "vendor code", so that the ruleset below can say which group is
+    # allowed to reach it — today only `Security`. An import of it from `Dto` or `Http` would be a
+    # violation here rather than a silent new coupling to an optional package.
+    - name: HtmlSanitizer
+      collectors:
+        - type: classLike
+          # Doubled backslashes: this is a PCRE pattern, and a single `\C`/`\H` would be read as a
+          # regex escape sequence rather than a namespace separator.
+          value: ^Symfony\\Component\\HtmlSanitizer\\.*
+
     # `Version` sits at the namespace root, in no group — it is a single version constant. Given
     # its own layer rather than left uncollected so that "every production class belongs to a
     # declared layer" stays a fact this config states, rather than an assumption.
@@ -75,6 +87,8 @@ deptrac:
       - Support
     Security:
       - Support
+      # Only this group may reach the optional sanitizer (spec FR-09b).
+      - HtmlSanitizer
     Http:
       - Support
     Errors:
@@ -88,3 +102,6 @@ deptrac:
 
     # A version constant depends on nothing.
     Version: ~
+
+    # A vendored dependency is a leaf here: this repository does not constrain its internals.
+    HtmlSanitizer: ~

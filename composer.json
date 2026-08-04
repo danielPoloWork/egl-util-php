@@ -31,9 +31,14 @@
         "deptrac/deptrac": "^4.4",
         "ergebnis/composer-normalize": "^2.44",
         "friendsofphp/php-cs-fixer": "^3.75",
+        "masterminds/html5": "^2.7.5",
         "phpbench/phpbench": "^1.2",
         "phpstan/phpstan": "^2.2",
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "symfony/html-sanitizer": "^6.4"
+    },
+    "suggest": {
+        "symfony/html-sanitizer": "Required by Sanitizer::richText() to sanitize user-authored HTML (spec FR-09b). Not needed unless you render untrusted markup; richText() raises a clear UtilsException if it is called without this installed, rather than returning the input unsanitized."
     },
     "minimum-stability": "stable",
     "prefer-stable": true,

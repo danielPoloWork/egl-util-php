@@ -9,6 +9,7 @@ use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\Sort;
 use D4np\Utils\Database\Transaction;
+use D4np\Utils\Security\Sanitizer;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\QueryLog;
 use PDO;
@@ -32,9 +33,10 @@ use PHPUnit\Framework\TestCase;
  * and `whereIn`, and the same through a `Transaction`.
  *
  * The other two legs of T-02: identifier injection is covered by `QueryBuilderTest` (17 hostile
- * identifiers × 4 surfaces, same group), and **LIKE-wildcard escaping is not covered here** —
- * `Sanitizer::sqlLikePattern()` is roadmap item 5.2 and does not exist yet. See the class-level
- * note on {@see self::testLikePatternsStillBindButWildcardsAreNotYetEscaped()}.
+ * identifiers × 4 surfaces, same group), and LIKE-wildcard escaping — open when this file was
+ * written at item 4.4 — is closed by roadmap item 5.2, with
+ * {@see self::testLikeWildcardsAreNeutralisedWhileTheValueStillBinds()} here and the driver-level
+ * cases in `SanitizerTest`. **T-02 is now complete.**
  */
 #[Group('T-02')]
 #[RequiresPhpExtension('pdo_sqlite')]
@@ -225,35 +227,34 @@ final class InjectionTest extends TestCase
     }
 
     /**
-     * **T-02's third leg is not covered, and this test says so rather than leaving a gap that
-     * looks like coverage.**
+     * **T-02's third leg — *"LIKE-wildcard escapes"* — closed by roadmap item 5.2.**
      *
-     * Spec §7 asks T-02 for *"LIKE-wildcard escapes"*. The mechanism for that is FR-10's
-     * `Sanitizer::sqlLikePattern()`, which is **roadmap item 5.2** and does not exist yet — it is
-     * a Milestone 5 deliverable, and building it here would jump a milestone and duplicate that
-     * item.
+     * Item 4.4 shipped this test asserting the *gap*: a `LIKE` value bound safely but its
+     * wildcards were live, so a user-supplied `%` turned an intended lookup into a scan. It named
+     * FR-10's `Sanitizer::sqlLikePattern()` as the owner and said which assertion should change
+     * when it landed. This is that change.
      *
-     * What is true today, and asserted below: a `LIKE` value **binds** like any other, so it
-     * cannot inject SQL. What is *not* true today is that its wildcards are neutralised — a
-     * user-supplied `%` still behaves as a wildcard, turning an intended exact-ish match into a
-     * scan. That is a real gap with a real consequence (unbounded scans; matching rows a user
-     * should not see), and it is FR-10's to close.
+     * Both halves are asserted, because the pairing is what makes it work: the value still binds
+     * (no injection), *and* the wildcard is now inert. `whereLike()` supplies the `ESCAPE` clause
+     * without which the escaped pattern would silently match nothing on SQLite.
      */
-    public function testLikePatternsStillBindButWildcardsAreNotYetEscaped(): void
+    public function testLikeWildcardsAreNeutralisedWhileTheValueStillBinds(): void
     {
         $this->connection->execute('INSERT INTO users (name) VALUES (?)', ['secret-document']);
         $this->connection->execute('INSERT INTO users (name) VALUES (?)', ['public-note']);
 
-        $rows = (new QueryBuilder($this->connection, 'users'))
-            ->where('name', Operator::Like, '%')
+        // Unescaped, a lone '%' still matches everything — it is legitimate pattern syntax, and
+        // neutralising it unconditionally would break every prefix search in the library.
+        $unescaped = (new QueryBuilder($this->connection, 'users'))->whereLike('name', '%')->get();
+        self::assertCount(2, $unescaped);
+
+        // Escaped, the same input is a literal and matches nothing.
+        $escaped = (new QueryBuilder($this->connection, 'users'))
+            ->whereLike('name', Sanitizer::sqlLikePattern('%'))
             ->get();
+        self::assertSame([], $escaped, 'the wildcard should now be a literal percent sign');
 
-        // Binding held — no injection, no error.
+        // And binding held throughout — the payload never entered the statement text.
         $this->assertNeverInStatementText('%');
-
-        // But the wildcard still matched everything. When item 5.2 lands, a caller passing a
-        // literal '%' through Sanitizer::sqlLikePattern() will match nothing here, and this
-        // assertion is the one that should change.
-        self::assertCount(2, $rows, 'wildcard escaping is FR-10 / item 5.2, not yet implemented');
     }
 }
