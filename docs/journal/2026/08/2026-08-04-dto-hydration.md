@@ -69,8 +69,27 @@ Three probes, each reverted and the implementation restored byte-identical:
    `ArgumentCountError` the probe above predicted.
 3. **Stopped composing paths in recursion** (leaf name only) → 3 failures, all the depth tests.
 
-194 tests, 382 assertions (7 skipped, Windows-only). PHPStan max clean; `--group T-01` runs the
-spec's named hydration matrix as its own unit, 34 tests.
+199 tests, 389 assertions (7 skipped, Windows-only). PHPStan max clean; `--group T-01` runs the
+spec's named hydration matrix as its own unit.
+
+## The coverage gate stopped my own code, and found a design defect
+
+The floor from item 2.7 rejected the first push at **86.87%**, `Hydrator` at 73.75%. Reading
+what was uncovered turned up more than a testing gap: `satisfiesBuiltin()` had `match` arms for
+`null`, `true` and `false` — types that only exist as standalone declarations **from PHP 8.2**,
+below this project's 8.1 floor. They were unreachable on the minimum supported version and would
+merely have *looked* like coverage on 8.3. Removed; the `default` arm handles them correctly,
+because PHP's own check runs at construction and the `TypeError` conversion carries the path.
+`callable` went the same way — it cannot be a property type at all.
+
+One branch stays uncovered **on purpose**, and the code now says so: the `class_exists` guard on
+a parameter type. Reaching it needs a DTO whose parameter type does not exist, and **PHPStan at
+max rejects exactly that** (`class.notFound`) — so the state cannot occur in this codebase. A
+fixture to cover it was written, seen rejected by the linter, and removed rather than suppressed
+with `@phpstan-ignore`. The check stays because it is what narrows `string` to `class-string` for
+the type system, and a consumer not running PHPStan can still reach it.
+
+Final: **270/293 lines = 92.15%**, gate green.
 
 ## Two gaps named rather than left
 
