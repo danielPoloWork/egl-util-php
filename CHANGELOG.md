@@ -28,6 +28,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Dto\DataTransferObject` (**ADR-0008**) — typed, immutable DTOs hydrated from
+  arrays: `UserDto::fromArray($data)` is **strict by default** (an undeclared key raises
+  `UnknownKeyException`, so a typo or a mass-assignment attempt cannot pass silently), and
+  `UserDto::lenient()->fromArray($data)` is the per-call opt-out that ignores extra keys while
+  still requiring declared ones and still type-checking. Nested DTOs hydrate recursively, and
+  every failure names its path (`customer.address.postcode`). Absence follows RFC-0001 R-4: a
+  defaulted parameter keeps its default, a nullable one without a default becomes `null`, and
+  anything else raises `MissingKeyException`. `Collection<T>` properties land with `Collection`
+  itself.
 - `tools/coverage_gate.py` enforces the **≥ 90% line-coverage floor** (**ADR-0007**) that
   `AGENTS.md` §10 and spec NFR-07 stated but nothing measured — PHPUnit 10 has no fail-under
   option, so a dedicated CI job produces a Clover report and the gate compares it. A missing or
