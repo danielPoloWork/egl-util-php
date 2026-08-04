@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-03 — Env::get() and Json: two functions, three probed gotchas](docs/journal/2026/08/2026-08-03-env-json.md).
+  [2026-08-04 — The shared reflection cache: designing for consumers that do not exist yet](docs/journal/2026/08/2026-08-04-reflection-metadata-cache.md).
 
 ## Model & effort routing (advisory)
 
@@ -110,8 +110,8 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
       route: standard / medium · **ADR-0005**
 - [x] 2.4 `Env::get()` with boolean coercion; `Json::encode()/decode()` wrapping native
       `\JsonException` (RFC-0001 R-7) — route: fast / low
-- [ ] 2.5 Shared reflection-metadata cache, consumed by the Dto hydrator and the Container
-      (RFC-0001 R-2) (sets-pattern) — route: frontier-reasoning / high
+- [x] 2.5 Shared reflection-metadata cache, consumed by the Dto hydrator and the Container
+      (RFC-0001 R-2) (sets-pattern) — route: frontier-reasoning / high · **ADR-0006**
 - [ ] 2.6 T-05 property tests: Json round-trips, slug idempotence, Env coercion table
       (RFC-0001) — route: fast / low
 - [ ] 2.7 Measure and enforce the coverage floor. `AGENTS.md` §10 and spec NFR-07 both state

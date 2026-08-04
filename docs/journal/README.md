@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — The shared reflection cache: designing for consumers that do not exist yet](2026/08/2026-08-04-reflection-metadata-cache.md)
 - [2026-08-03 — Env::get() and Json: two functions, three probed gotchas](2026/08/2026-08-03-env-json.md)
 - [2026-08-03 — File: atomic writes, and a test that was lying](2026/08/2026-08-03-file-atomic-io.md)
 - [2026-08-03 — Str::slug() / uuid() / random()](2026/08/2026-08-03-str-slug-uuid-random.md)

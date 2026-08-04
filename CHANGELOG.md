@@ -28,6 +28,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Support\ReflectionCache` with `ClassMetadata`/`ParameterMetadata` (**ADR-0006**):
+  the single per-class constructor-metadata cache imported ADR-001 commits to, shared by the DTO
+  hydrator (M3) and the Container (M6) — reflection is paid once per class, every later lookup is
+  an array hit, which is what NFR-01/NFR-02 rest on. Instance-scoped, no interface, no static
+  accessor; union and intersection types are recorded as un-autowirable with their declaration
+  preserved for diagnostics, and a failed reflection is not cached.
 - `D4np\Utils\Support\Env::get()`: boolean coercion built on PHP's own
   `filter_var(…, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)` — fixes the classic bug where
   `getenv('FLAG')` returns the truthy **string** `"false"`. An explicitly empty variable
