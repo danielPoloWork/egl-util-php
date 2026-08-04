@@ -26,3 +26,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0008](0008-dto-hydration-strictness-and-shared-hydrator.md) | Strict-by-default hydration, and how a static entry point reaches shared state | Accepted |
 | [0009](0009-withers-rebuild-rather-than-clone.md) | Withers rebuild through the constructor rather than cloning | Accepted |
 | [0010](0010-collection-generics-by-attribute.md) | Declare collection element types with an attribute, not a docblock parser | Accepted |
+| [0011](0011-benchmark-scope-and-the-measured-hydration-ratio.md) | Benchmarks measure NFR-01/NFR-04 now; absolute regression tracking and the measured ~15× ratio gap are deliberately deferred | Accepted |

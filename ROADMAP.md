@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Checking what T-01 actually still needed, before writing anything](docs/journal/2026/08/2026-08-04-t01-enum-hydration.md).
+  [2026-08-04 — First real benchmarks, and a genuine number the maintainer had to weigh in on](docs/journal/2026/08/2026-08-04-phpbench-hydration-memory.md).
 
 ## Model & effort routing (advisory)
 
@@ -154,8 +154,14 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
       one. Closed here — a backed enum resolves from its scalar value via `tryFrom()`; a pure
       enum has no scalar to resolve from and stays instance-only, verified by planting a
       pure-enum fixture and confirming the distinction is enforced.*
-- [ ] 3.5 phpbench: NFR-01 hydration + NFR-04 memory benchmarks (RFC-0001) (step:optimize) —
-      route: fast / medium
+- [x] 3.5 phpbench: NFR-01 hydration + NFR-04 memory benchmarks (RFC-0001) (step:optimize) —
+      route: fast / medium · **ADR-0011**. *`HydrationBench`/`MemoryBench` measure both NFRs for
+      the first time. NFR-04's 16 MiB budget is a real, enforced `@Assert` (comfortable
+      headroom). NFR-01's ≤3× ratio can't be an `@Assert` — phpbench's `baseline` means a
+      previous tagged run, not a sibling subject — so `tools/bench_ratio_gate.py` reports it
+      standalone instead. Measured ratio: **~15.4×**, well over budget; shipped non-blocking per
+      the maintainer's explicit choice, with the gap filed as item 3.7. Absolute-µs/nightly
+      regression tracking stays item 7.1's job, unchanged.*
 - [ ] 3.6 Add `deptrac.yaml` and turn on the layering gate. RFC-0001's dependency rule — *groups
       depend downward on Support only; no cross-group imports* — has had nothing enforcing it:
       the CI `layering` job self-skips until the config lands (the step-level guard from item
@@ -163,6 +169,12 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
       depends on `Support` it is a real constraint with a real direction, and the next four
       milestones each add a group that could violate it. Prove the gate can fail by planting a
       cross-group import — route: standard / medium
+- [ ] 3.7 Close NFR-01's ratio gap: hydration currently measures ~15.4× the cost of manual
+      constructor assignment against a ≤3× budget (item 3.5, **ADR-0011**). Likely a
+      compiled/cached-closure hydration strategy — generate and cache a per-class hydration
+      closure alongside `ClassMetadata` instead of walking `ParameterMetadata` and coercing on
+      every call — evaluated on its own merits with its own measurement-first discipline —
+      route: TBD (route at pickup)
 
 ---
 

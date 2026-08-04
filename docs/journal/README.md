@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — First real benchmarks, and a genuine number the maintainer had to weigh in on](2026/08/2026-08-04-phpbench-hydration-memory.md)
 - [2026-08-04 — Checking what T-01 actually still needed, before writing anything](2026/08/2026-08-04-t01-enum-hydration.md)
 - [2026-08-04 — Collection<T>, and changing a decision a previous ADR had already named](2026/08/2026-08-04-collection.md)
 - [2026-08-04 — Withers: meeting a "per-version" requirement by not depending on the version](2026/08/2026-08-04-withers-trait.md)
