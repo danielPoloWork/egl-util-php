@@ -91,7 +91,22 @@ so `Version` — which has no public methods at all — ran it zero times and PH
 test risky. With `failOnRisky` on, that would have failed CI. Restructured to collect offenders
 and assert once, which always asserts.
 
-159 tests, 328 assertions locally (7 skipped, all Windows-only); PHPStan max clean.
+Two rounds were needed, and the second is the one worth recording. The first pass took coverage
+to **88.21%** — still short, with `File.php` alone under the floor at 74.07%. The remaining gap
+was closed by testing the *other* silent trap ADR-0005 records: `tempnam()` falling back to the
+system temp directory, which would move the temporary file to another filesystem and quietly
+degrade `rename()` to copy-then-delete. `write()` pre-checks the directory, so that guard is
+unreachable through the public API — which is exactly why it had never run, and why it was worth
+reaching for directly rather than left as the one defence nobody can trigger.
+
+**Final: 194/212 lines = 91.51%**, gate green. 160 tests, 330 assertions locally
+(7 skipped, all Windows-only); PHPStan max clean.
+
+The ~18 lines still uncovered in `File.php` are defensive branches against syscall failures —
+`chmod` refusing on a file we own, a short `file_put_contents`, `flock` failing on a handle we
+just opened — that cannot be triggered portably without mocking the filesystem layer. They are
+above the floor and honestly out of reach; naming them here is better than a comment claiming
+they are covered.
 
 ## Next
 
