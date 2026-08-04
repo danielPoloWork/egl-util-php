@@ -118,6 +118,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   since item 1.9) is now active, since `phpbench.json.dist` exists.
 ### Fixed
 
+- `masterminds/html5` floored at `^2.7.5` in `require-dev`. It is a transitive dependency of
+  `symfony/html-sanitizer`, and its 2.7.2 release passes `null` to a `string` parameter of
+  `DOMImplementation::createDocument()` — deprecated on PHP 8.1+, and so a failure under this
+  project's warnings-as-errors bar. Only the `prefer-lowest` CI job saw it; the normal resolution
+  picks 2.10.1. 2.7.5 is the exact fixing version, found by bisecting upstream rather than by
+  choosing a comfortable floor.
 - **NFR-03's benchmark measured the wrong workload** (**ADR-0020**, correcting **ADR-0018**). The
   subject added a five-column `select()`, an `orderBy`, a `limit` and an `offset` on top of its
   five conditions — twelve quoted identifiers where NFR-03 budgets a *"5-condition SELECT"* — while

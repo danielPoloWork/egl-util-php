@@ -137,6 +137,16 @@ confirming the violation.
   `Operator::Like` returns nothing for an escaped pattern, which is why `whereLike()` exists.
 - **The suite is verified non-vacuous**: the escape-ordering bug (5 failures), allowing
   `javascript:`/`data:` schemes (1), and dropping forced `rel="noopener"` (1) are each caught.
+- **The `prefer-lowest` job caught a deprecation the normal resolution hides.** `symfony/html-sanitizer`
+  depends on `masterminds/html5`, whose 2.7.2 release calls
+  `DOMImplementation::createDocument(null, null, $dt)` — passing `null` to a `string` parameter,
+  deprecated on PHP 8.1+ and therefore a failure under this project's warnings-as-errors bar. The
+  normal resolution picks 2.10.1 and never sees it; only the lowest-allowed resolution does, which
+  is precisely why item 1.7 added that job.
+  Fixed by declaring `masterminds/html5: ^2.7.5` in `require-dev` — a transitive dependency named
+  directly only to raise its floor. **2.7.5 is the exact version that fixes it**, established by
+  bisecting the upstream source across 2.7.3–2.9.0 rather than picking a comfortable-looking
+  number, so the floor is the true minimum and does not exclude working versions.
 - **A gap named rather than hidden:** the missing-dependency path is proven by probe but has **no
   permanent test**, because the package is installed as a dev dependency and cannot be absent
   during the suite. A CI job running without dev extras would cover it; that is build

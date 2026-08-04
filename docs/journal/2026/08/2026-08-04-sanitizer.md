@@ -88,6 +88,33 @@ matched nothing and `Uncovered` stayed at 6 — which is how I found it, rather 
 | `Http → HtmlSanitizer` import | deptrac violation |
 | guard pointed at a non-existent class | throws, does not passthrough |
 
+## The prefer-lowest job earning its keep
+
+CI went green everywhere except `quality / prefer-lowest install + test`. Tests passed there too —
+685 of them — but with **1 deprecation**, which the warnings-as-errors bar turns into a failure.
+
+`symfony/html-sanitizer` pulls in `masterminds/html5`. Its 2.7.2 release calls
+`DOMImplementation::createDocument(null, null, $dt)`, passing `null` to a `string` parameter —
+deprecated on PHP 8.1+. The normal resolution picks 2.10.1 and never sees it. Only the
+lowest-allowed resolution does, which is exactly the failure mode item 1.7 added that job for.
+
+Fixed by naming `masterminds/html5: ^2.7.5` in `require-dev` — a transitive dependency declared
+directly only to raise its floor.
+
+Worth noting *how* I picked 2.7.5: by fetching `DOMTreeBuilder.php` from each upstream tag and
+bisecting.
+
+```
+2.7.3 -> createDocument(null, null, $dt)
+2.7.4 -> createDocument(null, null, $dt)
+2.7.5 -> createDocument(null, '',   $dt)   <- fixed here
+```
+
+The comfortable move is `^2.9` — safely past, obviously works, no thought required. But that
+excludes 2.7.5–2.8.x for no reason, and a floor that isn't the true minimum is a constraint nobody
+can later justify. Verified afterwards that prefer-lowest resolves exactly 2.7.5 and the
+deprecation is gone.
+
 ## Honest gap
 
 The missing-dependency path is **probe-verified but has no permanent test** — the package is a dev
