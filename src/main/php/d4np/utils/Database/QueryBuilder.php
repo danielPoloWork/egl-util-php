@@ -77,12 +77,35 @@ final class QueryBuilder
     private ?int $offset = null;
 
     /**
+     * The driver's quoting characters, resolved once (roadmap 4.6, ADR-0020).
+     *
+     * `[open, close]`. Every identifier this builder quotes uses the same pair, because the
+     * connection's driver cannot change during the builder's life — but before this was cached,
+     * {@see quote()} asked {@see DatabaseConnection::driver()} afresh on every call, which is a
+     * `PDO::getAttribute()` round trip per identifier. Measured at 0.125 µs each, paid a dozen
+     * times in a realistic query.
+     *
+     * Carried across clones for free: `clone` copies the property, so the fluent chain resolves
+     * the driver exactly once no matter how long it gets.
+     *
+     * @var array{string, string}
+     */
+    private readonly array $quoteCharacters;
+
+    /**
      * @throws DatabaseException if the table name fails the allowlist
      */
     public function __construct(
         private readonly DatabaseConnection $connection,
         private readonly string $table,
     ) {
+        $this->quoteCharacters = match ($connection->driver()) {
+            'mysql' => ['`', '`'],
+            'sqlsrv', 'dblib', 'mssql' => ['[', ']'],
+            // The SQL standard's own form, and what SQLite, PostgreSQL, Oracle and the rest use.
+            default => ['"', '"'],
+        };
+
         $this->identifier($table);
     }
 
@@ -111,7 +134,9 @@ final class QueryBuilder
     public function where(string $column, Operator $operator, mixed $value): self
     {
         $clone = clone $this;
-        $clone->conditions[] = sprintf('%s %s ?', $this->identifier($column), $operator->value);
+        // Concatenation rather than sprintf(): measured at roughly a third the cost, and this
+        // runs once per condition (roadmap 4.6).
+        $clone->conditions[] = $this->identifier($column) . ' ' . $operator->value . ' ?';
         $clone->bindings[] = $value;
 
         return $clone;
@@ -142,11 +167,8 @@ final class QueryBuilder
         }
 
         $clone = clone $this;
-        $clone->conditions[] = sprintf(
-            '%s IN (%s)',
-            $this->identifier($column),
-            implode(', ', array_fill(0, count($values), '?')),
-        );
+        $clone->conditions[] = $this->identifier($column)
+            . ' IN (' . implode(', ', array_fill(0, count($values), '?')) . ')';
         foreach ($values as $value) {
             $clone->bindings[] = $value;
         }
@@ -192,7 +214,7 @@ final class QueryBuilder
     public function orderBy(string $column, Sort $direction = Sort::Asc): self
     {
         $clone = clone $this;
-        $clone->orderBy[] = sprintf('%s %s', $this->identifier($column), $direction->value);
+        $clone->orderBy[] = $this->identifier($column) . ' ' . $direction->value;
 
         return $clone;
     }
@@ -227,11 +249,9 @@ final class QueryBuilder
      */
     public function toSql(): string
     {
-        $sql = sprintf(
-            'SELECT %s FROM %s',
-            $this->columns === [] ? '*' : implode(', ', $this->columns),
-            $this->quote($this->table),
-        );
+        $sql = 'SELECT '
+            . ($this->columns === [] ? '*' : implode(', ', $this->columns))
+            . ' FROM ' . $this->quote($this->table);
 
         if ($this->conditions !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $this->conditions);
@@ -328,12 +348,9 @@ final class QueryBuilder
      */
     private function quote(string $identifier): string
     {
-        return match ($this->connection->driver()) {
-            'mysql' => '`' . str_replace('`', '``', $identifier) . '`',
-            'sqlsrv', 'dblib', 'mssql' => '[' . str_replace(']', ']]', $identifier) . ']',
-            // The SQL standard's own form, and what SQLite, PostgreSQL, Oracle and the rest use.
-            default => '"' . str_replace('"', '""', $identifier) . '"',
-        };
+        [$open, $close] = $this->quoteCharacters;
+
+        return $open . str_replace($close, $close . $close, $identifier) . $close;
     }
 
     /**

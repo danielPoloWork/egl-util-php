@@ -23,5 +23,6 @@ One report per measured scenario, from [`template.md`](template.md). Keep the in
 
 | Date | Scenario | Version | Headline result | Report |
 |------|----------|---------|-----------------|--------|
-| 2026-08-04 | NFR-03 QueryBuilder build time (5-condition SELECT) | v0.0.0 | **~23 µs** vs. ≤ 10 µs budget; over on dev hardware, non-blocking, follow-up filed (item 4.6) | [report](2026/08/nfr03-querybuilder-build-time.md) |
+| 2026-08-04 | NFR-03 QueryBuilder build time — **corrected workload** + 2 optimisations | v0.0.0 | literal 5-condition SELECT **14.43 → 12.98 µs**; still over ≤ 10 µs, but 1.3× not 2.3× | [report](2026/08/nfr03-querybuilder-build-time-corrected.md) |
+| 2026-08-04 | NFR-03 QueryBuilder build time (~~5-condition SELECT~~ — wrong workload) | v0.0.0 | ~23 µs — **superseded**, measured ~2× the work NFR-03 specifies | [report](2026/08/nfr03-querybuilder-build-time.md) |
 | 2026-08-04 | NFR-01 DTO hydration (10 scalar props), compiled closure vs. interpreter | v0.0.0 | **15.40× → 2.74×** manual construction (14.155 µs → 2.511 µs); NFR-01 met | [report](2026/08/nfr01-hydration-compiled-closure.md) |

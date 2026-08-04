@@ -116,6 +116,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+### Fixed
+
+- **NFR-03's benchmark measured the wrong workload** (**ADR-0020**, correcting **ADR-0018**). The
+  subject added a five-column `select()`, an `orderBy`, a `limit` and an `offset` on top of its
+  five conditions — twelve quoted identifiers where NFR-03 budgets a *"5-condition SELECT"* — while
+  its own docblock claimed to count exactly five conditions. Roughly two thirds of the ~23 µs gap
+  reported at item 4.5 was benchmark scope, not builder cost. The subject now matches the spec's
+  wording; the heavier shape is **kept and still published** as `benchBuildRealisticPagedQuery`,
+  asserting nothing, so the correction cannot be mistaken for a benchmark narrowed until it passed.
+  Item 4.5's report and ADR-0018 are annotated rather than silently edited.
+
+### Changed
+
+- `QueryBuilder` resolves its driver's quoting characters **once per builder** instead of per
+  identifier (**ADR-0020**), and builds conditions by concatenation rather than `sprintf()`.
+  Together: **14.430 → 12.979 µs** (−10.1%) on the corrected five-condition subject. The driver
+  saving is sub-noise per call, so it is pinned by an exact **count** (7 → 1 lookups for a
+  five-condition query, 13 → 1 for a paged one) rather than a flaky timing assertion.
+  **NFR-03 remains unmet** — ~30% over ≤ 10 µs, versus the 2.3× previously reported. The residual
+  is deferred to item 7.1 because phpbench (12.979 µs) and a plain in-process loop (9.246 µs)
+  disagree by more than the remaining overage, and an empty phpbench subject costs 0.079 µs — so
+  it is not harness overhead, and which instrument is authoritative is NFR-06/7.1's question.
+
+### Added
+
 - `D4np\Utils\Security\Escaper` (**ADR-0019**) — opens Milestone 5. RFC-0001's third security
   mechanism: context-aware output escaping. Four methods — `html()`, `attr()`, `js()`, `url()` —
   and deliberately **no general-purpose `escape()`**, because a method that did not name its

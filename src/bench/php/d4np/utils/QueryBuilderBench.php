@@ -46,11 +46,42 @@ final class QueryBuilderBench
     }
 
     /**
-     * Five conditions, per NFR-03's own wording — a `where()`, an `orderBy()` and a `limit()`
-     * each add a clause too, but the NFR names the `WHERE` count specifically, so that is what
-     * this counts: exactly five calls that each contribute one condition.
+     * **The workload NFR-03 actually names**: a `SELECT` with five conditions.
+     *
+     * This subject was corrected at roadmap item 4.6 (ADR-0020). Item 4.5's version of it also
+     * selected five named columns and applied `orderBy`/`limit`/`offset`, then reported the
+     * resulting figure as NFR-03's — while its own docblock claimed to be counting "exactly five
+     * calls that each contribute one condition". The doc and the code disagreed, and the code was
+     * measuring roughly three times the work the NFR describes.
+     *
+     * A column list is not a condition. `SELECT *` keeps this subject to precisely the five
+     * `WHERE` conditions NFR-03 budgets, so the number it produces is the one the budget can
+     * legitimately be compared against. The heavier shape is still measured, and still reported —
+     * as {@see benchBuildRealisticPagedQuery()}, under its own name, against no budget.
      */
     public function benchBuildFiveConditionSelect(): void
+    {
+        $query = (new QueryBuilder($this->connection, 'users'))
+            ->where('status', Operator::Equals, 'active')
+            ->where('age', Operator::GreaterThan, 18)
+            ->where('name', Operator::NotEquals, '')
+            ->where('email', Operator::Like, '%@example.com')
+            ->where('id', Operator::LessThan, 999);
+
+        $query->toSql();
+        $query->bindings();
+    }
+
+    /**
+     * A realistic listing query: named columns, five conditions, ordering and pagination.
+     *
+     * **NFR-03 does not budget this shape**, and this subject deliberately asserts nothing. It
+     * exists so that item 4.5's measurement is not silently dropped now that the subject above has
+     * been narrowed to the spec's wording — the heavier number is real, it is what an application
+     * actually builds, and it is several times the five-condition figure. Keeping it visible is
+     * what stops the correction from reading as a benchmark quietly rewritten until it passed.
+     */
+    public function benchBuildRealisticPagedQuery(): void
     {
         $query = (new QueryBuilder($this->connection, 'users'))
             ->select('id', 'name', 'email', 'age', 'status')

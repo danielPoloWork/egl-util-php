@@ -35,3 +35,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0017](0017-prove-binding-at-the-pdo-boundary-and-defer-t02s-like-leg.md) | Prove binding at the PDO boundary, and ship T-02 with its LIKE leg openly deferred | Accepted |
 | [0018](0018-querybuilder-benchmark-scope-and-the-measured-build-time-gap.md) | QueryBuilder's benchmark measures NFR-03 now; the ~23µs build-time gap is deliberately deferred | Accepted |
 | [0019](0019-four-escaping-contexts-and-the-unquoted-attribute-assumption.md) | Four escaping contexts, no general `escape()`, and assume the attribute is unquoted | Accepted |
+| [0020](0020-correct-the-nfr03-workload-and-resolve-the-driver-once.md) | Correct NFR-03's benchmarked workload, resolve the driver once, and defer the residual to the reference machine | Accepted |

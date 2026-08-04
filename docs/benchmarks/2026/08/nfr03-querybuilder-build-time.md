@@ -1,5 +1,12 @@
 # Benchmark Report: NFR-03 QueryBuilder build time
 
+> **CORRECTED by [the item 4.6 report](nfr03-querybuilder-build-time-corrected.md).** The
+> subject measured here builds a five-column `select()` list, an `orderBy`, a `limit` and an
+> `offset` **in addition to** its five conditions — roughly twice the work NFR-03's
+> "5-condition SELECT" describes. The ~23 µs figure below is real, but it is **not** the
+> number NFR-03's budget applies to. Kept unedited as the record of what was measured and
+> concluded at the time.
+
 - **Date:** 2026-08-04
 - **Version / commit:** v0.0.0 @ `b68a12e`
 - **Environment:** 12th Gen Intel Core i7-12700, 31.7 GB RAM, Windows 11 Pro 10.0.26200,

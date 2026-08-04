@@ -1,6 +1,8 @@
 # ADR-0018: QueryBuilder's benchmark measures NFR-03 now; the ~23µs build-time gap is deliberately deferred
 
-- **Status:** Accepted
+- **Status:** Accepted, **partially corrected by [ADR-0020](0020-correct-the-nfr03-workload-and-resolve-the-driver-once.md)**
+  — its central measurement (~23 µs) was taken on a workload heavier than NFR-03 specifies.
+  The reasoning about *how to handle* a measured gap stands; the number does not.
 - **Date:** 2026-08-04
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 4.5 (opens the follow-up, item 4.6) · spec NFR-03, NFR-06 ·
