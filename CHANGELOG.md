@@ -32,7 +32,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `AGENTS.md` §10 and spec NFR-07 stated but nothing measured — PHPUnit 10 has no fail-under
   option, so a dedicated CI job produces a Clover report and the gate compares it. A missing or
   empty report fails rather than skipping. The `build` matrix no longer loads `pcov`, which it
-  never used.
+  never used. **The first measurement came back at 82.08%**: the stated bar had never been met.
+- Tests for `File`'s failure paths (unwritable directory, unopenable lock file, failed rename
+  leaving no temporary file behind, unreadable file for `read()` and `mime()`) — the branches
+  ADR-0005's design exists to handle, previously never executed — and for the static-utility
+  contract every helper class follows (final, non-instantiable, private inert constructor, all
+  public methods static).
 - Spec §7's **T-05 property-test suite** (Json round-trips, `Str::slug()` idempotence, `Env`
   boolean coercion) is now a runnable, countable unit: `vendor/bin/phpunit --group T-05`. The
   three cases already existed, landed with their own items; `#[Group('T-05')]` ties them
