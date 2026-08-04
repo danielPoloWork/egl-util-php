@@ -116,6 +116,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `D4np\Utils\Security\Escaper` (**ADR-0019**) — opens Milestone 5. RFC-0001's third security
+  mechanism: context-aware output escaping. Four methods — `html()`, `attr()`, `js()`, `url()` —
+  and deliberately **no general-purpose `escape()`**, because a method that did not name its
+  context is the one that would get used in the wrong one. Each documents what it is *not* safe
+  for, and a test asserts that separation rather than leaving it as advice.
+  **`attr()` assumes the attribute is unquoted**, escaping every non-alphanumeric ASCII character
+  as `&#xHH;`: an escaper cannot see its own call site, and the two possible assumptions are
+  asymmetric — assuming quoted is wrong toward an XSS hole, assuming unquoted is wrong toward
+  verbose output. Valid multibyte passes through, since no non-ASCII byte can terminate an
+  attribute and escaping bytes individually would only produce mojibake.
+  `js()` escapes on an allowlist, including `/` (inside `<script>` the HTML parser ends the element
+  at `</script>` regardless of JavaScript string state) and U+2028/U+2029 (JavaScript line
+  terminators before ES2019); output is pure ASCII with surrogate pairs above U+FFFF.
+  **Invalid UTF-8 becomes U+FFFD in all four.** Without `ENT_SUBSTITUTE`, `htmlspecialchars()`
+  returns an **empty string** for input containing one malformed byte — total silent data loss —
+  so `attr()` and `js()` reproduce the same substitution via PCRE rather than `mbstring`, which is
+  not a declared extension (NFR-08) and substitutes `?` rather than U+FFFD.
+  `url()` covers one URL *component*; it is **not** the defence for a whole-URL sink such as
+  `href="…"`, which needs scheme allowlisting — named as a gap rather than half-built.
 - phpbench benchmark for NFR-03 (**ADR-0018**) — closes Milestone 4. `QueryBuilderBench` measures
   a 5-condition `SELECT`'s build time; `QueryBuilderTest::testBuildingNeverRunsAQuery()` asserts
   the "0 queries executed" half directly via the same `QueryLog` fixture item 4.4 built (timing

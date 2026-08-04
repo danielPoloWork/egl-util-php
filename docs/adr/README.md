@@ -34,3 +34,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0016](0016-closure-scoped-transactions-with-savepoint-nesting.md) | Closure-scoped transactions, savepoint nesting, and keeping the original exception | Accepted |
 | [0017](0017-prove-binding-at-the-pdo-boundary-and-defer-t02s-like-leg.md) | Prove binding at the PDO boundary, and ship T-02 with its LIKE leg openly deferred | Accepted |
 | [0018](0018-querybuilder-benchmark-scope-and-the-measured-build-time-gap.md) | QueryBuilder's benchmark measures NFR-03 now; the ~23µs build-time gap is deliberately deferred | Accepted |
+| [0019](0019-four-escaping-contexts-and-the-unquoted-attribute-assumption.md) | Four escaping contexts, no general `escape()`, and assume the attribute is unquoted | Accepted |

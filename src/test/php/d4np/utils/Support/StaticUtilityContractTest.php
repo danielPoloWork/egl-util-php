@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Tests\Support;
 
+use D4np\Utils\Security\Escaper;
 use D4np\Utils\Support\Env;
 use D4np\Utils\Support\File;
 use D4np\Utils\Support\Json;
@@ -41,6 +42,7 @@ final class StaticUtilityContractTest extends TestCase
         yield 'File' => [File::class];
         yield 'Env' => [Env::class];
         yield 'Json' => [Json::class];
+        yield 'Escaper' => [Escaper::class];
     }
 
     /**
