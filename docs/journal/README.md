@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-03 — Env::get() and Json: two functions, three probed gotchas](2026/08/2026-08-03-env-json.md)
 - [2026-08-03 — File: atomic writes, and a test that was lying](2026/08/2026-08-03-file-atomic-io.md)
 - [2026-08-03 — Str::slug() / uuid() / random()](2026/08/2026-08-03-str-slug-uuid-random.md)
 - [2026-08-03 — Milestone 2 opens: the exception hierarchy](2026/08/2026-08-03-m2-exception-hierarchy.md)

@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-03 — File: atomic writes, and a test that was lying](docs/journal/2026/08/2026-08-03-file-atomic-io.md).
+  [2026-08-03 — Env::get() and Json: two functions, three probed gotchas](docs/journal/2026/08/2026-08-03-env-json.md).
 
 ## Model & effort routing (advisory)
 
@@ -108,7 +108,7 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
 - [x] 2.3 `File`: flock-guarded `write()`/`read()`, atomic write via temp+rename, Fileinfo
       `mime()` (RFC-0001) (severity:medium — concurrency/atomicity semantics) —
       route: standard / medium · **ADR-0005**
-- [ ] 2.4 `Env::get()` with boolean coercion; `Json::encode()/decode()` wrapping native
+- [x] 2.4 `Env::get()` with boolean coercion; `Json::encode()/decode()` wrapping native
       `\JsonException` (RFC-0001 R-7) — route: fast / low
 - [ ] 2.5 Shared reflection-metadata cache, consumed by the Dto hydrator and the Container
       (RFC-0001 R-2) (sets-pattern) — route: frontier-reasoning / high

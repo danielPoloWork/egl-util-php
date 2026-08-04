@@ -28,6 +28,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Support\Env::get()`: boolean coercion built on PHP's own
+  `filter_var(…, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)` — fixes the classic bug where
+  `getenv('FLAG')` returns the truthy **string** `"false"`. An explicitly empty variable
+  (`FOO=""`) returns `''`, not `false` — a deliberate exception, since the coercion recognises
+  yes/no-shaped words, not "unset-looking" values.
+- `D4np\Utils\Support\Json::encode()`/`decode()`: always pass `JSON_THROW_ON_ERROR`, wrapping
+  the native `\JsonException` via `JsonException::wrap()` (RFC-0001 R-7) so a caller can never
+  forget the flag and get a silent `null`/`false` back.
 - `D4np\Utils\Support\File` (**ADR-0005**): `write()` replaces the target **atomically** — a
   temporary file in the same directory, `rename()`d over — so a reader never observes a
   half-written file; writers are serialised through an exclusive `flock()` on a `<path>.lock`
