@@ -28,6 +28,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `tools/coverage_gate.py` enforces the **≥ 90% line-coverage floor** (**ADR-0007**) that
+  `AGENTS.md` §10 and spec NFR-07 stated but nothing measured — PHPUnit 10 has no fail-under
+  option, so a dedicated CI job produces a Clover report and the gate compares it. A missing or
+  empty report fails rather than skipping. The `build` matrix no longer loads `pcov`, which it
+  never used.
 - Spec §7's **T-05 property-test suite** (Json round-trips, `Str::slug()` idempotence, `Env`
   boolean coercion) is now a runnable, countable unit: `vendor/bin/phpunit --group T-05`. The
   three cases already existed, landed with their own items; `#[Group('T-05')]` ties them

@@ -70,7 +70,11 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: ${{ matrix.toolchain == 'php-8.1' && '8.1' || matrix.toolchain == 'php-8.2' && '8.2' || '8.3' }}
-          coverage: pcov
+          # No coverage driver here on purpose. This job never passed a --coverage flag, so pcov
+          # was loaded and never used — overhead that also made the matrix *look* like it was
+          # measuring a floor nothing compared (roadmap 2.7). Coverage is measured once, in the
+          # `coverage` job below.
+          coverage: none
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
@@ -185,6 +189,40 @@ jobs:
         run: composer install --no-interaction --prefer-dist
       - if: steps.cfg.outputs.present == 'true'
         run: vendor/bin/infection --min-msi=70 --only-covered
+
+  # ---------------------------------------------------------------------------
+  # Coverage floor (roadmap 2.7, ADR-0007). AGENTS.md §10 and spec NFR-07 both require >= 90%
+  # line coverage; PHPUnit 10 ships a dozen --fail-on-* switches and no coverage threshold among
+  # them, so the comparison lives in tools/coverage_gate.py.
+  #
+  # Measured ONCE, on one interpreter, rather than per matrix cell: line coverage of this library
+  # does not vary by PHP version, so three runs would be three identical numbers at three times
+  # the cost. The build matrix proves the tests pass everywhere; this proves how much they reach.
+  #
+  # --coverage-text is deliberate alongside the machine-read report: it puts the number in the
+  # log unconditionally, so a failure shows what the coverage actually was and not merely that a
+  # threshold was missed.
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: quality / coverage floor
+    runs-on: ubuntu-24.04
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: pcov
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: composer install --no-interaction --prefer-dist
+      - name: Measure coverage
+        run: vendor/bin/phpunit --coverage-clover build/logs/clover.xml --coverage-text
+      - name: Enforce the coverage floor (ADR-0007)
+        run: python tools/coverage_gate.py build/logs/clover.xml --min 90
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   #
