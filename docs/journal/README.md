@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — Two sanitizers, and a wrong answer that only shows up on one driver](2026/08/2026-08-04-sanitizer.md)
 - [2026-08-04 — The benchmark was measuring the wrong thing, and I wrote it](2026/08/2026-08-04-nfr03-correction.md)
 - [2026-08-04 — Four grammars, and the assumption an escaper cannot check](2026/08/2026-08-04-escaper-contexts.md)
 - [2026-08-04 — The same shape as NFR-01, found in a different class](2026/08/2026-08-04-nfr03-querybuilder-bench.md)

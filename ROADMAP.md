@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — The benchmark was measuring the wrong thing, and I wrote it](docs/journal/2026/08/2026-08-04-nfr03-correction.md).
+  [2026-08-04 — Two sanitizers, and a wrong answer that only shows up on one driver](docs/journal/2026/08/2026-08-04-sanitizer.md).
 
 ## Model & effort routing (advisory)
 
@@ -283,8 +283,20 @@ Explicit-mechanism security helpers (RFC-0001; every item carries the protected 
       four substitute U+FFFD identically, via PCRE rather than `mbstring` (undeclared dependency,
       and it substitutes `?` not U+FFFD). Suite proved non-vacuous with 7 planted defects. OWASP
       corpus snapshot stays item 5.4.*
-- [ ] 5.2 `Sanitizer::richText()` over symfony/html-sanitizer (optional dep) +
-      `sqlLikePattern()` (RFC-0001) (security) — route: frontier-reasoning / extra
+- [x] 5.2 `Sanitizer::richText()` over symfony/html-sanitizer (optional dep) +
+      `sqlLikePattern()` (RFC-0001) (security) — route: frontier-reasoning / extra ·
+      **ADR-0021**. ***Closes spec §7's T-02 suite***, whose third leg item 4.4 deferred here.
+      *Escape character is **`!`, not `\`** — probed: `ESCAPE ''` is a **parse error** on SQLite,
+      so a backslash needs per-driver spelling. Bigger trap: an escaped pattern **without** an
+      `ESCAPE` clause silently matches **nothing** on SQLite while working by accident on
+      MySQL/Postgres, so `QueryBuilder::whereLike()` emits the clause — and that silent failure is
+      itself now a test. `richText()` **throws** when the optional package is absent rather than
+      returning input unsanitized (verified behaviourally), and keeps Symfony types out of its
+      signature so "optional" holds at the API boundary. First third-party production dependency:
+      took the layering gate to `Uncovered: 6`, resolved by giving it its **own deptrac layer only
+      `Security` may reach** (planted `Http→HtmlSanitizer` to confirm). Honest gap: the
+      missing-dependency path is probe-verified but has no permanent test, since the package is a
+      dev dependency.*
 - [ ] 5.3 `Hash`: Argon2id default, `bcryptFallback` policy, `needsRehash()` (RFC-0001)
       (security) — route: frontier-reasoning / extra
 - [ ] 5.4 OWASP XSS corpus snapshot suite + DOM-bypass corpus for `richText()` (RFC-0001)

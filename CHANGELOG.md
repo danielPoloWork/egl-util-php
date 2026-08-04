@@ -141,6 +141,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `D4np\Utils\Security\Sanitizer` (**ADR-0021**) — `richText()` and `sqlLikePattern()`. **This
+  completes spec §7's T-02 suite**, whose LIKE-wildcard leg roadmap item 4.4 deferred here.
+  `sqlLikePattern()` neutralises the `%` and `_` that survive parameter binding intact — binding
+  stops a `LIKE` value injecting SQL but does nothing about wildcards, so a search box forwarding
+  `%` turns an indexed lookup into a scan. The escape character is **`!`, not `\`**: a backslash is
+  special inside SQL string literals on several drivers, and `ESCAPE '\'` is a **parse error** on
+  SQLite. `QueryBuilder::whereLike()` is added to emit the `ESCAPE` clause, because **without one
+  an escaped pattern silently matches nothing on SQLite while working by accident on
+  MySQL/PostgreSQL** — a wrong answer that only appears on one driver.
+  `richText()` delegates to `symfony/html-sanitizer` (RFC-0001: *"no hand-rolled tag stripper"*), a
+  new **optional** dependency declared in `suggest`. When it is absent `richText()` **throws**
+  rather than returning the input unsanitized, and no Symfony type appears in its signature so
+  "optional" holds at the API boundary. The curated profile limits link schemes to
+  `https`/`http`/`mailto` (this is what refuses `javascript:` and `data:`), refuses relative links
+  and media, and forces `rel="noopener noreferrer"`.
+- `deptrac.yaml` gains an `HtmlSanitizer` layer that **only `Security` may reach** — the library's
+  first third-party production dependency took the layering gate from `Uncovered: 0` to `6`, and
+  declaring it keeps a future import from another group a build failure rather than a silent new
+  coupling to an optional package.
 - `D4np\Utils\Security\Escaper` (**ADR-0019**) — opens Milestone 5. RFC-0001's third security
   mechanism: context-aware output escaping. Four methods — `html()`, `attr()`, `js()`, `url()` —
   and deliberately **no general-purpose `escape()`**, because a method that did not name its

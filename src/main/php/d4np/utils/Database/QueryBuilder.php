@@ -60,6 +60,16 @@ final class QueryBuilder
      */
     private const IDENTIFIER = '/^[A-Za-z_][A-Za-z0-9_]*\z/';
 
+    /**
+     * The escape character {@see whereLike()} declares in its `ESCAPE` clause.
+     *
+     * Deliberately duplicated from `Sanitizer::LIKE_ESCAPE` rather than imported: `Sanitizer` is
+     * in the `Security` group and RFC-0001's layering rule (enforced by deptrac, ADR-0012) allows
+     * groups to depend downward on `Support` only. `SanitizerTest` asserts the two constants
+     * agree, so the copy is checked rather than trusted.
+     */
+    private const LIKE_ESCAPE = '!';
+
     /** @var list<string> */
     private array $columns = [];
 
@@ -138,6 +148,41 @@ final class QueryBuilder
         // runs once per condition (roadmap 4.6).
         $clone->conditions[] = $this->identifier($column) . ' ' . $operator->value . ' ?';
         $clone->bindings[] = $value;
+
+        return $clone;
+    }
+
+    /**
+     * `WHERE <column> LIKE ? ESCAPE '!'`, with the pattern bound.
+     *
+     * Exists because {@see where()} with {@see Operator::Like} emits no `ESCAPE` clause, and
+     * **without one an escaped pattern is silently wrong in a driver-dependent way**: MySQL and
+     * PostgreSQL treat backslash as an escape by default so it appears to work, while SQLite has
+     * no default escape and the pattern matches nothing. Verified directly rather than assumed.
+     *
+     * So the clause is emitted here, unconditionally, and the escape character is the one
+     * `Sanitizer::sqlLikePattern()` applies. `!` rather than `\` because a backslash is special
+     * inside a SQL string literal on several drivers — `ESCAPE '\'` is a *parse error* on SQLite —
+     * whereas `!` needs no per-driver spelling.
+     *
+     * **The pattern is passed through as-is.** This does not escape it, because it cannot know
+     * which wildcards the caller meant: a prefix search is
+     * `Sanitizer::sqlLikePattern($term) . '%'`, where the user's portion is literal and the
+     * trailing `%` is the caller's own. Escaping the whole pattern here would turn every `LIKE`
+     * into an equality test.
+     *
+     * `Sanitizer` lives in the `Security` group and this class in `Database`, and RFC-0001's
+     * layering rule forbids the import — hence the escape character is spelled out on both sides
+     * rather than shared. `SanitizerTest` asserts the two agree, so the duplication cannot drift
+     * unnoticed.
+     *
+     * @throws DatabaseException if the column fails the allowlist
+     */
+    public function whereLike(string $column, string $pattern): self
+    {
+        $clone = clone $this;
+        $clone->conditions[] = $this->identifier($column) . " LIKE ? ESCAPE '" . self::LIKE_ESCAPE . "'";
+        $clone->bindings[] = $pattern;
 
         return $clone;
     }
