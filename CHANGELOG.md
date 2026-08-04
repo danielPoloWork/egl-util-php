@@ -147,6 +147,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- Spec §7's **Hash matrix** and NFR-05's timing (**ADR-0024**) — closes Milestone 5. NFR-05 is a
+  **range** (50–200 ms), unlike every other budget here, and the *lower* bound is the serious one:
+  a hash completing in 5 ms means the work factor is inadequate. So it is split by what each half
+  can prove. The **security** half is asserted as the **work factor** — `memory_cost`/`time_cost`
+  against OWASP's published Argon2id minimums — which is machine-independent and catches what a
+  stopwatch cannot: a duration cannot distinguish strong parameters on slow hardware from weak ones
+  on fast. The **capacity** half is a benchmark asserting nothing (`HashBench`).
+  Measured `Hash::make()` at **349 ms against the 50–200 ms range** — over, and deliberately **not**
+  fixed: the cost parameters are PHP's defaults and clear OWASP's floor by more than 3× on memory,
+  so lowering them to hit the range would trade security for latency. `verify()` is measured too
+  (~348 ms): NFR-05 does not budget it, but it runs on **every login** and is what actually caps
+  authentication throughput.
+  Documented PHP behaviour: `password_needs_rehash()` reports `true` for **stronger** parameters as
+  well as weaker ones, because it compares for equality with the current defaults — so a hash
+  hardened beyond them is silently downgraded on next login.
 - Spec §7's **OWASP XSS corpus snapshot suite** and **DOM-bypass corpus** for `richText()`
   (**ADR-0023**). Every payload is run through all four escaper contexts and recorded in a
   committed snapshot, so any change to escaping output becomes a reviewable diff rather than silent
