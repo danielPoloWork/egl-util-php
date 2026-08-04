@@ -116,6 +116,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `deptrac.yaml` (**ADR-0012**) turns on the layering gate RFC-0001 named but nothing enforced:
+  *groups depend downward on Support only; no cross-group imports*. One layer per component group
+  plus `Support` and `Version`, collected by **directory** (bound to the source tree RFC-0001 §A-9
+  fixes, rather than a second class-name-regex vocabulary that could drift from it), analysed over
+  `src/main` only — tests and benchmarks legitimately cross groups and are out of scope. The empty
+  `Support: ~` ruleset is the load-bearing half: it makes the `Support → Dto` inversion that
+  ADR-0006 and ADR-0010 each designed around a build failure rather than a review opinion.
+  Verified failing on a planted `Support → Dto` import and on a planted peer `Http → Dto` import,
+  and verified *passing* on an allowed `Http → Support` import, so the gate is known to
+  discriminate rather than merely reject. The CI `layering` job (self-skipped since item 1.9) is
+  now active. `deptrac/deptrac` is held at `^4.4` by the PHP 8.1 platform pin — 4.7 requires 8.2.
 - `composer.json`'s `config.audit.abandoned` set to `"report"` (was implicitly `"fail"`):
   phpbench pulls in `doctrine/annotations` as its own transitive dependency, flagged abandoned
   on Packagist. Not a security vulnerability and not a package this library depends on directly,

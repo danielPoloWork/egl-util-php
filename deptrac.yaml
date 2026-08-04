@@ -1,0 +1,90 @@
+# RFC-0001's dependency rule, made mechanical:
+#
+#     groups depend downward on Support only; no cross-group imports
+#
+# Stated in RFC-0001 §Decision and named there as "enforced by `deptrac` in CI" — but nothing
+# enforced it until this file landed (roadmap item 3.6). The CI `layering` job has been
+# self-skipping on the absence of this exact filename since item 1.9; adding it turns the job on.
+#
+# Layers are collected by **directory**, not by class-name pattern, because RFC-0001 §Placement
+# notes (A-9) fixes the mapping to the source tree itself: "the deptrac layer globs are defined
+# against that exact tree, with the group directories (`Dto/`, `Container/`, …) case-exact below
+# it". A `classLike` regex would re-state the same grouping in a second, drift-prone vocabulary.
+#
+# Note that deptrac's `directory` collector compiles its value as a **case-insensitive** regex
+# (`#...#i`, see `DefaultBehavior/Layer/DirectoryCollector.php`), so this file cannot itself be
+# what enforces RFC-0001's "case-exact" wording — `tools/consistency_lint.py` owns that, and the
+# PSR-4 autoloader would fail loudly on a case mismatch long before deptrac ran.
+#
+# Only `src/main` is analysed. Tests and benchmarks legitimately reach across every group (a DTO
+# test constructs DTOs and asserts on Support exceptions; a benchmark hydrates a DTO), so holding
+# them to a production layering rule would report violations that are not violations.
+deptrac:
+  paths:
+    - ./src/main/php/d4np/utils
+
+  layers:
+    # The six component groups of RFC-0001's table, in its order.
+    - name: Dto
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Dto/.*
+    - name: Container
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Container/.*
+    - name: Database
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Database/.*
+    - name: Security
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Security/.*
+    - name: Http
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Http/.*
+    - name: Errors
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Errors/.*
+
+    # The layer every group is allowed to depend on, and which may depend on none of them.
+    - name: Support
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Support/.*
+
+    # `Version` sits at the namespace root, in no group — it is a single version constant. Given
+    # its own layer rather than left uncollected so that "every production class belongs to a
+    # declared layer" stays a fact this config states, rather than an assumption.
+    - name: Version
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Version\.php
+
+  ruleset:
+    # Each group may reach downward into Support, and nowhere else. Adding a group to any of
+    # these lists is exactly the cross-group import RFC-0001 forbids.
+    Dto:
+      - Support
+    Container:
+      - Support
+    Database:
+      - Support
+    Security:
+      - Support
+    Http:
+      - Support
+    Errors:
+      - Support
+
+    # Support is the bottom of the library: it depends on no group. An empty list here is the
+    # load-bearing half of the rule — it is what makes a Support -> Dto import (the inversion
+    # ADR-0010 had to design around for `ParameterMetadata::$attributes`) a build failure rather
+    # than a code-review opinion.
+    Support: ~
+
+    # A version constant depends on nothing.
+    Version: ~
