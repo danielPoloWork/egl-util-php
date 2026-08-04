@@ -116,6 +116,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- phpbench benchmark for NFR-03 (**ADR-0018**) — closes Milestone 4. `QueryBuilderBench` measures
+  a 5-condition `SELECT`'s build time; `QueryBuilderTest::testBuildingNeverRunsAQuery()` asserts
+  the "0 queries executed" half directly via the same `QueryLog` fixture item 4.4 built (timing
+  cannot prove an absence, so this is a real assertion, not a benchmark, and it **is** CI-enforced).
+  Measured build time: **~23µs against the ≤10µs budget**, attributed to ~1µs per identifier
+  quoted (allowlist + driver-quote, ADR-0015) across the query's 12 identifiers, plus per-call
+  cloning from the same ADR's immutability guarantee. Same shape as item 3.5's NFR-01 finding,
+  handled the same way per ADR-0011's precedent: recorded honestly, shipped non-blocking (no
+  reference-machine baseline exists yet — that's item 7.1's job), and filed as a separate follow-up
+  (**roadmap item 4.6**) rather than fixed under a benchmark item's own route.
 - Spec §7's **T-02 injection suite** (**ADR-0017**) — 29 fuzzed payloads × 6 value-accepting paths,
   asserting via a real **query log** (`PDO::ATTR_STATEMENT_CLASS`) that a payload appears in the
   bound-parameter array and **never** in the statement text. This is stronger than the round-trip

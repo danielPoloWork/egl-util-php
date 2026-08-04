@@ -9,7 +9,9 @@ use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\Sort;
 use D4np\Utils\Support\DatabaseException;
+use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\PretendDriverPdo;
+use D4np\Utils\Tests\Database\Fixture\QueryLog;
 use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -202,6 +204,36 @@ final class QueryBuilderTest extends TestCase
         self::assertSame('SELECT * FROM "users"', $base->toSql());
         self::assertSame([], $base->bindings());
         self::assertNotSame($base, $filtered);
+    }
+
+    /**
+     * NFR-03's other half: *"0 queries executed at build time"*. Asserted the same way item 4.4
+     * proved binding — a real query log at the PDO boundary — rather than by reading the source
+     * and trusting that no method calls `prepare()`. Every fluent method plus `toSql()` and
+     * `bindings()` runs; only `get()`/`first()` would touch the driver, and neither is called.
+     */
+    public function testBuildingNeverRunsAQuery(): void
+    {
+        $log = new QueryLog();
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_STATEMENT_CLASS, [LoggedStatement::class, [$log]]);
+        $connection = new DatabaseConnection($pdo);
+        $log->entries = []; // drop the constructor's own attribute-pinning traffic, if any
+
+        (new QueryBuilder($connection, 'users'))
+            ->select('id', 'name', 'email', 'age', 'status')
+            ->where('status', Operator::Equals, 'active')
+            ->where('age', Operator::GreaterThan, 18)
+            ->where('name', Operator::NotEquals, '')
+            ->whereNotNull('email')
+            ->whereIn('status', ['active', 'pending'])
+            ->orderBy('name', Sort::Asc)
+            ->limit(10)
+            ->offset(0)
+            ->toSql();
+
+        self::assertSame([], $log->entries, 'building a query executed a statement against the driver');
     }
 
     /**
