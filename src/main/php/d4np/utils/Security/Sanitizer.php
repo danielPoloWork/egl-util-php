@@ -117,8 +117,17 @@ final class Sanitizer
      * - `allowSafeElements()` — Symfony's own list of elements and attributes with no scripting
      *   capability. Starting from *their* curated list rather than one written here is the same
      *   delegation decision applied one level down.
-     * - **Link schemes limited to `https`, `http` and `mailto`.** This is what stops
-     *   `javascript:` and `data:` URLs, which `allowSafeElements()` alone does not.
+     * - **Link schemes limited to `https`, `http` and `mailto`.** This is what stops `data:` URLs
+     *   — including `data:text/html`, which is a genuine XSS vector — along with every other
+     *   scheme not named.
+     *
+     *   An earlier version of this note also credited the allowlist with stopping `javascript:`.
+     *   **It does not, and measuring said so:** adding `javascript` to the allowed schemes and
+     *   re-running the corpus changed nothing, because `symfony/html-sanitizer` refuses that
+     *   scheme unconditionally, allowlist or not. The restriction is still worth having for it —
+     *   two independent barriers rather than one — but it is defence in depth there, and the sole
+     *   barrier only for `data:` and friends. The distinction matters because a reader deciding
+     *   whether to widen this list needs to know which entries are load-bearing.
      * - **Relative links and relative media are refused.** A relative URL's meaning depends on the
      *   page it lands on, which is not knowable here.
      * - **`rel="noopener noreferrer"` is forced onto every link**, so a sanitized document cannot

@@ -147,6 +147,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- Spec §7's **OWASP XSS corpus snapshot suite** and **DOM-bypass corpus** for `richText()`
+  (**ADR-0023**). Every payload is run through all four escaper contexts and recorded in a
+  committed snapshot, so any change to escaping output becomes a reviewable diff rather than silent
+  drift — paired with context invariants, because **a snapshot proves stability, not safety**: a
+  snapshot of broken output is a valid snapshot. Re-recording is deliberate (`UPDATE_SNAPSHOTS=1`),
+  never automatic, since an assertion that repairs itself is not an assertion.
+  For mutation XSS the load-bearing check is **idempotence** — `richText(richText($x))` must equal
+  `richText($x)`. mXSS payloads are inert when parsed once and become executable after re-parse, so
+  "no `<script>` in the output" cannot detect them; instability under re-parse is the signature, and
+  it holds for payloads nobody has written yet.
+  **Correction to ADR-0021:** it claimed the scheme allowlist "is what refuses `javascript:` and
+  `data:`". A probe adding `javascript` to the allowed schemes **passed** — `symfony/html-sanitizer`
+  refuses that scheme unconditionally. The allowlist is the sole barrier for `data:` (including
+  `data:text/html`) and defence-in-depth for `javascript:`. The restriction is unchanged; the
+  explanation of it was imprecise, which matters when deciding whether to widen the list.
 - `D4np\Utils\Security\Hash` (**ADR-0022**) — password hashing with an Argon2id default, per spec
   FR-11. **`PASSWORD_DEFAULT` is deliberately not used**: it is bcrypt (`'2y'`) on every PHP release
   to date, even where Argon2id is available, so code reaching for it expecting "whatever is

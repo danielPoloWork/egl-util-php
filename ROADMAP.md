@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — The constant that reads like "strongest" and means bcrypt](docs/journal/2026/08/2026-08-04-hash.md).
+  [2026-08-04 — A probe that passed, and the claim it disproved](docs/journal/2026/08/2026-08-04-xss-corpus.md).
 
 ## Model & effort routing (advisory)
 
@@ -313,8 +313,17 @@ Explicit-mechanism security helpers (RFC-0001; every item carries the protected 
       the refusal, the bcrypt selection and the WARNING **level** are all asserted. The seam exposes
       the **decision, not the weak algorithm**: there is still no way to hash with bcrypt on a
       capable build. Item 5.5 keeps NFR-05 timing and the wider matrix.*
-- [ ] 5.4 OWASP XSS corpus snapshot suite + DOM-bypass corpus for `richText()` (RFC-0001)
-      (security) — route: frontier-reasoning / extra
+- [x] 5.4 OWASP XSS corpus snapshot suite + DOM-bypass corpus for `richText()` (RFC-0001)
+      (security) — route: frontier-reasoning / extra *(run at standard tier; mismatch recorded)* ·
+      **ADR-0023**. *Snapshot **and** invariants, never one alone: a snapshot proves stability, not
+      safety — a snapshot of broken output is a valid snapshot. Re-recording is deliberate
+      (`UPDATE_SNAPSHOTS=1`), never automatic, because an assertion that repairs itself is not an
+      assertion. For mXSS the load-bearing check is **idempotence**: mutation payloads are inert
+      when parsed once and executable after re-parse, so "no `<script>` in the output" cannot see
+      them — instability under re-parse is the signature. Also a "destroys everything" assertion,
+      since `return '';` passes every security check. **Corrects ADR-0021**: a probe allowing
+      `javascript:` **passed** — symfony refuses it unconditionally — so the allowlist is the sole
+      barrier only for `data:`, defence-in-depth for `javascript:`. 1010 tests, `--group T-06` 386.*
 - [ ] 5.5 Hash matrix tests (argon2id/bcrypt fallback, rehash triggers) + NFR-05 timing
       (RFC-0001) (security) — route: frontier-reasoning / extra
 

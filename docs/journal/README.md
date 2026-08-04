@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — A probe that passed, and the claim it disproved](2026/08/2026-08-04-xss-corpus.md)
 - [2026-08-04 — The constant that reads like "strongest" and means bcrypt](2026/08/2026-08-04-hash.md)
 - [2026-08-04 — Two sanitizers, and a wrong answer that only shows up on one driver](2026/08/2026-08-04-sanitizer.md)
 - [2026-08-04 — The benchmark was measuring the wrong thing, and I wrote it](2026/08/2026-08-04-nfr03-correction.md)

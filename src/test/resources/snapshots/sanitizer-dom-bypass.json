@@ -1,0 +1,23 @@
+{
+    "legitimate-formatting": "<p>Hello <strong>world</strong> and <em>others</em></p>",
+    "legitimate-link": "<p>See <a href=\"https://example.com/docs\" rel=\"noopener noreferrer\">the docs</a>.</p>",
+    "legitimate-list": "<ul><li>one</li><li>two</li></ul>",
+    "mxss-base-tag": "",
+    "mxss-entity-in-attribute": "<a rel=\"noopener noreferrer\">x</a>",
+    "mxss-form-nested": "",
+    "mxss-iframe-srcdoc": "",
+    "mxss-listing": "<listing><p title=\"&lt;/listing&gt;&lt;img src&#61;x onerror&#61;alert(1)&gt;\"></p></listing>",
+    "mxss-math-mglyph": "",
+    "mxss-nested-anchors": "<a href=\"https://ok.example\" rel=\"noopener noreferrer\"><a rel=\"noopener noreferrer\">x</a></a>",
+    "mxss-noembed": "<img />&#34;&gt;",
+    "mxss-noscript-title": "",
+    "mxss-select-noembed": "",
+    "mxss-style-comment": "<img />",
+    "mxss-svg-foreignobject": "",
+    "mxss-svg-style": "",
+    "mxss-table-caption": "<table><caption></caption><img /></table>",
+    "mxss-template": "<template></template>",
+    "mxss-textarea-close": "<img />",
+    "mxss-title-close": "<img />",
+    "mxss-xmp": "<xmp>&lt;p title&#61;&#34;</xmp><img />&#34;&gt;"
+}
