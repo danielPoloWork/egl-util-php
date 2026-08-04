@@ -28,6 +28,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- `D4np\Utils\Dto\Collection` (**ADR-0010**) — an immutable, functional list wrapper with
+  `map()`/`filter()`/`reduce()`, `@template-covariant` (sound because nothing mutates), and an
+  **optional** runtime `instanceof` guard: PHP has no runtime generics, so `Collection<Foo>` is
+  enforced by PHPStan and, when asked, by `Collection::of(Foo::class, …)`. `filter()` carries
+  the guard across; `map()` drops it, since the element type changes.
+- `D4np\Utils\Dto\CollectionOf` — `#[CollectionOf(Foo::class)]` on a `Collection` constructor
+  parameter lets hydration build its elements, closing the `Collection<T>` gap deferred from
+  the DTO item. An attribute rather than the docblock because PHP resolves its argument to a
+  real class-string, whereas `Collection<Addr>` in a docblock is an alias token only a full
+  parser could resolve. Failures name the index: `stops.1.postcode`.
 - `D4np\Utils\Dto\WithersTrait` (**ADR-0009**) — `$user->with(name: 'Grace')` returns a modified
   copy of an immutable DTO, leaving the receiver untouched. It **rebuilds through the
   constructor** rather than cloning, which works identically on PHP 8.1/8.2/8.3 (8.3's readonly

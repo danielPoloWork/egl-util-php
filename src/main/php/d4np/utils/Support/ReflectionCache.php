@@ -121,7 +121,30 @@ final class ReflectionCache
             hasDefault: $parameter->isDefaultValueAvailable(),
             default: self::defaultOf($parameter),
             isVariadic: $parameter->isVariadic(),
+            attributes: self::attributesOf($parameter),
         );
+    }
+
+    /**
+     * The parameter's attribute instances, cached with the rest of the metadata.
+     *
+     * Instantiated here rather than handed back as `ReflectionAttribute`s so the cost is paid
+     * once per class like everything else, and stored as plain `object`s so this layer never
+     * learns what any of them mean — that belongs to the group that declared them.
+     *
+     * @return list<object>
+     */
+    private static function attributesOf(ReflectionParameter $parameter): array
+    {
+        $instances = [];
+        foreach ($parameter->getAttributes() as $attribute) {
+            // A failure here is a broken attribute class, not a condition to paper over: it
+            // surfaces as the UtilsException `for()` already documents rather than being
+            // swallowed into a silently attribute-less parameter.
+            $instances[] = $attribute->newInstance();
+        }
+
+        return $instances;
     }
 
     private static function declaredTypeOf(?\ReflectionType $type): ?string

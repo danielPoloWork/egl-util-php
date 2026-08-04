@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — Collection<T>, and changing a decision a previous ADR had already named](2026/08/2026-08-04-collection.md)
 - [2026-08-04 — Withers: meeting a "per-version" requirement by not depending on the version](2026/08/2026-08-04-withers-trait.md)
 - [2026-08-04 — Milestone 3 opens: DTO hydration, and PHP disagreeing with the requirement](2026/08/2026-08-04-dto-hydration.md)
 - [2026-08-04 — Closing the coverage floor, and measuring it for the first time](2026/08/2026-08-04-coverage-floor-gate.md)
