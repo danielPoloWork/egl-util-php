@@ -39,3 +39,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0021](0021-delegate-rich-html-and-escape-like-wildcards-with-a-portable-character.md) | Delegate rich-HTML sanitization, and escape LIKE wildcards with a portable character | Accepted |
 | [0022](0022-argon2id-by-default-with-a-fallback-decided-at-construction.md) | Argon2id by name, not by `PASSWORD_DEFAULT`, with the fallback decided at construction | Accepted |
 | [0023](0023-snapshot-for-drift-invariants-for-safety-idempotence-for-mxss.md) | Snapshots catch drift, invariants catch wrong, and idempotence catches mutation XSS | Accepted |
+| [0024](0024-assert-the-work-factor-not-the-wall-clock.md) | Assert the work factor, not the wall clock — NFR-05 split by what each half can actually prove | Accepted |

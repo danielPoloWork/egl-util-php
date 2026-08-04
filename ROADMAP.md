@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — A probe that passed, and the claim it disproved](docs/journal/2026/08/2026-08-04-xss-corpus.md).
+  [2026-08-04 — A range, not a ceiling: measuring the wrong thing would have proved nothing](docs/journal/2026/08/2026-08-04-hash-matrix-nfr05.md).
 
 ## Model & effort routing (advisory)
 
@@ -324,8 +324,20 @@ Explicit-mechanism security helpers (RFC-0001; every item carries the protected 
       since `return '';` passes every security check. **Corrects ADR-0021**: a probe allowing
       `javascript:` **passed** — symfony refuses it unconditionally — so the allowlist is the sole
       barrier only for `data:`, defence-in-depth for `javascript:`. 1010 tests, `--group T-06` 386.*
-- [ ] 5.5 Hash matrix tests (argon2id/bcrypt fallback, rehash triggers) + NFR-05 timing
-      (RFC-0001) (security) — route: frontier-reasoning / extra
+- [x] 5.5 Hash matrix tests (argon2id/bcrypt fallback, rehash triggers) + NFR-05 timing
+      (RFC-0001) (security) — route: frontier-reasoning / extra *(run at standard tier; mismatch
+      recorded)* · **ADR-0024**. ***Closes Milestone 5.*** *NFR-05 is a **range**, unlike every
+      other budget here — falling *below* 50ms would be the serious failure, since it means the work
+      factor is inadequate. So it is split by what each half can prove: the **security** half is
+      asserted as the **work factor** (`memory_cost`/`time_cost` vs OWASP's floor), which is
+      machine-independent and catches what a stopwatch cannot — a stopwatch cannot tell weak
+      parameters on fast hardware from strong ones on slow. The **capacity** half is a benchmark
+      asserting nothing. Measured `make()` **349ms vs the 50-200ms range** — over, and deliberately
+      **not** fixed: the parameters are PHP's defaults and clear OWASP's floor, so lowering them
+      would trade security for latency. Also measures `verify()` (~348ms), which NFR-05 does not
+      budget but which runs on **every login** and is what actually caps auth throughput.
+      Documented PHP quirk: `needsRehash()` is `true` for **stronger** parameters too, so a hardened
+      hash is silently downgraded on next login.*
 
 ---
 
