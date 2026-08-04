@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — The client picks the type, not the application](2026/08/2026-08-04-http-wrappers.md)
 - [2026-08-04 — A range, not a ceiling: measuring the wrong thing would have proved nothing](2026/08/2026-08-04-hash-matrix-nfr05.md)
 - [2026-08-04 — A probe that passed, and the claim it disproved](2026/08/2026-08-04-xss-corpus.md)
 - [2026-08-04 — The constant that reads like "strongest" and means bcrypt](2026/08/2026-08-04-hash.md)

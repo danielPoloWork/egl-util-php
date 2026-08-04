@@ -40,3 +40,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0022](0022-argon2id-by-default-with-a-fallback-decided-at-construction.md) | Argon2id by name, not by `PASSWORD_DEFAULT`, with the fallback decided at construction | Accepted |
 | [0023](0023-snapshot-for-drift-invariants-for-safety-idempotence-for-mxss.md) | Snapshots catch drift, invariants catch wrong, and idempotence catches mutation XSS | Accepted |
 | [0024](0024-assert-the-work-factor-not-the-wall-clock.md) | Assert the work factor, not the wall clock — NFR-05 split by what each half can actually prove | Accepted |
+| [0025](0025-typed-http-wrappers-that-refuse-rather-than-coerce.md) | HTTP wrappers that mirror PSR-7's naming, and refuse rather than coerce | Accepted |

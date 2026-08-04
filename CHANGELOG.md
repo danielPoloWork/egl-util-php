@@ -147,6 +147,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `D4np\Utils\Http\Request` and `D4np\Utils\Http\Response` (**ADR-0025**) — opens Milestone 6.
+  Native lightweight wrappers **mirroring PSR-7's naming without its types**, per RFC-0001: the
+  optional `egl/utils-psr7-bridge` is the only sanctioned crossing point, and these never grow
+  middleware ambitions.
+  **The typed accessors refuse rather than coerce**, which is the security decision: `?email=x`
+  gives a string but `?email[]=x` gives an **array** — the same key, a different PHP type, chosen by
+  the client. A `(string)` cast yields the literal `"Array"` and `implode()` invents a value nobody
+  sent, so a scalar accessor handed a non-scalar returns its default instead.
+  `queryList()`/`postList()` are there for when a list is genuinely expected, and refuse scalars
+  rather than wrapping them. `queryInt()` uses `FILTER_VALIDATE_INT`, not a cast, because
+  `(int) "12abc"` is `12`.
+  Headers are derived from `$_SERVER` (`getallheaders()` does not exist outside Apache-like SAPIs),
+  including `CONTENT_TYPE`/`CONTENT_LENGTH` which CGI reports without the `HTTP_` prefix.
+  `isSecure()` ignores `X-Forwarded-Proto` — client-supplied absent a trusted proxy — but does
+  handle `$_SERVER['HTTPS']` being the string `'off'`.
+  `Response` is immutable, refuses CR/LF/NUL in header values (**response splitting**) at the point
+  they are *set* rather than at send time, and stores header names case-insensitively so a
+  duplicated `Content-Type` cannot smuggle a second interpretation past a proxy. `json()` encodes
+  through `Json::encode()` so an unencodable value raises instead of putting `false` in the body;
+  `html()` deliberately escapes nothing, since escaping is a render-time decision (ADR-0019).
 - Spec §7's **Hash matrix** and NFR-05's timing (**ADR-0024**) — closes Milestone 5. NFR-05 is a
   **range** (50–200 ms), unlike every other budget here, and the *lower* bound is the serious one:
   a hash completing in 5 ms means the work factor is inadequate. So it is split by what each half
