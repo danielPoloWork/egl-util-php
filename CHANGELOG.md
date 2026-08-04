@@ -28,6 +28,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- Enum-typed DTO properties: a **backed** enum (`enum Status: string { … }`) hydrates from its
+  scalar backing value via `tryFrom()`; an invalid value is a `TypeMismatchException` naming the
+  valid ones. A **pure** (non-backed) enum has no scalar to resolve from and stays
+  instance-only. `#[Group('T-01')]` covers the case.
 - `D4np\Utils\Dto\Collection` (**ADR-0010**) — an immutable, functional list wrapper with
   `map()`/`filter()`/`reduce()`, `@template-covariant` (sound because nothing mutates), and an
   **optional** runtime `instanceof` guard: PHP has no runtime generics, so `Collection<Foo>` is
