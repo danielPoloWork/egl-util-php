@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Milestone 4 opens: the security default that fails by returning false](docs/journal/2026/08/2026-08-04-pinned-pdo-defaults.md).
+  [2026-08-04 — The spec's own regex was the vulnerability](docs/journal/2026/08/2026-08-04-querybuilder-allowlist.md).
 
 ## Model & effort routing (advisory)
 
@@ -205,9 +205,18 @@ Safe-by-default PDO access (RFC-0001).
       load-bearing: real prepares must be off before `SET NAMES utf8mb4`, because `SET NAMES` is
       only safe once there is no client-side escaping left to fool. Honest gap: the MySQL-only
       `SET NAMES` path is unexecuted by the suite (no MySQL in CI) — T-02 (item 4.4) owns that.*
-- [ ] 4.2 `QueryBuilder`: bound values, identifier allowlist + driver quoting, `Sort` enum,
+- [x] 4.2 `QueryBuilder`: bound values, identifier allowlist + driver quoting, `Sort` enum,
       int-cast LIMIT/OFFSET (RFC-0001) (security — protected floor) —
-      route: frontier-reasoning / extra
+      route: frontier-reasoning / extra · **ADR-0015**. *Route mismatch accepted by the maintainer
+      and recorded (`record_run.py --route-mismatch "frontier-reasoning/extra=standard"`).
+      **Finding: FR-07's allowlist `^[A-Za-z_][A-Za-z0-9_]*$` transcribed literally is a bypass** —
+      PCRE's `$` matches before a trailing newline, so `"id\n"` rendered as
+      `SELECT "id\n" FROM "users"`. Anchored with `\z`; the spec's intent implemented rather than
+      its notation copied. Also adds `Operator` as an enum — FR-07 closes the ORDER BY keyword for
+      a reason that applies identically to comparison operators, which it does not mention. 17
+      hostile payloads × 4 identifier surfaces; suite proved non-vacuous with 4 planted defects.
+      Closes half of item 4.1's declared gap: `SET NAMES utf8mb4` is now asserted issued for MySQL
+      and not for others.*
 - [ ] 4.3 `Transaction`: closure scope, rollback+rethrow, savepoints (RFC-0001)
       (severity:medium) — route: standard / medium
 - [ ] 4.4 T-02 injection suite (values / identifiers / LIKE wildcards) + T-04 transaction
