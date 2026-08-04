@@ -37,3 +37,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0019](0019-four-escaping-contexts-and-the-unquoted-attribute-assumption.md) | Four escaping contexts, no general `escape()`, and assume the attribute is unquoted | Accepted |
 | [0020](0020-correct-the-nfr03-workload-and-resolve-the-driver-once.md) | Correct NFR-03's benchmarked workload, resolve the driver once, and defer the residual to the reference machine | Accepted |
 | [0021](0021-delegate-rich-html-and-escape-like-wildcards-with-a-portable-character.md) | Delegate rich-HTML sanitization, and escape LIKE wildcards with a portable character | Accepted |
+| [0022](0022-argon2id-by-default-with-a-fallback-decided-at-construction.md) | Argon2id by name, not by `PASSWORD_DEFAULT`, with the fallback decided at construction | Accepted |

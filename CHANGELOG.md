@@ -147,6 +147,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `D4np\Utils\Security\Hash` (**ADR-0022**) — password hashing with an Argon2id default, per spec
+  FR-11. **`PASSWORD_DEFAULT` is deliberately not used**: it is bcrypt (`'2y'`) on every PHP release
+  to date, even where Argon2id is available, so code reaching for it expecting "whatever is
+  strongest" silently gets the weaker algorithm — pinned by a test so the day PHP changes it, the
+  suite says so. Availability is `defined('PASSWORD_ARGON2ID')`, checked *before* use because an
+  unknown algorithm raises a bare `ValueError` outside ADR-0004's exception family.
+  Unlike `Escaper` and `Sanitizer` this is an **instance**, because it carries a policy and a
+  collaborator, and security configuration that can change mid-request is the wrong shape. The
+  fallback is decided **once at construction**: `bcryptFallback: false` refuses to construct at all
+  (so a misconfigured deployment fails while being wired, not at the first user registration), and
+  the default `true` logs a single WARNING rather than one per hash. `algorithm()` exposes the
+  outcome as a **value**, so a deployment without a PSR-3 logger can still detect the degradation.
+  `verify()` works across algorithms and `needsRehash()` flags both a weaker algorithm and weaker
+  *parameters*, which is what makes upgrade-on-login work.
+- `deptrac.yaml` gains a `Psr` layer, granted to `Security` only for now. `psr/log` is a *required*
+  interface-only dependency (RFC-0001 R-3) rather than an optional one, and further groups will
+  need it as `Errors` (PSR-3) and `Container` (PSR-11) arrive, so it is granted per group as each
+  does.
 - `D4np\Utils\Security\Sanitizer` (**ADR-0021**) — `richText()` and `sqlLikePattern()`. **This
   completes spec §7's T-02 suite**, whose LIKE-wildcard leg roadmap item 4.4 deferred here.
   `sqlLikePattern()` neutralises the `%` and `_` that survive parameter binding intact — binding
