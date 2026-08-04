@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Enforcing a rule two ADRs had already been obeying by hand](docs/journal/2026/08/2026-08-04-deptrac-layering-gate.md).
+  [2026-08-04 — Measuring what was reachable before deciding what to build](docs/journal/2026/08/2026-08-04-nfr01-compiled-hydration.md).
 
 ## Model & effort routing (advisory)
 
@@ -174,12 +174,20 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
       and ADR-0010 designed around) fails, `Http→Dto` (peer) fails, `Http→Support` (allowed)
       passes — so the gate distinguishes rather than just rejecting. 0 violations, **0 uncovered**,
       33 allowed. deptrac held at `^4.4` by the 8.1 platform pin; 4.7 needs PHP 8.2.*
-- [ ] 3.7 Close NFR-01's ratio gap: hydration currently measures ~15.4× the cost of manual
+- [x] 3.7 Close NFR-01's ratio gap: hydration currently measures ~15.4× the cost of manual
       constructor assignment against a ≤3× budget (item 3.5, **ADR-0011**). Likely a
       compiled/cached-closure hydration strategy — generate and cache a per-class hydration
       closure alongside `ClassMetadata` instead of walking `ParameterMetadata` and coercing on
       every call — evaluated on its own merits with its own measurement-first discipline —
-      route: TBD (route at pickup)
+      route: standard / high · **ADR-0013**. *Closed: **15.40× → 2.74×** (14.155 µs → 2.511 µs),
+      meeting both halves of NFR-01, recorded in
+      [`docs/benchmarks/`](docs/benchmarks/2026/08/nfr01-hydration-compiled-closure.md). Measured
+      four approaches first: the budget is **unreachable** by tuning the interpreted loop (best
+      case 4.80×), so a generated closure it is — but scoped narrowly to the all-scalar shape
+      NFR-01 actually names, with the interpreter kept for nested DTOs, collections, enums, unions
+      and defaults, and `HydrationParityTest` holding the two to identical observable behavior.
+      NFR-04 improved for free (149.7 ms → 37.8 ms). Honest limit: only the eligible shape is
+      fast.*
 
 ---
 

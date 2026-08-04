@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace D4np\Utils\Dto;
 
 use BackedEnum;
+use Closure;
 use D4np\Utils\Support\HydrationException;
 use D4np\Utils\Support\MissingKeyException;
 use D4np\Utils\Support\ParameterMetadata;
@@ -25,9 +26,24 @@ use TypeError;
  */
 final class Hydrator
 {
+    /**
+     * Per-class compiled closures, or `false` for a class the compiler declined (ADR-0013).
+     *
+     * `false` rather than simply "absent" so an ineligible class is asked about once and then
+     * answered from this array — otherwise every hydration of, say, a nested-DTO class would
+     * re-run the eligibility walk to reach the same "no" it reached last time.
+     *
+     * @var array<class-string, Closure(array<string, mixed>, string, bool): object|false>
+     */
+    private array $compiled = [];
+
+    private readonly HydrationCompiler $compiler;
+
     public function __construct(
         private readonly ReflectionCache $cache,
+        ?HydrationCompiler $compiler = null,
     ) {
+        $this->compiler = $compiler ?? new HydrationCompiler();
     }
 
     /**
@@ -123,6 +139,17 @@ final class Hydrator
      */
     private function hydrateAt(string $class, array $data, bool $lenient, string $prefix): object
     {
+        // The compiled fast path (ADR-0013). Only the all-scalar shape NFR-01 measures is
+        // eligible; everything else returns `false` here and falls through to the interpreter
+        // below, which remains the only implementation for nested DTOs, collections, enums,
+        // unions, variadics and defaults. `HydrationParityTest` holds the two to the same
+        // observable behavior.
+        $fast = $this->compiled[$class] ??= $this->compiler->compile($this->cache->for($class)) ?? false;
+        if ($fast !== false) {
+            /** @var T */
+            return $fast($data, $prefix, $lenient);
+        }
+
         $meta = $this->cache->for($class);
 
         if (!$meta->isInstantiable) {

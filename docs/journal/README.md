@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — Measuring what was reachable before deciding what to build](2026/08/2026-08-04-nfr01-compiled-hydration.md)
 - [2026-08-04 — Enforcing a rule two ADRs had already been obeying by hand](2026/08/2026-08-04-deptrac-layering-gate.md)
 - [2026-08-04 — First real benchmarks, and a genuine number the maintainer had to weigh in on](2026/08/2026-08-04-phpbench-hydration-memory.md)
 - [2026-08-04 — Checking what T-01 actually still needed, before writing anything](2026/08/2026-08-04-t01-enum-hydration.md)

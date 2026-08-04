@@ -28,3 +28,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0010](0010-collection-generics-by-attribute.md) | Declare collection element types with an attribute, not a docblock parser | Accepted |
 | [0011](0011-benchmark-scope-and-the-measured-hydration-ratio.md) | Benchmarks measure NFR-01/NFR-04 now; absolute regression tracking and the measured ~15× ratio gap are deliberately deferred | Accepted |
 | [0012](0012-enforce-the-layering-rule-by-directory-over-src-main.md) | Enforce RFC-0001's layering rule by directory, over `src/main` only | Accepted |
+| [0013](0013-compile-a-hydration-closure-for-the-scalar-shape.md) | Compile a hydration closure for the scalar shape, keep the interpreter for everything else | Accepted |
