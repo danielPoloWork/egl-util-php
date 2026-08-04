@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Measuring what was reachable before deciding what to build](docs/journal/2026/08/2026-08-04-nfr01-compiled-hydration.md).
+  [2026-08-04 — Milestone 4 opens: the security default that fails by returning false](docs/journal/2026/08/2026-08-04-pinned-pdo-defaults.md).
 
 ## Model & effort routing (advisory)
 
@@ -195,8 +195,16 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
 
 Safe-by-default PDO access (RFC-0001).
 
-- [ ] 4.1 `DatabaseConnection` with pinned defaults: ERRMODE_EXCEPTION, utf8mb4, real prepares,
-      FETCH_ASSOC (RFC-0001) (severity:high — core guarantee) — route: standard / high
+- [x] 4.1 `DatabaseConnection` with pinned defaults: ERRMODE_EXCEPTION, utf8mb4, real prepares,
+      FETCH_ASSOC (RFC-0001) (severity:high — core guarantee) — route: standard / high ·
+      **ADR-0014**. *Wraps a **consumer-owned** PDO per RFC-0001, and **refuses** a connection that
+      will not take a pinned default rather than degrading silently — `PDO::setAttribute()` signals
+      refusal by returning `false`, not by throwing, so the natural implementation would let a
+      security default fail invisibly. `false` is disambiguated by reading the attribute back:
+      SQLite has no emulation concept (fine), a driver still emulating is refused. Order is
+      load-bearing: real prepares must be off before `SET NAMES utf8mb4`, because `SET NAMES` is
+      only safe once there is no client-side escaping left to fool. Honest gap: the MySQL-only
+      `SET NAMES` path is unexecuted by the suite (no MySQL in CI) — T-02 (item 4.4) owns that.*
 - [ ] 4.2 `QueryBuilder`: bound values, identifier allowlist + driver quoting, `Sort` enum,
       int-cast LIMIT/OFFSET (RFC-0001) (security — protected floor) —
       route: frontier-reasoning / extra

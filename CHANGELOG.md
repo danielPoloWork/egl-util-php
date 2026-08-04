@@ -116,6 +116,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `D4np\Utils\Database\DatabaseConnection` (**ADR-0014**) — opens Milestone 4. Wraps a
+  **consumer-owned** `PDO` (RFC-0001: the library opens no connections) and pins spec FR-06's four
+  safe defaults: `ERRMODE_EXCEPTION`, real prepares (`EMULATE_PREPARES=false`), `FETCH_ASSOC`, and
+  `SET NAMES utf8mb4` on MySQL. A connection that will not take a pinned default is **refused**
+  with a `DatabaseException` rather than handed back weakened — `PDO::setAttribute()` signals
+  refusal by *returning `false`*, not by throwing, so the obvious implementation would let a
+  security-relevant default fail silently. The ambiguous `false` is disambiguated by reading the
+  attribute back: a driver with no emulation concept at all (SQLite) is fine; one that is still
+  emulating is refused. The order the defaults are applied in is load-bearing and documented —
+  `SET NAMES` is only safe *because* real prepares are already on, leaving no client-side escaping
+  to fool. `select()`, `selectOne()` (returns `null`, not PDO's `false`) and `execute()` always
+  bind values; identifiers cannot be bound and belong to `QueryBuilder` (item 4.2). Failures wrap
+  `PDOException` per ADR-0004 and deliberately **omit the SQL** from the message, since a failing
+  statement's text is the likeliest place for data that should not reach a log.
 - `D4np\Utils\Dto\HydrationCompiler` (**ADR-0013**) closes NFR-01's performance gap: hydrating a
   10-scalar-property DTO went from **15.40× to 2.74×** manual constructor assignment
   (14.155 µs → 2.511 µs), meeting both halves of the budget for the first time. Four approaches
