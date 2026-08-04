@@ -116,6 +116,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `composer.json`'s `config.audit.abandoned` set to `"report"` (was implicitly `"fail"`):
+  phpbench pulls in `doctrine/annotations` as its own transitive dependency, flagged abandoned
+  on Packagist. Not a security vulnerability and not a package this library depends on directly,
+  so `composer audit` now surfaces it in output rather than failing CI on a maintenance-status
+  flag of a dependency-of-a-dependency we cannot swap.
 
 ### Changed
 
