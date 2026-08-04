@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Two sanitizers, and a wrong answer that only shows up on one driver](docs/journal/2026/08/2026-08-04-sanitizer.md).
+  [2026-08-04 — The constant that reads like "strongest" and means bcrypt](docs/journal/2026/08/2026-08-04-hash.md).
 
 ## Model & effort routing (advisory)
 
@@ -297,8 +297,22 @@ Explicit-mechanism security helpers (RFC-0001; every item carries the protected 
       `Security` may reach** (planted `Http→HtmlSanitizer` to confirm). Honest gap: the
       missing-dependency path is probe-verified but has no permanent test, since the package is a
       dev dependency.*
-- [ ] 5.3 `Hash`: Argon2id default, `bcryptFallback` policy, `needsRehash()` (RFC-0001)
-      (security) — route: frontier-reasoning / extra
+- [x] 5.3 `Hash`: Argon2id default, `bcryptFallback` policy, `needsRehash()` (RFC-0001)
+      (security) — route: frontier-reasoning / extra *(run at standard tier; mismatch accepted by
+      the maintainer and recorded)* · **ADR-0022**. *Probed: **`PASSWORD_DEFAULT` is bcrypt**
+      (`'2y'`) even where Argon2id is available — code reaching for it expecting "whatever is
+      strongest" silently gets the weaker algorithm, which is why FR-11 names Argon2id. An
+      instance, not a static helper like `Escaper`/`Sanitizer`: it carries a **policy** and a
+      **collaborator**, and security configuration that can change mid-request is the wrong shape.
+      Fallback decided **once at construction** — `false` refuses to construct (fail fast means at
+      wiring time, not first registration), `true` logs one WARNING rather than one per hash. The
+      fallback is also a **value** (`algorithm()`), so a deployment without a logger can still
+      detect it. The fallback branch is unreachable in-process (`defined()` cannot be un-defined),
+      which a probe **passing** exposed and the coverage gate then forced to a real fix: the policy
+      is extracted as `selectAlgorithm()` — a pure function taking availability as an argument — so
+      the refusal, the bcrypt selection and the WARNING **level** are all asserted. The seam exposes
+      the **decision, not the weak algorithm**: there is still no way to hash with bcrypt on a
+      capable build. Item 5.5 keeps NFR-05 timing and the wider matrix.*
 - [ ] 5.4 OWASP XSS corpus snapshot suite + DOM-bypass corpus for `richText()` (RFC-0001)
       (security) — route: frontier-reasoning / extra
 - [ ] 5.5 Hash matrix tests (argon2id/bcrypt fallback, rehash triggers) + NFR-05 timing

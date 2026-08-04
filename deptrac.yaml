@@ -68,6 +68,19 @@ deptrac:
           # regex escape sequence rather than a namespace separator.
           value: ^Symfony\\Component\\HtmlSanitizer\\.*
 
+    # The interface-only PSR packages. RFC-0001 R-3 carves these out of spec NFR-08's
+    # "no third-party implementation dependencies": a package that *implements* PSR-11 or PSR-3
+    # necessarily requires the interface package, so they are required rather than optional. They
+    # get a layer for the same reason `HtmlSanitizer` does — so that which groups may reach them is
+    # a stated rule rather than an accident. Unlike the sanitizer, more than one group legitimately
+    # needs them (`Security` logs, `Errors` will implement PSR-3, `Container` will implement
+    # PSR-11), so the ruleset below grants them individually as each group arrives.
+    - name: Psr
+      collectors:
+        - type: classLike
+          # Doubled backslashes: a PCRE pattern, where a single `\L` would be a regex escape.
+          value: ^Psr\\(Log|Container)\\.*
+
     # `Version` sits at the namespace root, in no group — it is a single version constant. Given
     # its own layer rather than left uncollected so that "every production class belongs to a
     # declared layer" stays a fact this config states, rather than an assumption.
@@ -89,6 +102,8 @@ deptrac:
       - Support
       # Only this group may reach the optional sanitizer (spec FR-09b).
       - HtmlSanitizer
+      # Hash logs its bcrypt-fallback WARNING through PSR-3 (spec FR-11).
+      - Psr
     Http:
       - Support
     Errors:
@@ -105,3 +120,4 @@ deptrac:
 
     # A vendored dependency is a leaf here: this repository does not constrain its internals.
     HtmlSanitizer: ~
+    Psr: ~
