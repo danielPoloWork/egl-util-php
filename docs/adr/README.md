@@ -21,3 +21,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0003](0003-pin-ci-actions-by-commit-sha.md) | Pin CI actions by commit SHA | Accepted |
 | [0004](0004-root-the-exception-hierarchy-on-an-interface.md) | Root the exception hierarchy on an interface, and close its leaves | Accepted |
 | [0005](0005-atomic-file-writes-with-a-sidecar-lock.md) | Atomic file writes, with the lock on a sidecar rather than the target | Accepted |
+| [0006](0006-shared-reflection-metadata-cache.md) | Shape the shared reflection-metadata cache as plain instances, without an interface | Accepted |
