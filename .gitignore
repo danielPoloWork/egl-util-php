@@ -34,6 +34,7 @@ htmlcov/
 /build/logs/
 /.phpstan.cache/
 .php-cs-fixer.cache
+.deptrac.cache
 
 # IDE / editor
 /.idea/

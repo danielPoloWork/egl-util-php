@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — First real benchmarks, and a genuine number the maintainer had to weigh in on](docs/journal/2026/08/2026-08-04-phpbench-hydration-memory.md).
+  [2026-08-04 — Enforcing a rule two ADRs had already been obeying by hand](docs/journal/2026/08/2026-08-04-deptrac-layering-gate.md).
 
 ## Model & effort routing (advisory)
 
@@ -162,13 +162,18 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
       standalone instead. Measured ratio: **~15.4×**, well over budget; shipped non-blocking per
       the maintainer's explicit choice, with the gap filed as item 3.7. Absolute-µs/nightly
       regression tracking stays item 7.1's job, unchanged.*
-- [ ] 3.6 Add `deptrac.yaml` and turn on the layering gate. RFC-0001's dependency rule — *groups
+- [x] 3.6 Add `deptrac.yaml` and turn on the layering gate. RFC-0001's dependency rule — *groups
       depend downward on Support only; no cross-group imports* — has had nothing enforcing it:
       the CI `layering` job self-skips until the config lands (the step-level guard from item
       1.9). Until item 3.1 there was only one group, so the rule was vacuous; now that `Dto`
       depends on `Support` it is a real constraint with a real direction, and the next four
       milestones each add a group that could violate it. Prove the gate can fail by planting a
-      cross-group import — route: standard / medium
+      cross-group import — route: standard / medium · **ADR-0012**. *Layers collected by
+      `directory` (bound to the tree RFC-0001 §A-9 fixes, not a second name-regex vocabulary),
+      over `src/main` only. Proved in all three directions: `Support→Dto` (the inversion ADR-0006
+      and ADR-0010 designed around) fails, `Http→Dto` (peer) fails, `Http→Support` (allowed)
+      passes — so the gate distinguishes rather than just rejecting. 0 violations, **0 uncovered**,
+      33 allowed. deptrac held at `^4.4` by the 8.1 platform pin; 4.7 needs PHP 8.2.*
 - [ ] 3.7 Close NFR-01's ratio gap: hydration currently measures ~15.4× the cost of manual
       constructor assignment against a ≤3× budget (item 3.5, **ADR-0011**). Likely a
       compiled/cached-closure hydration strategy — generate and cache a per-class hydration
