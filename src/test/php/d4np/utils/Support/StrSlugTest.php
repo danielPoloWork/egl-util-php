@@ -6,6 +6,7 @@ namespace D4np\Utils\Tests\Support;
 
 use D4np\Utils\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -95,7 +96,13 @@ final class StrSlugTest extends TestCase
         yield 'only punctuation' => ['!!!???'];
     }
 
-    /** T-05 property test (spec §7): slugifying a slug must be a no-op. */
+    /**
+     * T-05 property test (spec §7): slugifying a slug must be a no-op.
+     *
+     * `#[Group('T-05')]` makes the spec's named suite runnable and countable —
+     * `vendor/bin/phpunit --group T-05` — rather than a claim only this docblock makes.
+     */
+    #[Group('T-05')]
     #[DataProvider('idempotenceCorpus')]
     public function testSlugIsIdempotent(string $input): void
     {

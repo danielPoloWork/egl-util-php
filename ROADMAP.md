@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — The shared reflection cache: designing for consumers that do not exist yet](docs/journal/2026/08/2026-08-04-reflection-metadata-cache.md).
+  [2026-08-04 — Making spec §7's T-05 suite a mechanical fact](docs/journal/2026/08/2026-08-04-t05-property-suite.md).
 
 ## Model & effort routing (advisory)
 
@@ -112,8 +112,10 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
       `\JsonException` (RFC-0001 R-7) — route: fast / low
 - [x] 2.5 Shared reflection-metadata cache, consumed by the Dto hydrator and the Container
       (RFC-0001 R-2) (sets-pattern) — route: frontier-reasoning / high · **ADR-0006**
-- [ ] 2.6 T-05 property tests: Json round-trips, slug idempotence, Env coercion table
-      (RFC-0001) — route: fast / low
+- [x] 2.6 T-05 property tests: Json round-trips, slug idempotence, Env coercion table
+      (RFC-0001) — route: fast / low. All three landed with their own items (2.2, 2.4);
+      this tags them `#[Group('T-05')]` so `vendor/bin/phpunit --group T-05` runs
+      spec §7's named suite as a runnable, countable unit rather than a docblock claim.
 - [ ] 2.7 Measure and enforce the coverage floor. `AGENTS.md` §10 and spec NFR-07 both state
       **≥ 90% line coverage**, and nothing checks it: the `build` job sets up `pcov` but runs
       `vendor/bin/phpunit` with no `--coverage` flag and no threshold, so the number is neither

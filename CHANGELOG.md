@@ -28,6 +28,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   to LF so Windows checkouts match what CI lints.
 - `D4np\Utils\Version::VERSION` (`Version.php`) as the single source of truth for the
   released version, kept in lockstep with the README badge by `tools/consistency_lint.py`.
+- Spec §7's **T-05 property-test suite** (Json round-trips, `Str::slug()` idempotence, `Env`
+  boolean coercion) is now a runnable, countable unit: `vendor/bin/phpunit --group T-05`. The
+  three cases already existed, landed with their own items; `#[Group('T-05')]` ties them
+  together so the spec's named suite is a mechanical fact rather than a docblock claim.
 - `D4np\Utils\Support\ReflectionCache` with `ClassMetadata`/`ParameterMetadata` (**ADR-0006**):
   the single per-class constructor-metadata cache imported ADR-001 commits to, shared by the DTO
   hydrator (M3) and the Container (M6) — reflection is paid once per class, every later lookup is

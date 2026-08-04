@@ -6,6 +6,7 @@ namespace D4np\Utils\Tests\Support;
 
 use D4np\Utils\Support\Env;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -53,6 +54,8 @@ final class EnvTest extends TestCase
         }
     }
 
+    /** `#[Group('T-05')]` makes spec §7's named suite runnable: `vendor/bin/phpunit --group T-05`. */
+    #[Group('T-05')]
     #[DataProvider('booleanTokens')]
     public function testBooleanCoercionTable(string $rawValue, bool $expected): void
     {
