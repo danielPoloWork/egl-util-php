@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Measuring what the old tests would have missed](docs/journal/2026/08/2026-08-04-t02-injection-suite.md).
+  [2026-08-04 — The same shape as NFR-01, found in a different class](docs/journal/2026/08/2026-08-04-nfr03-querybuilder-bench.md).
 
 ## Model & effort routing (advisory)
 
@@ -238,7 +238,20 @@ Safe-by-default PDO access (RFC-0001).
       its LIKE-wildcard leg needs `Sanitizer::sqlLikePattern()` (FR-10, item 5.2) and a test
       asserts that gap explicitly rather than leaving silence. T-04 needed no new tests — item 4.3
       delivered it; verified against the spec text rather than padded.*
-- [ ] 4.5 phpbench: NFR-03 build-time benchmark (RFC-0001) (step:optimize) — route: fast / medium
+- [x] 4.5 phpbench: NFR-03 build-time benchmark (RFC-0001) (step:optimize) — route: fast / medium
+      · **ADR-0018**. *`QueryBuilderBench` measures the timing half (5-condition SELECT); the
+      "0 queries" half is a direct assertion (`testBuildingNeverRunsAQuery`, reusing item 4.4's
+      `QueryLog` fixture) rather than a benchmark, since timing cannot prove an absence. Measured:
+      **~23µs against the ≤10µs budget**, attributed to ~1µs per identifier quoted (allowlist +
+      driver-quote, ADR-0015) across 12 identifiers, plus per-call cloning from the same ADR's
+      immutability. Same shape as item 3.5's NFR-01 finding; handled the same way per ADR-0011's
+      precedent — shipped non-blocking, real number recorded, absolute enforcement stays item
+      7.1's job, gap filed as item 4.6 rather than fixed under this item's `fast/medium` route.*
+- [ ] 4.6 Close NFR-03's build-time gap: a 5-condition `QueryBuilder` SELECT currently measures
+      ~23µs against a ≤10µs budget (item 4.5, **ADR-0018**). Most plausibly caching the `driver()`
+      value the constructor already resolves once, rather than the repeated `PDO::getAttribute()`
+      call currently paid per identifier quoted — without weakening the allowlist (ADR-0015) or the
+      immutability guarantee. Needs its own measure-first pass — route: TBD (route at pickup)
 
 ---
 

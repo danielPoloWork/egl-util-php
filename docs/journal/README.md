@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — The same shape as NFR-01, found in a different class](2026/08/2026-08-04-nfr03-querybuilder-bench.md)
 - [2026-08-04 — Measuring what the old tests would have missed](2026/08/2026-08-04-t02-injection-suite.md)
 - [2026-08-04 — Transactions: three PDO probes that each decided a design](2026/08/2026-08-04-transaction-savepoints.md)
 - [2026-08-04 — The spec's own regex was the vulnerability](2026/08/2026-08-04-querybuilder-allowlist.md)
