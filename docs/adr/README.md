@@ -23,3 +23,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0005](0005-atomic-file-writes-with-a-sidecar-lock.md) | Atomic file writes, with the lock on a sidecar rather than the target | Accepted |
 | [0006](0006-shared-reflection-metadata-cache.md) | Shape the shared reflection-metadata cache as plain instances, without an interface | Accepted |
 | [0007](0007-measure-total-line-coverage-against-a-floor.md) | Enforce the coverage floor as total line coverage, measured once | Accepted |
+| [0008](0008-dto-hydration-strictness-and-shared-hydrator.md) | Strict-by-default hydration, and how a static entry point reaches shared state | Accepted |

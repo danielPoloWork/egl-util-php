@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Closing the coverage floor, and measuring it for the first time](docs/journal/2026/08/2026-08-04-coverage-floor-gate.md).
+  [2026-08-04 — Milestone 3 opens: DTO hydration, and PHP disagreeing with the requirement](docs/journal/2026/08/2026-08-04-dto-hydration.md).
 
 ## Model & effort routing (advisory)
 
@@ -131,9 +131,12 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
 
 Typed, mass-assignment-safe data transfer (RFC-0001).
 
-- [ ] 3.1 `DataTransferObject`: strict/lenient hydration, `MissingKeyException` semantics,
+- [x] 3.1 `DataTransferObject`: strict/lenient hydration, `MissingKeyException` semantics,
       nested DTOs, `Collection<T>` properties (RFC-0001 R-4) (sets-pattern) —
-      route: frontier-reasoning / high
+      route: frontier-reasoning / high · **ADR-0008**. *`Collection<T>` hydration is NOT in
+      this item: `Collection` itself is 3.3, and ADR-0006 deliberately placed the docblock
+      generic parser it needs there. Everything else — strict/lenient, R-4 optionality, nested
+      DTOs, path-carrying type mismatches — is done and covered by the T-01 suite.*
 - [ ] 3.2 `WithersTrait` with per-version readonly-clone handling 8.1→8.3 (RFC-0001)
       (severity:medium) — route: standard / medium
 - [ ] 3.3 `Collection<T>` with `@template` discipline enforced by PHPStan max (RFC-0001)
@@ -141,6 +144,13 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
 - [ ] 3.4 T-01 hydration matrix suite (RFC-0001) — route: fast / low
 - [ ] 3.5 phpbench: NFR-01 hydration + NFR-04 memory benchmarks (RFC-0001) (step:optimize) —
       route: fast / medium
+- [ ] 3.6 Add `deptrac.yaml` and turn on the layering gate. RFC-0001's dependency rule — *groups
+      depend downward on Support only; no cross-group imports* — has had nothing enforcing it:
+      the CI `layering` job self-skips until the config lands (the step-level guard from item
+      1.9). Until item 3.1 there was only one group, so the rule was vacuous; now that `Dto`
+      depends on `Support` it is a real constraint with a real direction, and the next four
+      milestones each add a group that could violate it. Prove the gate can fail by planting a
+      cross-group import — route: standard / medium
 
 ---
 
@@ -227,6 +237,6 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ⏳ |
 | §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ⏳ |
 | §6 | API example / public interface | 1.6, 3.1 | ⏳ |
-| §7 | Verification & test strategy | 1.2, 2.6, 3.4, 4.4, 6.3 | 🚧 |
+| §7 | Verification & test strategy | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3 | ⏳ |
 | §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | 🚧 |
