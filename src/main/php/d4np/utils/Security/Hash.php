@@ -72,13 +72,43 @@ final class Hash
         private readonly bool $bcryptFallback = true,
         private readonly ?LoggerInterface $logger = null,
     ) {
-        if (defined('PASSWORD_ARGON2ID')) {
-            $this->algorithm = PASSWORD_ARGON2ID;
+        $this->algorithm = self::selectAlgorithm(
+            defined('PASSWORD_ARGON2ID'),
+            $this->bcryptFallback,
+            $this->logger,
+        );
+    }
 
-            return;
+    /**
+     * The fallback policy itself, as a pure function of "is Argon2id available".
+     *
+     * **Separated from the constructor so it can be tested.** The constructor's own check —
+     * `defined('PASSWORD_ARGON2ID')` — is a compile-time fact that no test can vary: a constant
+     * cannot be un-defined, so on any build with Argon2 support the entire fallback branch is
+     * unreachable. Left inline, the most security-relevant decision in this class would have been
+     * unexecuted by the suite, and its coverage would have had to be waived rather than earned.
+     *
+     * Note what this does *not* expose: there is no way to make {@see make()} hash with bcrypt on
+     * a build that supports Argon2id. The seam is the **decision**, not the weak algorithm — which
+     * is the difference between making a policy testable and making it configurable.
+     *
+     * `@internal` because the availability argument has exactly one honest value in production,
+     * and that value is supplied by the constructor.
+     *
+     * @internal
+     *
+     * @throws UtilsException when Argon2id is unavailable and the fallback is disabled
+     */
+    public static function selectAlgorithm(
+        bool $argon2idAvailable,
+        bool $bcryptFallback,
+        ?LoggerInterface $logger = null,
+    ): string {
+        if ($argon2idAvailable) {
+            return PASSWORD_ARGON2ID;
         }
 
-        if (!$this->bcryptFallback) {
+        if (!$bcryptFallback) {
             throw new UtilsException(
                 'Argon2id is not available in this PHP build (PASSWORD_ARGON2ID is not defined), '
                 . 'and bcryptFallback is disabled, so this Hash refuses to construct rather than '
@@ -88,16 +118,16 @@ final class Hash
             );
         }
 
-        $this->algorithm = PASSWORD_BCRYPT;
-
-        // Once, here, rather than once per make(): a warning repeated on every password hash is
-        // one nobody reads.
-        $this->logger?->warning(
+        // Once, at construction, rather than once per make(): a warning repeated on every password
+        // hash is one nobody reads.
+        $logger?->warning(
             'Argon2id is unavailable in this PHP build; falling back to bcrypt for password '
             . 'hashing. Rebuild PHP with --with-password-argon2 to use the stronger algorithm, '
             . 'or construct Hash with bcryptFallback: false to make this a hard failure.',
             ['algorithm' => PASSWORD_BCRYPT],
         );
+
+        return PASSWORD_BCRYPT;
     }
 
     /**

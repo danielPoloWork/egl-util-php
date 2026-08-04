@@ -116,12 +116,30 @@ a number that has to keep moving. Item **5.5** owns the NFR-05 timing measuremen
   dead defensive code is worse than none, because it implies a failure mode that does not exist.
   Likewise an `assertTrue(defined('PASSWORD_ARGON2ID'))` guard became a `markTestSkipped`, since a
   guard that is statically true is not a guard.
-- **The bcrypt-fallback branch is unreachable on any build that has Argon2id, and is therefore
-  untested here.** This is not glossed: a deliberate probe (logging at `info` instead of `warning`)
-  **passed**, which is the proof that the WARNING *level* is currently unasserted. Three other
-  planted defects — `PASSWORD_DEFAULT`, a `needsRehash()` stuck at `false`, and a `verify()` doing
-  raw string comparison — each failed 4–6 tests. Roadmap item **5.5** owns the fallback matrix, and
-  reaching that branch needs either a PHP built without Argon2 or a seam this ADR declines to add.
+- **The bcrypt-fallback branch is unreachable in-process, so the *policy* was extracted to make it
+  testable.** `defined('PASSWORD_ARGON2ID')` is a compile-time fact no test can vary, so the
+  fallback branch could not be executed at all. That was first documented as an accepted gap —
+  and a deliberate probe (logging at `info` instead of `warning`) **passed**, proving the WARNING
+  level was unasserted. It then also dropped total line coverage to **89.03%**, under ADR-0007's
+  90% floor.
+
+  Neither available shortcut was acceptable: lowering the floor is the exact failure this project's
+  discipline exists to prevent, and a `@codeCoverageIgnore` would have hidden the most
+  security-relevant branch in the class from measurement entirely. So `selectAlgorithm()` was
+  extracted — the policy as a pure function of *"is Argon2id available"*, with the availability
+  supplied as an argument. The fail-fast refusal, the bcrypt selection, the WARNING **level**, and
+  the fact that refusing does *not* also log are now each asserted. Re-running the probe that had
+  passed: it now fails.
+
+  **The seam exposes the decision, not the weak algorithm.** There is no route to hashing with
+  bcrypt on a build that supports Argon2id — the difference between making a policy testable and
+  making it configurable, and the reason the rejected "offer bcrypt explicitly" alternative above
+  is still rejected.
+- Four planted defects each fail 1–6 tests: `PASSWORD_DEFAULT`, a `needsRehash()` stuck at `false`,
+  a `verify()` doing raw string comparison, and the `info`-instead-of-`warning` probe that only
+  became catchable after the extraction.
+- Item **5.5** still owns the NFR-05 timing measurement and the wider fallback matrix; what this
+  item closes is the policy's own correctness.
 
 ## References
 

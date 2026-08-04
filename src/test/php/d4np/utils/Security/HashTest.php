@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace D4np\Utils\Tests\Security;
 
 use D4np\Utils\Security\Hash;
+use D4np\Utils\Support\UtilsException;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LogLevel;
 
 /**
  * Spec FR-11's hashing policy.
@@ -206,5 +208,69 @@ final class HashTest extends TestCase
 
         self::assertNotSame('', $hash->algorithm());
         self::assertSame($hash->algorithm(), $hash->algorithm());
+    }
+
+    // ---- the fallback policy, on a simulated build without Argon2id ----------------------------
+    //
+    // `defined('PASSWORD_ARGON2ID')` is a compile-time fact no test can vary, so the policy is
+    // exercised through `selectAlgorithm()` with the availability supplied as an argument. Without
+    // this the most security-relevant branch in the class would be unexecuted, and its coverage
+    // waived rather than earned.
+
+    public function testWithoutArgon2idTheFallbackSelectsBcrypt(): void
+    {
+        self::assertSame(PASSWORD_BCRYPT, Hash::selectAlgorithm(false, true));
+    }
+
+    /**
+     * The WARNING level is part of the contract: this is an operational degradation someone needs
+     * to see, not an informational note. A probe that logged at `info` instead previously **passed**
+     * — because the branch was unreachable — which is what motivated making it testable.
+     */
+    public function testTheFallbackIsAnnouncedAtWarningLevel(): void
+    {
+        $logger = new RecordingLogger();
+
+        Hash::selectAlgorithm(false, true, $logger);
+
+        self::assertCount(1, $logger->records);
+        self::assertSame(LogLevel::WARNING, $logger->records[0]['level']);
+        self::assertStringContainsString('bcrypt', $logger->records[0]['message']);
+        self::assertSame(['algorithm' => PASSWORD_BCRYPT], $logger->records[0]['context']);
+    }
+
+    public function testWithoutArgon2idAndWithoutFallbackItRefuses(): void
+    {
+        $this->expectException(UtilsException::class);
+        $this->expectExceptionMessageMatches('/bcryptFallback is disabled/');
+
+        Hash::selectAlgorithm(false, false);
+    }
+
+    /**
+     * Refusing must not also log: a hard failure is already loud, and a WARNING alongside it would
+     * suggest the run continued in a degraded state when it did not.
+     */
+    public function testRefusingDoesNotAlsoLogAWarning(): void
+    {
+        $logger = new RecordingLogger();
+
+        try {
+            Hash::selectAlgorithm(false, false, $logger);
+        } catch (UtilsException) {
+            // expected
+        }
+
+        self::assertSame([], $logger->records);
+    }
+
+    /**
+     * The seam exposes the *decision*, not the weak algorithm — there is no route to hashing with
+     * bcrypt on a build that supports Argon2id.
+     */
+    public function testTheSeamCannotBeUsedToForceBcryptOnACapableBuild(): void
+    {
+        self::assertSame(PASSWORD_ARGON2ID, Hash::selectAlgorithm(true, true));
+        self::assertSame(PASSWORD_ARGON2ID, (new Hash(bcryptFallback: true))->algorithm());
     }
 }

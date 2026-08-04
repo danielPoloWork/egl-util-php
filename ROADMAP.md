@@ -307,8 +307,12 @@ Explicit-mechanism security helpers (RFC-0001; every item carries the protected 
       Fallback decided **once at construction** — `false` refuses to construct (fail fast means at
       wiring time, not first registration), `true` logs one WARNING rather than one per hash. The
       fallback is also a **value** (`algorithm()`), so a deployment without a logger can still
-      detect it. Honest gap: the fallback branch is unreachable on any build with Argon2id — proven
-      by a probe that **passed**, so the WARNING level is unasserted; item 5.5 owns that matrix.*
+      detect it. The fallback branch is unreachable in-process (`defined()` cannot be un-defined),
+      which a probe **passing** exposed and the coverage gate then forced to a real fix: the policy
+      is extracted as `selectAlgorithm()` — a pure function taking availability as an argument — so
+      the refusal, the bcrypt selection and the WARNING **level** are all asserted. The seam exposes
+      the **decision, not the weak algorithm**: there is still no way to hash with bcrypt on a
+      capable build. Item 5.5 keeps NFR-05 timing and the wider matrix.*
 - [ ] 5.4 OWASP XSS corpus snapshot suite + DOM-bypass corpus for `richText()` (RFC-0001)
       (security) — route: frontier-reasoning / extra
 - [ ] 5.5 Hash matrix tests (argon2id/bcrypt fallback, rehash triggers) + NFR-05 timing
