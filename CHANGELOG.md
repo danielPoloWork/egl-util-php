@@ -116,6 +116,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   recorded honestly rather than adjusted to pass, shipped non-blocking by explicit maintainer
   decision, with closing the gap filed as roadmap item 3.7. The `benchmark` CI job (self-skipped
   since item 1.9) is now active, since `phpbench.json.dist` exists.
+- `D4np\Utils\Dto\HydrationCompiler` (**ADR-0013**) closes NFR-01's performance gap: hydrating a
+  10-scalar-property DTO went from **15.40× to 2.74×** manual constructor assignment
+  (14.155 µs → 2.511 µs), meeting both halves of the budget for the first time. Four approaches
+  were measured before any code was written, and the budget proved **unreachable** by tuning the
+  interpreted loop (best case 4.80×) — so the hydrator now generates a per-class closure, but only
+  for the all-scalar shape NFR-01 actually specifies (non-variadic builtin `int`/`float`/`string`/
+  `bool`, no defaults). **Nested DTOs, `Collection`, enums, unions, `array`, variadics and
+  defaulted parameters are not compiled** and run the existing interpreter unchanged, at roughly
+  their previous cost — so this makes the specified shape fast, not every DTO. `HydrationParityTest`
+  runs every case down both paths and compares them against each other, and `new
+  HydrationCompiler(false)` turns generation off entirely for anyone who would rather no `eval`
+  ran in their process. Full before/after with the environment, the rejected alternatives, and the
+  ≈5.5-hydrations-per-process break-even for `eval`'s uncacheable compile cost is recorded in
+  [`docs/benchmarks/2026/08/nfr01-hydration-compiled-closure.md`](docs/benchmarks/2026/08/nfr01-hydration-compiled-closure.md).
+  NFR-04's 10 000-hydration benchmark improved as a side effect (149.7 ms → 37.8 ms).
 - `deptrac.yaml` (**ADR-0012**) turns on the layering gate RFC-0001 named but nothing enforced:
   *groups depend downward on Support only; no cross-group imports*. One layer per component group
   plus `Support` and `Version`, collected by **directory** (bound to the source tree RFC-0001 §A-9
