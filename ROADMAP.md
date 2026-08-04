@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — The same shape as NFR-01, found in a different class](docs/journal/2026/08/2026-08-04-nfr03-querybuilder-bench.md).
+  [2026-08-04 — Four grammars, and the assumption an escaper cannot check](docs/journal/2026/08/2026-08-04-escaper-contexts.md).
 
 ## Model & effort routing (advisory)
 
@@ -259,8 +259,18 @@ Safe-by-default PDO access (RFC-0001).
 
 Explicit-mechanism security helpers (RFC-0001; every item carries the protected `security` floor).
 
-- [ ] 5.1 `Escaper`: html/attr/js/url context escaping (RFC-0001) (security) —
-      route: frontier-reasoning / extra
+- [x] 5.1 `Escaper`: html/attr/js/url context escaping (RFC-0001) (security) —
+      route: frontier-reasoning / extra · **ADR-0019**. *Four methods, deliberately no general
+      `escape()` — a wrapper that guessed the context is the one that gets used in a `<script>`
+      block. **`attr()` assumes the attribute is UNQUOTED** (`&#xHH;` for every non-alphanumeric
+      ASCII): an escaper cannot see its call site, and the two assumptions are asymmetric —
+      assuming quoted is wrong toward an XSS hole, assuming unquoted is wrong toward verbosity.
+      `js()` escapes `/` (`</script>` ends the element regardless of JS string state) and
+      U+2028/U+2029 (JS line terminators pre-ES2019). Probed: without `ENT_SUBSTITUTE`,
+      `htmlspecialchars()` returns **`''`** for invalid UTF-8 — total silent data loss — so all
+      four substitute U+FFFD identically, via PCRE rather than `mbstring` (undeclared dependency,
+      and it substitutes `?` not U+FFFD). Suite proved non-vacuous with 7 planted defects. OWASP
+      corpus snapshot stays item 5.4.*
 - [ ] 5.2 `Sanitizer::richText()` over symfony/html-sanitizer (optional dep) +
       `sqlLikePattern()` (RFC-0001) (security) — route: frontier-reasoning / extra
 - [ ] 5.3 `Hash`: Argon2id default, `bcryptFallback` policy, `needsRehash()` (RFC-0001)
