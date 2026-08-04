@@ -140,7 +140,8 @@ final class TransactionTest extends TestCase
 
     public function testTheTransactionIsClosedAfterASuccessfulRun(): void
     {
-        $this->transaction()->run(static fn (): null => null);
+        $this->transaction()->run(static function (): void {
+        });
 
         self::assertFalse($this->connection->pdo()->inTransaction());
     }
@@ -323,6 +324,7 @@ final class TransactionTest extends TestCase
 
         $this->expectException(DatabaseException::class);
 
-        (new Transaction(new DatabaseConnection($pdo)))->run(static fn (): null => null);
+        (new Transaction(new DatabaseConnection($pdo)))->run(static function (): void {
+        });
     }
 }
