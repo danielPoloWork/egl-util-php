@@ -85,7 +85,8 @@ decisions, stricter review, and a maintained compliance-docs surface. The raised
 │   └── bugs/                       # in-repo bug ledger
 ├── tools/
 │   ├── consistency_lint.py         # agent-runnable cross-artifact congruence checker
-│   └── action_pin_lint.py          # ADR-0003 gate: CI actions pinned by SHA, comments truthful
+│   ├── action_pin_lint.py          # ADR-0003 gate: CI actions pinned by SHA, comments truthful
+│   └── coverage_gate.py            # ADR-0007 gate: total line coverage against the 90% floor
 └── .github/                        # CI + release workflows, PR/issue templates, CODEOWNERS, Dependabot
 ```
 
@@ -210,6 +211,20 @@ only that each `uses:` names a 40-hex SHA with a version comment; whether that c
 *true* can only be settled against the upstream repository, and the tool says so in its own
 output rather than letting the cheap half stand in for the whole.
 
+**Coverage floor** — CI enforces it on every PR; run it locally when you have a coverage driver
+(`pcov` or Xdebug), which is the only thing this needs that CI supplies and a bare checkout may
+not:
+
+```bash
+vendor/bin/phpunit --coverage-clover build/logs/clover.xml
+python tools/coverage_gate.py build/logs/clover.xml --min 90
+```
+
+It enforces [ADR-0007](docs/adr/0007-measure-total-line-coverage-against-a-floor.md). A missing
+or empty report **fails** rather than skipping — a coverage gate that goes green when no driver
+was loaded reports a floor nobody is standing on. What it measures is **total** line coverage,
+not the coverage of the lines a change touched; the tool prints that limit on every run.
+
 ## 7. Documentation Maintenance
 
 Documentation is part of the deliverable. Every PR ships its own doc updates.
@@ -283,12 +298,13 @@ Every PR must clear, at minimum:
 | Format | `PHP-CS-Fixer (PSR-12)` clean |
 | Unit tests | cover the new/changed behavior; pass on every CI cell |
 | Sanitizers / checkers | PHPStan max level (type soundness); PCOV for coverage green where applicable |
-| Coverage | new code ≥ 90% line (finalized in an ADR) |
+| Coverage | ≥ 90% total line coverage, enforced in CI by `tools/coverage_gate.py` (**ADR-0007**, which finalizes what is measured: total, not per-diff) |
 | API docs | `phpDocumentor` builds without warnings |
 | Performance claims | backed by a reproducible benchmark under `src/bench/` |
 | Versioning | SemVer; `CHANGELOG.md` updated for user-visible changes |
 | Congruence | `python tools/consistency_lint.py` passes |
 | CI action pinning | `python tools/action_pin_lint.py` passes; CI runs it with `--verify-upstream` (ADR-0003) |
+| Coverage floor | `python tools/coverage_gate.py <clover.xml> --min 90` passes; CI measures and runs it (ADR-0007) |
 | Review (enterprise) | **two** approving reviews before merge; a security-relevant change also requires the `security-auditor`'s sign-off |
 | Security ADR (enterprise) | every security-relevant decision carries an ADR (§7) — no undocumented judgment calls |
 | Compliance (enterprise) | `docs/compliance/` control register current; a touched control's row updated in the same PR |

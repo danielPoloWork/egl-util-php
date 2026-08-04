@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-04 — Closing the coverage floor, and measuring it for the first time](2026/08/2026-08-04-coverage-floor-gate.md)
 - [2026-08-04 — Making spec §7's T-05 suite a mechanical fact](2026/08/2026-08-04-t05-property-suite.md)
 - [2026-08-04 — The shared reflection cache: designing for consumers that do not exist yet](2026/08/2026-08-04-reflection-metadata-cache.md)
 - [2026-08-03 — Env::get() and Json: two functions, three probed gotchas](2026/08/2026-08-03-env-json.md)

@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Making spec §7's T-05 suite a mechanical fact](docs/journal/2026/08/2026-08-04-t05-property-suite.md).
+  [2026-08-04 — Closing the coverage floor, and measuring it for the first time](docs/journal/2026/08/2026-08-04-coverage-floor-gate.md).
 
 ## Model & effort routing (advisory)
 
@@ -116,14 +116,14 @@ The foundation every group depends on — the deptrac-legal bottom layer (RFC-00
       (RFC-0001) — route: fast / low. All three landed with their own items (2.2, 2.4);
       this tags them `#[Group('T-05')]` so `vendor/bin/phpunit --group T-05` runs
       spec §7's named suite as a runnable, countable unit rather than a docblock claim.
-- [ ] 2.7 Measure and enforce the coverage floor. `AGENTS.md` §10 and spec NFR-07 both state
-      **≥ 90% line coverage**, and nothing checks it: the `build` job sets up `pcov` but runs
-      `vendor/bin/phpunit` with no `--coverage` flag and no threshold, so the number is neither
-      produced nor compared. PHPUnit 10 has no fail-under option, so this needs a clover report
-      plus a threshold check. Found while writing item 2.1, which could not verify its own
-      coverage claim locally (no driver) *or* in CI (no gate) — the same
-      stated-but-ungated shape as items 1.10/1.11. Prove the gate can fail —
-      route: standard / medium
+- [x] 2.7 Measure and enforce the coverage floor. `AGENTS.md` §10 and spec NFR-07 both state
+      **≥ 90% line coverage**, and nothing checked it: the `build` job set up `pcov` but ran
+      `vendor/bin/phpunit` with no `--coverage` flag and no threshold, so the number was neither
+      produced nor compared. PHPUnit 10 has no fail-under option (a dozen `--fail-on-*` switches,
+      no coverage threshold), so this needed a Clover report plus `tools/coverage_gate.py`.
+      Settled by **ADR-0007**, which also finalizes what `AGENTS.md` §10 deferred: the figure is
+      **total** line coverage, not per-diff, and the tool says so on every run. Proved the gate
+      can fail on all five paths — route: standard / medium
 
 ---
 
