@@ -157,9 +157,14 @@ final class Hydrator
         if (!$parameter->isBuiltin) {
             // A non-builtin type name is only a class-string if it actually resolves. The
             // reflection cache proved the *declaring* class loadable, not the types of its
-            // parameters — one naming a class that was never autoloadable (or a relative `self`
-            // / `parent`) reaches here. Checking says so plainly instead of failing later inside
-            // an `instanceof` that quietly answers false.
+            // parameters — one naming a class that was never autoloadable reaches here.
+            //
+            // NOT covered by the suite, deliberately: reaching it needs a DTO whose parameter
+            // type does not exist, and PHPStan at max level rejects exactly that (`class.notFound`),
+            // so the state cannot occur in this codebase. The check stays because it is what
+            // narrows `string` to `class-string` for the type system, and because a consumer who
+            // does not run PHPStan can still reach it. A fixture to cover it was written, seen
+            // rejected by the linter, and removed rather than suppressed.
             if (!class_exists($type) && !interface_exists($type)) {
                 throw new HydrationException(sprintf(
                     'Cannot hydrate: parameter type "%s" does not resolve to a loadable class '
@@ -218,12 +223,15 @@ final class Hydrator
             'array' => is_array($value),
             'iterable' => is_iterable($value),
             'object' => is_object($value),
-            'callable' => is_callable($value),
-            'null' => $value === null,
-            'true' => $value === true,
-            'false' => $value === false,
-            // An unrecognised builtin is not assumed to be a mismatch: PHP's own check at
-            // construction decides, and construct() turns its TypeError into a library exception.
+            // Everything else falls through deliberately, rather than growing an arm per type.
+            //
+            // `callable` cannot be a property type at all, and the standalone `null`, `true` and
+            // `false` types only exist from PHP 8.2 — below this project's 8.1 floor, so arms for
+            // them would be unreachable on the minimum supported version and merely *look* like
+            // coverage on 8.3. Passing through is correct rather than lax: PHP's own check runs
+            // at construction, and construct() converts the resulting TypeError into a library
+            // exception carrying the path (ADR-0004's contract), so a genuine mismatch is still
+            // reported — with PHP's wording instead of this class's.
             default => true,
         };
     }

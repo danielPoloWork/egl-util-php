@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Tests\Dto;
 
+use D4np\Utils\Dto\DataTransferObject;
 use D4np\Utils\Support\HydrationException;
 use D4np\Utils\Support\MissingKeyException;
 use D4np\Utils\Support\TypeMismatchException;
@@ -11,12 +12,14 @@ use D4np\Utils\Support\UnknownKeyException;
 use D4np\Utils\Support\UtilsThrowable;
 use D4np\Utils\Tests\Dto\Fixture\AddressDto;
 use D4np\Utils\Tests\Dto\Fixture\CustomerDto;
+use D4np\Utils\Tests\Dto\Fixture\IterableAndObjectDto;
 use D4np\Utils\Tests\Dto\Fixture\MixedDto;
 use D4np\Utils\Tests\Dto\Fixture\NoConstructorDto;
 use D4np\Utils\Tests\Dto\Fixture\NonDtoTypedDto;
 use D4np\Utils\Tests\Dto\Fixture\OptionalsDto;
 use D4np\Utils\Tests\Dto\Fixture\OrderDto;
 use D4np\Utils\Tests\Dto\Fixture\ScalarsDto;
+use D4np\Utils\Tests\Dto\Fixture\UnionTypedDto;
 use D4np\Utils\Tests\Dto\Fixture\UserDto;
 use D4np\Utils\Tests\Dto\Fixture\VariadicDto;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -359,6 +362,58 @@ final class DataTransferObjectTest extends TestCase
     public function testAVariadicConstructorHydratesWhenTheKeyIsAbsent(): void
     {
         self::assertSame([], VariadicDto::fromArray([])->rest);
+    }
+
+    public function testHydratingTheAbstractBaseItselfIsRefused(): void
+    {
+        // `static::class` is the abstract base here, which the metadata reports as not
+        // instantiable — refused with a clear message rather than failing inside `new`.
+        try {
+            DataTransferObject::fromArray([]);
+            self::fail('expected a HydrationException');
+        } catch (HydrationException $e) {
+            self::assertStringContainsString('not instantiable', $e->getMessage());
+        }
+    }
+
+    public function testIterableAndObjectParametersAreTypeChecked(): void
+    {
+        $dto = IterableAndObjectDto::fromArray(['items' => [1, 2], 'thing' => new \stdClass()]);
+
+        self::assertSame([1, 2], $dto->items);
+
+        $this->expectException(TypeMismatchException::class);
+        IterableAndObjectDto::fromArray(['items' => 'not iterable', 'thing' => new \stdClass()]);
+    }
+
+    public function testAnObjectParameterRejectsAScalar(): void
+    {
+        $this->expectException(TypeMismatchException::class);
+
+        IterableAndObjectDto::fromArray(['items' => [], 'thing' => 'not an object']);
+    }
+
+    public function testAUnionTypedParameterAcceptsEitherArm(): void
+    {
+        // The metadata does not reduce a union to one arm (ADR-0006), so the value passes
+        // through unchecked here and PHP's own check decides at construction.
+        self::assertSame(1, UnionTypedDto::fromArray(['value' => 1])->value);
+        self::assertSame('x', UnionTypedDto::fromArray(['value' => 'x'])->value);
+    }
+
+    /**
+     * The `TypeError` backstop, reached through the one gap the checks deliberately leave: a
+     * union type. Without the conversion a bare `TypeError` would escape and break ADR-0004's
+     * "one thing to catch" contract for precisely the cases nobody anticipated.
+     */
+    public function testAValueNoUnionArmAcceptsBecomesALibraryExceptionNotABareTypeError(): void
+    {
+        try {
+            UnionTypedDto::fromArray(['value' => [1, 2, 3]]);
+            self::fail('expected a HydrationException');
+        } catch (HydrationException $e) {
+            self::assertInstanceOf(\TypeError::class, $e->getPrevious(), 'the original stays reachable');
+        }
     }
 
     // ------------------------------------------------------- exception contract
