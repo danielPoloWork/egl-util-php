@@ -38,6 +38,11 @@ final class ParameterMetadata
      *                                  does not silently describe `...$args` as an ordinary
      *                                  parameter — being truthful about what was reflected is the
      *                                  cache's entire job
+     * @param list<object> $attributes  the parameter's attribute instances, **uninterpreted**.
+     *                                  Deliberately untyped beyond `object`: a consumer group
+     *                                  (`Dto`, `Container`) knows what its own attributes mean,
+     *                                  and `Support` must not — naming one here would import a
+     *                                  group upward and break the layering rule RFC-0001 sets
      */
     public function __construct(
         public readonly string $name,
@@ -48,7 +53,28 @@ final class ParameterMetadata
         public readonly bool $hasDefault,
         public readonly mixed $default,
         public readonly bool $isVariadic,
+        public readonly array $attributes = [],
     ) {
+    }
+
+    /**
+     * The parameter's attribute of type `$class`, or `null` when it carries none.
+     *
+     * @template A of object
+     *
+     * @param class-string<A> $class
+     *
+     * @return A|null
+     */
+    public function attribute(string $class): ?object
+    {
+        foreach ($this->attributes as $attribute) {
+            if ($attribute instanceof $class) {
+                return $attribute;
+            }
+        }
+
+        return null;
     }
 
     /**

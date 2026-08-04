@@ -218,6 +218,10 @@ final class Hydrator
             throw TypeMismatchException::at($path, $parameter->declaredType ?? $type, 'null');
         }
 
+        if ($type === Collection::class) {
+            return $this->coerceCollection($value, $parameter, $lenient, $path);
+        }
+
         if (!$parameter->isBuiltin) {
             // A non-builtin type name is only a class-string if it actually resolves. The
             // reflection cache proved the *declaring* class loadable, not the types of its
@@ -245,6 +249,64 @@ final class Hydrator
         }
 
         return $value;
+    }
+
+    /**
+     * Build a {@see Collection} for a `Collection`-typed parameter.
+     *
+     * The element type comes from the parameter's `#[CollectionOf]` attribute, because PHP has no
+     * runtime generics and the docblock `Collection<Foo>` yields a token that only a real parser
+     * could resolve through the file's `use` statements and aliases (ADR-0010).
+     *
+     * **Without the attribute the elements are passed through untouched**, which is what a
+     * `Collection<string>` wants and is the honest thing to do when the element type is genuinely
+     * unknown: guessing that an array of arrays means an array of DTOs would be inventing a
+     * mapping the declaration never expressed.
+     *
+     * The return is `Collection<mixed>`: the element type is only known at run time, from the
+     * attribute, so there is nothing for the static type to be parameterised by here. The
+     * caller's own `@param Collection<Foo>` docblock is what PHPStan checks against — which is
+     * exactly the division of labour ADR-0010 describes.
+     *
+     * @return Collection<mixed>
+     *
+     * @throws HydrationException
+     */
+    private function coerceCollection(mixed $value, ParameterMetadata $parameter, bool $lenient, string $path): Collection
+    {
+        if ($value instanceof Collection) {
+            return $value;
+        }
+
+        if (!is_iterable($value)) {
+            throw TypeMismatchException::at($path, Collection::class, get_debug_type($value));
+        }
+
+        $of = $parameter->attribute(CollectionOf::class);
+        if ($of === null) {
+            return new Collection($value);
+        }
+
+        $items = [];
+        $index = 0;
+        foreach ($value as $element) {
+            $elementPath = self::join($path, (string) $index);
+
+            if ($element instanceof $of->type) {
+                $items[] = $element;
+            } elseif (is_a($of->type, DataTransferObject::class, true) && is_array($element)) {
+                /** @var array<string, mixed> $element */
+                $items[] = $this->hydrateAt($of->type, $element, $lenient, $elementPath);
+            } else {
+                throw TypeMismatchException::at($elementPath, $of->type, get_debug_type($element));
+            }
+
+            $index++;
+        }
+
+        // Guarded with the declared element type: the attribute said what these are, so the
+        // collection carries the check rather than trusting that this loop got it right.
+        return Collection::of($of->type, $items);
     }
 
     /**

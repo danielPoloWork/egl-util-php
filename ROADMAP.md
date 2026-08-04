@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — Withers: meeting a "per-version" requirement by not depending on the version](docs/journal/2026/08/2026-08-04-withers-trait.md).
+  [2026-08-04 — Collection<T>, and changing a decision a previous ADR had already named](docs/journal/2026/08/2026-08-04-collection.md).
 
 ## Model & effort routing (advisory)
 
@@ -143,8 +143,11 @@ Typed, mass-assignment-safe data transfer (RFC-0001).
       `__clone()`, still an error on 8.1/8.2, while rebuilding through the constructor works
       identically on all three — and additionally preserves constructor validation, which a
       clone bypasses.*
-- [ ] 3.3 `Collection<T>` with `@template` discipline enforced by PHPStan max (RFC-0001)
-      (severity:medium) — route: standard / medium
+- [x] 3.3 `Collection<T>` with `@template` discipline enforced by PHPStan max (RFC-0001)
+      (severity:medium) — route: standard / medium · **ADR-0010**. *Also closes the
+      `Collection<T>` hydration gap item 3.1 deferred here — via a `#[CollectionOf]` attribute
+      rather than the docblock parser ADR-0006 anticipated, because a docblock yields an
+      unresolvable alias token while an attribute argument arrives already resolved by PHP.*
 - [ ] 3.4 T-01 hydration matrix suite (RFC-0001) — route: fast / low
 - [ ] 3.5 phpbench: NFR-01 hydration + NFR-04 memory benchmarks (RFC-0001) (step:optimize) —
       route: fast / medium
