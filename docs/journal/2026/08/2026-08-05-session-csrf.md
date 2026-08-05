@@ -60,6 +60,9 @@ now.
 Three occurrences of this shape in three items — 4.6 (sub-noise saving), 5.3 (unreachable branch),
 6.2 (timing-only property) — is enough that it's a pattern rather than three coincidences.
 
+*(It turned out to be four. See the last section: the same class had a second one, and I walked
+straight past it while writing this paragraph.)*
+
 ## PHPStan pushed me to a decision I'd already made elsewhere
 
 `SameSite` started as a validated `string`. PHPStan max rejected it: `session_set_cookie_params()`
@@ -94,16 +97,56 @@ wiring time instead of as "sessions don't work".
 - **Scope names are validated** — a scope becomes a session-storage key, so a scope from user input
   would let a client grow the session record one key per request.
 
-## Honest gap
+## The gap I wrote up as honest, and the gate that disagreed
 
-`start()` and `regenerate()` have **no unit coverage and cannot**. The cookie *policy* is covered;
-the *behaviour* — that the cookie really carries the flags, that the session id really changes —
-belongs to item **6.3**. Named in the ADR, the class docblock and the test file rather than left
-silent.
+I finished the item with this in the ADR, the class docblock and the test file:
+
+> `start()` and `regenerate()` have no unit coverage and cannot.
+
+Then CI failed the coverage floor at **89.59%**, `Session` sitting at 61.54%.
+
+Two exits were available and both were familiar: lower the floor, or `@codeCoverageIgnore`. A third
+had turned up while probing — `start()`'s cookie-params failure *is* reachable in CLI, because
+`session_set_cookie_params()` returns `false` and the guard throws. One small test, +4 lines,
+90.03%. Clears the gate by 0.03%.
+
+That third option is the one worth naming, because it was the tempting one. It is a coverage fix
+wearing a test's clothes: the number goes green, nothing anyone cares about gets asserted, and I
+ship it as though the problem were solved.
+
+Re-reading the gap instead of routing around it turned up something I had written down myself and
+not followed through on. From the docblock:
+
+> The order is not optional: `session_set_cookie_params()` has no effect once the session has
+> started.
+
+Get that order wrong and **everything still works**. Session created, values round-trip, all 1157
+tests green — and the cookie went out with none of `httponly`, `secure`, `samesite`. Both orderings
+produce a working session. Nothing about the outcome distinguishes them.
+
+Which is §7 again, in a second place in the same class. `hash_equals` vs `===` is invisible because
+the values match and only the timing differs; params-before-start is invisible because the session
+works either way and only the sequence differs. I found that shape once this item, wrote an ADR
+section about it, and still walked past the second instance — because the first announced itself as
+a failed probe, and this one was sitting quietly in a comment I had written myself.
+
+So: `SessionApi`, five methods, no behaviour. `NativeSessionApi` delegates and does nothing else.
+`Session` keeps the guards, the ordering and the error mapping, and a fake records the call order.
+Same justification as `CsrfToken`'s `SessionStore` two sections up — and it satisfies ADR-0006's
+rule that an interface waits for a consumer to need one, because the consumer showed up.
+
+Probes: swapping the order in `start()` fails 3 tests where it previously failed **none**. Weakening
+`session_regenerate_id(true)` to `session_regenerate_id()` — which renames the session while leaving
+the old identifier valid, the half of fixation that matters — fails 1.
+
+The 5.3 journal said *"a gap written up as acceptable is a gap nobody closes."* I quoted that line
+in this item's own ADR, in the section explaining why I would not accept the `hash_equals` gap, and
+then accepted a different one four paragraphs later. The gate caught it. That is twice the coverage
+floor has done work no reviewer asked it to.
 
 ## Bar
 
-1157 tests / 2553 assertions green (up from 1109). `--group T-03` runs 48. PHPStan max clean,
+1175 tests / 2576 assertions green (up from 1109). `--group T-03` runs 66. PHPStan max clean,
 deptrac 0/0, consistency lint OK.
 
 ## Next

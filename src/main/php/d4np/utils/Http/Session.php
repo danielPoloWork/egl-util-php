@@ -34,6 +34,14 @@ use D4np\Utils\Support\HttpException;
  * `$_SERVER['HTTPS']`, which would quietly disable the flag on any deployment sitting behind a
  * misconfigured proxy. Same shape as `Hash`'s `bcryptFallback`: safe by default, opt out on
  * purpose, visible in the wiring.
+ *
+ * **The session functions themselves come through {@see SessionApi}** (ADR-0026 §8), for the same
+ * reason and by the same route. Because PHP returns `false` from all of them in CLI, the guards
+ * below, the error paths, and above all the *ordering* in {@see start()} were unreachable by any
+ * test. The ordering is the one worth naming: applied after the session has started, the cookie
+ * parameters have no effect and the session cookie goes out without FR-15's flags — a session that
+ * works perfectly and is unprotected. Both orderings "work", so only an assertion on the call
+ * sequence can tell them apart.
  */
 final class Session implements SessionStore
 {
@@ -45,6 +53,10 @@ final class Session implements SessionStore
      *                            value is a compile-time impossibility instead of a runtime check
      *                            (ADR-0015's reasoning, applied again)
      * @param string $path the cookie path
+     * @param SessionApi $api PHP's session functions, behind a seam so this class's guards,
+     *                        ordering and error paths can be tested at all (ADR-0026 §8). The
+     *                        default is the real thing; nothing but the test suite passes anything
+     *                        else
      *
      * @throws HttpException if `None` is paired with an insecure cookie
      */
@@ -52,6 +64,7 @@ final class Session implements SessionStore
         private readonly bool $secure = true,
         private readonly SameSite $sameSite = SameSite::Lax,
         private readonly string $path = '/',
+        private readonly SessionApi $api = new NativeSessionApi(),
     ) {
         // The one constraint the type system cannot express, because it spans two arguments:
         // browsers reject `SameSite=None` without `Secure` and drop the cookie entirely. Failing
@@ -102,15 +115,15 @@ final class Session implements SessionStore
      */
     public function start(): void
     {
-        if (session_status() === PHP_SESSION_ACTIVE) {
+        if ($this->api->status() === PHP_SESSION_ACTIVE) {
             return;
         }
 
-        if (session_status() === PHP_SESSION_DISABLED) {
+        if ($this->api->status() === PHP_SESSION_DISABLED) {
             throw new HttpException('Sessions are disabled in this PHP build.');
         }
 
-        if (!session_set_cookie_params($this->cookieParams())) {
+        if (!$this->api->setCookieParams($this->cookieParams())) {
             throw new HttpException(
                 'Could not apply the session cookie parameters. They must be set before the '
                 . 'session starts and before any output; this refuses rather than starting a '
@@ -118,7 +131,7 @@ final class Session implements SessionStore
             );
         }
 
-        if (!session_start()) {
+        if (!$this->api->start()) {
             throw new HttpException('Could not start the session.');
         }
     }
@@ -138,13 +151,13 @@ final class Session implements SessionStore
      */
     public function regenerate(): void
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
+        if ($this->api->status() !== PHP_SESSION_ACTIVE) {
             throw new HttpException(
                 'Cannot regenerate a session identifier before the session has started.',
             );
         }
 
-        if (!session_regenerate_id(true)) {
+        if (!$this->api->regenerateId()) {
             throw new HttpException('Could not regenerate the session identifier.');
         }
     }
@@ -179,8 +192,8 @@ final class Session implements SessionStore
     {
         $_SESSION = [];
 
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            session_destroy();
+        if ($this->api->status() === PHP_SESSION_ACTIVE) {
+            $this->api->destroy();
         }
     }
 }

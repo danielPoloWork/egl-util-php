@@ -368,8 +368,12 @@ The application-facing groups (RFC-0001).
       `hash_equals()` with `===` **passed the entire suite** — they return identical values and
       differ only in timing, so no behavioural test can see it. Now asserted as a **mechanism**
       (item 4.6's pattern). `SameSite` became an enum after PHPStan rejected a validated string —
-      ADR-0015's reasoning, reached from the other direction. Honest gap: `start()`/`regenerate()`
-      remain uncoverable here; item 6.3's `php -S` suite owns them.*
+      ADR-0015's reasoning, reached from the other direction. **Then the coverage gate found the
+      same shape a second time:** `start()` must apply the cookie parameters **before** starting,
+      and both orderings produce a working session — the wrong one just ships a cookie with none of
+      FR-15's flags. Nothing observable separates them, so the session functions moved behind a
+      `SessionApi` seam and a fake asserts the call sequence (**§8**). Honest gap remaining is
+      genuinely behavioural — a real cookie, a real identifier — and item 6.3 owns it.*
 - [ ] 6.3 T-03 session/CSRF integration suite against a real `php -S` process (RFC-0001)
       (security) — route: frontier-reasoning / extra
 - [ ] 6.4 `Container` (PSR-11) + `ServiceProvider`; NFR-02 benchmarks (RFC-0001, imported

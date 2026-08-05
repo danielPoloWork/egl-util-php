@@ -102,6 +102,36 @@ method's own source. That is the pattern roadmap item **4.6** settled when a sav
 measurement noise floor: *when a property cannot be observed in behaviour, assert the thing that
 produces it rather than pretending a behavioural test covers it.* Re-running the probe now fails.
 
+### 8. The session functions come through a `SessionApi` seam — which the coverage gate forced, and was right to
+
+§1 stopped half way. Making the cookie policy a value covered the *policy* and left `start()`,
+`regenerate()` and `destroy()` — every guard, every error path, and the ordering rule — with no
+unit coverage at all. That was written up in this ADR's first revision as an acceptable gap owned by
+item 6.3. The coverage gate then failed the branch at **89.59%**, and re-reading the gap showed it
+was not only a coverage hole:
+
+> `session_set_cookie_params()` has no effect once the session has started.
+
+Apply the parameters after starting and **everything still works**. A session is created, values
+round-trip, every existing assertion passes — and the cookie went out with none of the three flags
+FR-15 exists to pin. Both orderings produce a working session, so no assertion on the *outcome* can
+tell them apart. This is §7's situation exactly, in a second place: a load-bearing property that
+behaviour cannot see. The ADR called the ordering *"not optional"* and nothing tested it.
+
+So `SessionApi` — five methods, no behaviour — with `NativeSessionApi` delegating to PHP and
+nothing else. `Session` keeps the guards, the ordering and the error mapping, and a fake records the
+call sequence. The interface is justified the same way §2 justifies `SessionStore`, and passes
+ADR-0006's test that an interface waits for a consumer to need it: the consumer arrived.
+
+What stays uncovered is `NativeSessionApi` itself, and that is the point of the split — five
+single-statement delegations with no branch, ordering or error handling, small enough that there is
+nothing in them to get wrong. Item 6.3 exercises them against a real server.
+
+**Two probes, both caught.** Swapping the order in `start()` fails 3 tests where it previously
+failed none. Weakening `session_regenerate_id(true)` to `session_regenerate_id()` — which renames
+the session while leaving the old identifier valid, the half of session fixation that matters —
+fails 1.
+
 ## Alternatives Considered
 
 - **`CsrfToken` reading `$_SESSION` directly** — rejected: it makes the security-critical logic
@@ -119,20 +149,34 @@ produces it rather than pretending a behavioural test covers it.* Re-running the
 - **Accepting that `hash_equals` is untestable and documenting the gap** — rejected. That was the
   first instinct, and item 5.3 already showed where it leads: a gap written up as acceptable is a
   gap nobody closes. The mechanism assertion is crude but deterministic.
+- **Leaving `start()`/`regenerate()` uncovered and lowering the 90% floor, or marking them
+  `@codeCoverageIgnore`** — rejected in §8, and this is the third time the same pair of easy exits
+  has presented itself. Lowering the floor is the precise failure this project's discipline exists
+  to prevent; an ignore annotation would have hidden the session-fixation defence from measurement
+  altogether. Both would also have left the ordering rule unasserted, which turned out to be the
+  real cost.
+- **`Session` made non-final so a test double could override the session calls** — rejected: it
+  opens the class to subclassing everywhere to serve one test, where an injected seam is visible in
+  the signature and costs nothing at runtime.
+- **Testing only `start()`'s CLI failure path**, which *is* reachable (`session_set_cookie_params()`
+  returns `false`, so it throws) — rejected as a coverage fix dressed as a test. It would have
+  cleared the floor by 0.03% and asserted nothing about the ordering.
 - **Capping the number of stored per-scope tokens** — rejected in favour of validating the scope
   name: a cap would silently invalidate live tokens, where a refusal names the actual mistake.
 
 ## Consequences
 
-- 51 tests across the three classes; `--group T-03` runs 48. Total 1157.
+- 69 tests across the six classes; `--group T-03` runs 66. Total 1175.
 - **Verified non-vacuous**: a predictable token (5 failures), scope validation removed (14),
-  `httponly` off (2), and — after §7 — `hash_equals` → `===` (1, where it previously caught
-  nothing).
-- **`Session::start()` and `regenerate()` have no unit coverage**, and cannot: PHP refuses to run a
-  session in CLI. The cookie *policy* is covered; the *behaviour* — that the cookie really carries
-  the flags, that the identifier really changes across `regenerate()` — belongs to item **6.3**'s
-  `php -S` suite. Named here, in the class docblock, and in the test file rather than left as a
-  silent hole.
+  `httponly` off (2), `hash_equals` → `===` (1, where it previously caught nothing, §7), the
+  `start()` ordering swapped (3, likewise, §8) and `session_regenerate_id(true)` weakened to
+  `session_regenerate_id()` (1, §8).
+- **`Session` is now fully covered**, including the ordering rule, both `start()` failure paths and
+  the session-fixation guard. What remains uncovered is `NativeSessionApi`'s five delegations,
+  which contain no logic by construction.
+- Still outside the unit suite, and genuinely behavioural: that a real browser cookie carries the
+  flags, and that a real identifier changes across `regenerate()`. That is item **6.3**'s `php -S`
+  suite. Named here, in the class docblock and in the test file rather than left silent.
 - `Session` implements `SessionStore`, so the production wiring is `new CsrfToken(new Session())`
   with no adapter.
 - `destroy()` deliberately does not expire the cookie: writing headers is a `Response` concern, and

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Tests\Http;
 
+use D4np\Utils\Http\NativeSessionApi;
 use D4np\Utils\Http\SameSite;
 use D4np\Utils\Http\Session;
 use D4np\Utils\Http\SessionStore;
 use D4np\Utils\Support\HttpException;
+use D4np\Utils\Tests\Http\Fixture\RecordingSessionApi;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
@@ -16,14 +18,19 @@ use PHPUnit\Framework\TestCase;
  *
  * **What this file can and cannot cover, stated up front.** PHP will not run a session in CLI —
  * `session_start()`, `session_set_cookie_params()` and `session_regenerate_id()` all return
- * `false`, verified — so `start()` and `regenerate()` cannot be exercised here at all. That is
- * exactly why the cookie **policy** is a pure value (`cookieParams()`): it lets FR-15's three
- * flags be asserted without a live session, which is the half that would otherwise have no unit
- * test whatsoever.
+ * `false`, verified. Two structural moves put the logic back in reach anyway: the cookie **policy**
+ * is a pure value (`cookieParams()`), and the session functions come through a `SessionApi` seam
+ * (ADR-0026 §8) that a fake can record.
  *
- * The behaviour against a real server — that the cookie actually carries the flags, that the
- * session identifier actually changes across `regenerate()` — is roadmap item **6.3**'s
- * integration suite against a `php -S` process. Named here rather than left as a silent hole.
+ * The second move exists mostly for one property. `start()` must apply the cookie parameters
+ * *before* the session starts; applied after, they have no effect and the cookie goes out without
+ * FR-15's flags — a session that works perfectly and is unprotected. Both orderings produce a
+ * working session, so nothing about the outcome distinguishes them. Only the call sequence does,
+ * which is what `RecordingSessionApi` makes visible.
+ *
+ * What remains outside this file is genuinely behavioural: that a real browser cookie carries the
+ * flags, and that a real session identifier changes across `regenerate()`. That is roadmap item
+ * **6.3**'s integration suite against a `php -S` process.
  */
 #[Group('T-03')]
 final class SessionTest extends TestCase
@@ -166,7 +173,95 @@ final class SessionTest extends TestCase
         self::assertSame([], $_SESSION);
     }
 
-    // ---- the guards that are reachable without a live session ------------------------------------
+    // ---- start(): ordering, guards and error paths, through the seam -----------------------------
+
+    /**
+     * **The reason the seam exists.**
+     *
+     * `session_set_cookie_params()` has no effect once the session has started. Get the order wrong
+     * and everything still works — a session is created, values round-trip, tests pass — except the
+     * cookie went out without `httponly`, `secure` or `samesite`. The failure is invisible in every
+     * observable outcome, so the sequence itself has to be the assertion.
+     */
+    public function testStartAppliesTheCookiePolicyBeforeStartingTheSession(): void
+    {
+        $api = new RecordingSessionApi();
+
+        (new Session(api: $api))->start();
+
+        self::assertSame(
+            ['setCookieParams', 'start'],
+            $api->calls,
+            'parameters set after start() are silently ignored, and the cookie loses FR-15 flags',
+        );
+    }
+
+    /**
+     * And the policy that reaches PHP is the same value `cookieParams()` publishes — otherwise the
+     * flag assertions above would be testing a value nothing consumes.
+     */
+    public function testStartAppliesExactlyThePublishedPolicy(): void
+    {
+        $api = new RecordingSessionApi();
+        $session = new Session(sameSite: SameSite::Strict, path: '/app', api: $api);
+
+        $session->start();
+
+        self::assertSame($session->cookieParams(), $api->params);
+    }
+
+    /**
+     * A request reaching two entry points should not fail on the second, so an already-active
+     * session is a no-op — and, importantly, must not re-apply parameters that would be ignored.
+     */
+    public function testStartOnAnAlreadyActiveSessionDoesNothing(): void
+    {
+        $api = new RecordingSessionApi(status: PHP_SESSION_ACTIVE);
+
+        (new Session(api: $api))->start();
+
+        self::assertSame([], $api->calls);
+    }
+
+    public function testStartRefusesWhenSessionsAreDisabledInTheBuild(): void
+    {
+        $api = new RecordingSessionApi(status: PHP_SESSION_DISABLED);
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessageMatches('/disabled in this PHP build/');
+
+        (new Session(api: $api))->start();
+    }
+
+    /**
+     * If the flags cannot be applied, the session must **not** start. Starting anyway would produce
+     * exactly the unprotected session this class exists to prevent, and would do it silently.
+     */
+    public function testStartDoesNotStartASessionWhoseCookiePolicyCouldNotBeApplied(): void
+    {
+        $api = new RecordingSessionApi(setCookieParamsSucceeds: false);
+
+        try {
+            (new Session(api: $api))->start();
+            self::fail('expected the failed cookie policy to be refused');
+        } catch (HttpException $e) {
+            self::assertMatchesRegularExpression('/Could not apply the session cookie parameters/', $e->getMessage());
+        }
+
+        self::assertSame(['setCookieParams'], $api->calls, 'an unprotected session must never be started');
+    }
+
+    public function testStartRefusesWhenTheSessionCannotBeStarted(): void
+    {
+        $api = new RecordingSessionApi(startSucceeds: false);
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessageMatches('/Could not start the session/');
+
+        (new Session(api: $api))->start();
+    }
+
+    // ---- regenerate(): the session-fixation defence ----------------------------------------------
 
     /**
      * `regenerate()` before `start()` is a programming error, and saying so is more useful than
@@ -174,11 +269,77 @@ final class SessionTest extends TestCase
      */
     public function testRegenerateBeforeStartIsRefused(): void
     {
-        self::assertNotSame(PHP_SESSION_ACTIVE, session_status(), 'this test assumes no active session');
+        $api = new RecordingSessionApi();
 
         $this->expectException(HttpException::class);
         $this->expectExceptionMessageMatches('/before the session has started/');
 
-        (new Session())->regenerate();
+        (new Session(api: $api))->regenerate();
+    }
+
+    public function testRegenerateReplacesTheIdentifierOnceTheSessionIsRunning(): void
+    {
+        $api = new RecordingSessionApi();
+        $session = new Session(api: $api);
+
+        $session->start();
+        $session->regenerate();
+
+        self::assertSame(['setCookieParams', 'start', 'regenerateId'], $api->calls);
+    }
+
+    /**
+     * A failed regeneration is refused rather than ignored: swallowing it leaves the caller
+     * believing a privilege transition rotated the identifier when it did not, which is the whole
+     * of session fixation.
+     */
+    public function testRegenerateRefusesWhenPhpCannotRegenerate(): void
+    {
+        $api = new RecordingSessionApi(regenerateSucceeds: false);
+        $session = new Session(api: $api);
+        $session->start();
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessageMatches('/Could not regenerate/');
+
+        $session->regenerate();
+    }
+
+    // ---- destroy() -------------------------------------------------------------------------------
+
+    public function testDestroyDestroysTheServerSideRecordWhenOneExists(): void
+    {
+        $_SESSION = ['a' => '1'];
+        $api = new RecordingSessionApi(status: PHP_SESSION_ACTIVE);
+
+        (new Session(api: $api))->destroy();
+
+        self::assertSame([], $_SESSION);
+        self::assertSame(['destroy'], $api->calls);
+    }
+
+    public function testDestroyClearsTheDataWithoutCallingPhpWhenNoSessionIsActive(): void
+    {
+        $_SESSION = ['a' => '1'];
+        $api = new RecordingSessionApi();
+
+        (new Session(api: $api))->destroy();
+
+        self::assertSame([], $_SESSION);
+        self::assertSame([], $api->calls, 'session_destroy() without an active session only emits a warning');
+    }
+
+    // ---- the seam must not become the production path --------------------------------------------
+
+    /**
+     * Everything above runs against a fake, which is only meaningful if the real wiring is the real
+     * thing. A default quietly changed to a test double would leave this whole file green while the
+     * library did nothing.
+     */
+    public function testTheDefaultSessionApiIsPhpsOwn(): void
+    {
+        $api = (new \ReflectionProperty(Session::class, 'api'))->getValue(new Session());
+
+        self::assertInstanceOf(NativeSessionApi::class, $api);
     }
 }
