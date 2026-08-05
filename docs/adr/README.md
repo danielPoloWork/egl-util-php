@@ -48,3 +48,6 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0030](0030-same-runner-ab-because-a-stored-baseline-cannot-carry-a-10-percent-gate.md) | A same-runner A/B, because a stored baseline cannot carry NFR-06's 10% gate — and all three deferred budgets are met | Accepted |
 | [0031](0031-run-the-bc-checker-outside-the-dependency-graph-and-gate-breaks-by-bump.md) | Run the BC checker outside this package's dependency graph, gate breaks by the bump, and settle the deprecation window | Accepted |
 | [0032](0032-verify-the-tag-before-drafting-and-let-packagist-pull.md) | Verify the tag before a draft exists, ask GitHub about the signature, and let Packagist pull | Accepted |
+| [0033](0033-bridge-source-in-the-monorepo-published-through-a-generated-split-repository.md) | The bridge's source lives in this monorepo; a generated, read-only split repository is only its publication target | Accepted |
+| [0034](0034-whole-collection-readers-on-request.md) | Whole-collection readers on `Request`, because a key-scoped reader cannot enumerate | Accepted |
+| [0035](0035-guard-the-ref-shape-rather-than-trust-a-glob-and-never-skip-release-mode.md) | Guard the ref shape rather than trust a glob, and never skip release mode | Accepted |

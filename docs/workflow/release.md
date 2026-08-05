@@ -54,6 +54,30 @@ working copy and has no tag to compare against. `git tag -a v0.2.0` on a tree wh
 says `0.1.0` produces a release that installs as one version and reports itself as another, and
 nothing inside the tree disagrees with itself — so no lint notices.
 
+### Releasing the PSR-7 bridge
+
+`egl/utils-psr7-bridge` versions **independently** of the core (ADR-0033 §3). Its releases are cut
+from package-scoped tags here and published to a generated, read-only split repository:
+
+```bash
+git tag -a -s utils-psr7-bridge-v0.1.0 -m "<headline>"
+git push origin utils-psr7-bridge-v0.1.0
+```
+
+`.github/workflows/bridge-release.yml` then verifies the tag is annotated and signed, checks it
+against `packages/utils-psr7-bridge/CHANGELOG.md`'s `## [X.Y.Z]` heading (a Composer library carries
+no version constant, so the changelog is what anchors the tag), runs the contract suite in **release
+mode**, splits the package and pushes it as a plain `vX.Y.Z`.
+
+Two things to know before cutting one:
+
+- **The core must be released first.** Release mode installs the package resolving `egl/utils` from
+  Packagist, exactly as a consumer would. That is the only evidence for the constraint the package
+  publishes, so it is never skipped — which means a bridge release is impossible until a core
+  version matching its constraint exists (ADR-0035 §2).
+- **`workflow_dispatch` is a dry run.** Running the workflow manually against an existing tag
+  validates everything and pushes nothing.
+
 ### One-time maintainer prerequisites
 
 Both are the maintainer's, not the agent's, and the first release cannot succeed without them.
@@ -67,6 +91,17 @@ Both are the maintainer's, not the agent's, and the first release cannot succeed
    each tag push, which is why no Packagist token lives in this repository. The workflow prints the
    package URL to confirm after publishing; it deliberately does not call the Packagist API, since
    that would both duplicate the integration and cross the agent-vs-human line below.
+3. **For the bridge only** — a **split repository** and a token that can write to it:
+   - create the repository (e.g. `danielPoloWork/egl-utils-psr7-bridge`), empty, and treat it as
+     **read-only**: it is generated, and accepts no commits or pull requests;
+   - set the repository variable `BRIDGE_SPLIT_REPO` to its `owner/name`;
+   - set the secret `BRIDGE_SPLIT_TOKEN` to a token with write access to it — `GITHUB_TOKEN` cannot
+     write to another repository, which is why this one is needed;
+   - register `egl/utils-psr7-bridge` on Packagist, pointing at the split repository.
+
+   Until the variable and secret exist, `bridge-release.yml` fails at its prerequisite step and says
+   what is missing — after the gates have passed, so the message distinguishes "not configured" from
+   "the release is bad".
 
 ## Boundary
 

@@ -12,6 +12,87 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The PSR-7 bridge's publication pipeline** (**ADR-0035**, spec 02 r3) —
+  `.github/workflows/bridge-release.yml` and `tools/bridge_release_gate.py`, closing Milestone 8.
+  On a `utils-psr7-bridge-vX.Y.Z` tag it verifies the tag is annotated and signed (ADR-0032's
+  GitHub-side mechanism, reused), checks it against the package changelog's `## [X.Y.Z]` heading —
+  a Composer library carries no version constant, so the changelog is what anchors a bridge tag —
+  runs the contract suite in **release mode**, then splits the package and pushes it to the
+  generated split repository as a plain `vX.Y.Z`.
+  **Release mode is never skipped.** This project's standing pattern is to skip a gate that cannot
+  run yet and self-enable later (lesson L-0010), and that is right for a gate that *checks*
+  something and wrong for one that *establishes* something: release mode is the only evidence for
+  the package's central published claim, so skipping it would publish a package nobody has tested
+  against a released core. Consequently **no bridge version can be published until `egl/utils` has
+  a release** — the pipeline fails today, by design, saying exactly that.
+  **Tag-grammar isolation is a guard, not a glob.** Spec r1 planned to verify with a throwaway tag
+  that `v*.*.*` does not match `utils-psr7-bridge-v*`; each workflow now refuses a ref that is not
+  its own shape, which is stronger — it does not depend on GitHub's matcher staying what it is —
+  and pushes no test tag to a public repository. `release.yml` gains that guard as its first step.
+
+- **`Request::queryAll()`, `postAll()`, `cookieAll()` and `uploadedFiles()`** (**ADR-0034**) —
+  whole-collection readers, added because roadmap item 8.2 found spec 02's BFR-04…BFR-07 were not
+  implementable: every core collection reader was key-scoped, only `headers()` returned a whole
+  collection, and a POST body and `$_FILES` were recoverable from nothing else the class exposed.
+  Purely additive, so **no BC break**.
+  **This is not a retreat from ADR-0025.** That rule governs *scalar* reads — `queryString('email')`
+  refuses an array because `(string) ['x']` yields the literal `"Array"`, a value nobody sent. A
+  whole-collection reader promises no conversion and so cannot convert wrongly; the typed accessors
+  keep refusing, unchanged, and a test asserts both behaviours side by side. `headers()` and
+  `file()` already returned raw collections from this class.
+  Each returns a **copy** — PHP arrays are values — so no caller receives mutable access to a
+  request's state. `serverAll()` was deliberately *not* added: nothing in the bridge contract needs
+  it, and everything the core reads from `$_SERVER` is already reachable through `method()`,
+  `uri()`, `isSecure()` and `headers()`.
+
+- **`packages/utils-psr7-bridge/` scaffold** (roadmap item **8.1**, implementing ADR-0033 and
+  spec 02 §2) — a complete Composer package with its own manifest, PSR-4 roots
+  (`D4np\Utils\Bridge\Psr7\`), PHPStan configuration at max level, README and changelog. **No
+  converters yet**: they land with their contract suite in item 8.2, and a stub throwing
+  "not implemented" would be a worse artifact than an empty PSR-4 root.
+  A new **`quality / PSR-7 bridge contract`** CI job runs the package against the core **from the
+  working tree** via a path repository injected into the CI workspace only — the same-PR guarantee
+  ADR-0033 chose the monorepo for. It asserts `egl/utils` resolved with source type `path`, because
+  a quiet fallback to a published core would leave that guarantee a fiction with every test still
+  green. The job self-enables in two stages (absent package → notice; scaffold without tests →
+  notice; a test file appears → it runs), all three branches verified.
+  **`BridgePackageBoundaryTest` lives in the core's suite**, not the package's, because the
+  invariant with the sharpest consequence — no `repositories` entry in the committed manifest —
+  breaks only *standalone* installs of the published package, which nothing in this repository would
+  otherwise notice. Running PR mode locally mutates the manifest exactly that way; planting both
+  mutations fails two of its tests by name.
+  A **deptrac `Bridge` layer** makes a core → `D4np\Utils\Bridge\` dependency a build failure.
+  Verified, and instructively: an unused `use` statement produces **0 violations** — deptrac
+  resolves type dependencies, not imports — while a real type reference produces
+  `Response must not depend on Psr7Bridge`.
+  The package declares `egl/utils: ^0.7` against a core release that **does not exist yet**
+  (`VERSION` is `0.0.0`, no tag), so it is not installable standalone until the core ships `v0.7.0`.
+  That is a true statement of the dependency rather than a placeholder, and the package README says
+  so where someone would otherwise meet it as a resolution error.
+
+- **The PSR-7 bridge packaging decision** (**ADR-0033**, closing Milestone 7 and RFC-0001's A-8) —
+  plus [`docs/specs/02_spec_psr7_bridge.md`](docs/specs/02_spec_psr7_bridge.md), the frozen contract
+  Milestone 8 implements. **No code lands**: item 7.4's deliverable is the decision.
+  Two findings reframed "subtree vs second repository" before options could be weighed: Packagist
+  requires `composer.json` at a repository root, so a second repository exists under **every**
+  option — the real question is whether it is authored or **generated**; and the maintainer struck a
+  phantom cost from the analysis (EADOS is an external generation tool, not repository governance,
+  so "duplicating" it never belonged on the ledger).
+  Decision: canonical source under **`packages/utils-psr7-bridge/`** in this monorepo; the split
+  repository is a generated, **read-only** publication target; **independent versioning by design**
+  — `utils-psr7-bridge-vX.Y.Z` tags, signed at the source and verified before splitting
+  (ADR-0032's mechanism), translate to `vX.Y.Z` on the split repository. The load-bearing property
+  is same-PR integration: a core change that breaks the conversion contract fails in the PR that
+  introduces it — with its flip side named, a **release-mode** re-test against the *released* core
+  before any bridge tag ships.
+  Imported ADR-002's conversion contract is now numbered, testable clauses (**BFR-01…BFR-22**),
+  including its two sharpest edges: a PSR-7 response bearing multiple `Set-Cookie` headers is
+  **refused** rather than comma-joined (RFC 6265 cookie strings contain commas — joining corrupts
+  them silently), and uploaded files cross the `$_FILES` ↔ `UploadedFileInterface` boundary with
+  error codes preserved verbatim and **no stream access on a failed upload**. Milestone 8
+  (items 8.1–8.3) carries the implementation; the Spec Coverage Map's §7 row honestly **reopens**,
+  since the spec-named bridge contract tests do not exist yet.
+
 - **A verified release path** (**ADR-0032**) — spec §8, NFR-07. `release.yml` previously drafted a
   GitHub Release from whatever was tagged, having checked only that `composer install` succeeded. It
   is now three jobs, and **nothing is drafted until all of them pass**, because a draft is

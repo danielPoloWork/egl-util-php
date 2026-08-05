@@ -52,7 +52,8 @@ setup.
 | 4 | Database | ✅ done |
 | 5 | Security | ✅ done |
 | 6 | HTTP, container, errors | ✅ done |
-| 7 | Release engineering & bridge | ⏳ planned |
+| 7 | Release engineering & bridge | ✅ done |
+| 8 | PSR-7 bridge (`packages/utils-psr7-bridge`) | ⏳ planned |
 
 
 ## License

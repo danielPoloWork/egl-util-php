@@ -22,6 +22,14 @@ __pycache__/
 /vendor/
 /.cargo/
 
+# Monorepo packages (ADR-0033). `/vendor/` above is root-anchored and does not reach these.
+# `composer.lock` is deliberately not committed for the packages: they are libraries, and CI's
+# PR mode rewrites the manifest in the workspace anyway (spec 02 §7).
+packages/*/vendor/
+packages/*/composer.lock
+packages/*/.phpunit.cache/
+packages/*/.phpstan.cache/
+
 # Coverage & test artifacts
 /coverage/
 *.gcda
