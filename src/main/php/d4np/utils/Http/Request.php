@@ -124,6 +124,72 @@ final class Request
         return self::asStringList($this->post[$key] ?? null);
     }
 
+    // ---- whole-collection readers ----------------------------------------------------------------
+
+    /*
+     * The four methods below return their input **raw and entire**, which is a deliberate exception
+     * to everything the typed accessors above stand for — so it is worth saying why it is not a
+     * retreat from ADR-0025.
+     *
+     * ADR-0025's rule is about *scalar* reads: `queryString('email')` refuses an array rather than
+     * producing the literal `"Array"`, because a caller asking for one string has been handed
+     * something else and coercion would hide that. These methods make no such promise and cannot
+     * mislead in that way — a caller asking for the whole collection is asking for exactly what
+     * arrived, values of every shape included.
+     *
+     * They exist because the PSR-7 bridge (ADR-0033, ADR-0034) must project a whole request across
+     * the boundary, and a key-scoped reader cannot enumerate. `headers()` and `file()` already
+     * returned raw collections before them, so this is the established shape rather than a new one.
+     *
+     * PHP arrays are values: the caller gets a copy, so nothing here hands out a mutable view of
+     * this request's state.
+     */
+
+    /**
+     * The whole query collection, exactly as it arrived.
+     *
+     * @return array<array-key, mixed>
+     */
+    public function queryAll(): array
+    {
+        return $this->query;
+    }
+
+    /**
+     * The whole POST collection, exactly as it arrived.
+     *
+     * @return array<array-key, mixed>
+     */
+    public function postAll(): array
+    {
+        return $this->post;
+    }
+
+    /**
+     * The whole cookie collection, exactly as it arrived.
+     *
+     * @return array<array-key, mixed>
+     */
+    public function cookieAll(): array
+    {
+        return $this->cookies;
+    }
+
+    /**
+     * Every uploaded-file entry, in `$_FILES` shape.
+     *
+     * The counterpart to {@see file()}, which reads one by key. Uploaded files are the one
+     * collection with no typed accessor at all — an uploaded-file abstraction is precisely what
+     * RFC-0001 declined to re-implement — so this returns what PHP produced and the bridge turns it
+     * into `UploadedFileInterface` instances.
+     *
+     * @return array<array-key, mixed>
+     */
+    public function uploadedFiles(): array
+    {
+        return $this->files;
+    }
+
     // ---- request line and headers --------------------------------------------------------------
 
     /**

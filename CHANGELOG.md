@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`Request::queryAll()`, `postAll()`, `cookieAll()` and `uploadedFiles()`** (**ADR-0034**) —
+  whole-collection readers, added because roadmap item 8.2 found spec 02's BFR-04…BFR-07 were not
+  implementable: every core collection reader was key-scoped, only `headers()` returned a whole
+  collection, and a POST body and `$_FILES` were recoverable from nothing else the class exposed.
+  Purely additive, so **no BC break**.
+  **This is not a retreat from ADR-0025.** That rule governs *scalar* reads — `queryString('email')`
+  refuses an array because `(string) ['x']` yields the literal `"Array"`, a value nobody sent. A
+  whole-collection reader promises no conversion and so cannot convert wrongly; the typed accessors
+  keep refusing, unchanged, and a test asserts both behaviours side by side. `headers()` and
+  `file()` already returned raw collections from this class.
+  Each returns a **copy** — PHP arrays are values — so no caller receives mutable access to a
+  request's state. `serverAll()` was deliberately *not* added: nothing in the bridge contract needs
+  it, and everything the core reads from `$_SERVER` is already reachable through `method()`,
+  `uri()`, `isSecure()` and `headers()`.
+
 - **`packages/utils-psr7-bridge/` scaffold** (roadmap item **8.1**, implementing ADR-0033 and
   spec 02 §2) — a complete Composer package with its own manifest, PSR-4 roots
   (`D4np\Utils\Bridge\Psr7\`), PHPStan configuration at max level, README and changelog. **No

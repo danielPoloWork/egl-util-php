@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — A rule that looked right and did nothing](docs/journal/2026/08/2026-08-05-bridge-scaffold.md).
+  [2026-08-05 — The contract that could not be implemented](docs/journal/2026/08/2026-08-05-bridge-converters.md).
 
 ## Model & effort routing (advisory)
 
@@ -524,11 +524,24 @@ API-freeze review for the **core** is unaffected by this milestone.
       Running PR mode locally **mutated the committed manifest** exactly as spec §6 forbids, so the
       boundary invariants are asserted from the **core's** suite (runs on every PR, not only when
       the package's job does) — planting the mutations fails two by name.*
-- [ ] 8.2 `Psr7Bridge` converters + the full **T-B** contract suite: every clause of spec 02
+- [x] 8.2 `Psr7Bridge` converters + the full **T-B** contract suite: every clause of spec 02
       §4–§5 (BFR-01…BFR-22) tested against **two** PSR-17 implementations (nyholm/psr7,
       guzzlehttp/psr7), each refusal and fidelity clause probe-verified by planting the defect it
       claims to catch (severity:high — the conversion contract is the package's entire value) —
-      route: standard / high
+      route: standard / high *(session model matched the route)* · **ADR-0034**, **spec 02 r2**.
+      *Blocked at the first line: **BFR-04…BFR-07 were not implementable**. Every core collection
+      reader was key-scoped (`queryString($k)`, `postList($k)`, `cookie($k)`, `file($k)`) and only
+      `headers()` returned a whole collection — POST and `$_FILES` recoverable from nothing else,
+      and re-parsing `uri()`/the `Cookie` header would have introduced a second parsing path beside
+      PHP's own. Put to the maintainer with four alternatives; they chose to widen the core, so
+      `Request` gained `queryAll()`, `postAll()`, `cookieAll()`, `uploadedFiles()` (**ADR-0034**,
+      additive, no BC break, and not a retreat from ADR-0025 — that rule governs **scalar** reads,
+      and a whole-collection reader promises no conversion so it cannot convert wrongly). 65 tests /
+      202 assertions across both implementations. **Five defects planted, all caught on both
+      vendors:** the `Set-Cookie` refusal removed (2 failures), a failed upload's stream opened (2
+      errors), an object parsed body accepted (2), a nested upload tree accepted (2), the body
+      rewind dropped (2). Spec 02 → r2: BFR-07's "lazily wraps `tmp_name`" corrected, since
+      eagerness is the PSR-17 factory's business and neither vendor defers.*
 - [ ] 8.3 Publication pipeline per spec 02 §6: signed-source-tag verification (ADR-0032 reused),
       **release-mode** contract run against the released core, `git subtree split` + translated
       tag push to the read-only split repository; verify the `v*.*.*` / `utils-psr7-bridge-v*`
