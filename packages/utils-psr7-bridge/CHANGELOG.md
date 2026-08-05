@@ -13,7 +13,22 @@ release does not imply a bridge release, or the reverse.
 
 ### Added
 
+- **`Psr7Bridge`** (roadmap item **8.2**) — bidirectional conversion between the core's HTTP values
+  and PSR-7 messages: `requestToPsr7()`, `requestFromPsr7()`, `responseToPsr7()`,
+  `responseFromPsr7()`. PSR-17 factories are **injected at construction**, never discovered or
+  defaulted.
+  The full **T-B** contract suite implements spec 02 §4–§5 (**BFR-01…BFR-22**) and runs against
+  **both** `nyholm/psr7` and `guzzlehttp/psr7` — 65 tests, 202 assertions. Each refusal and fidelity
+  clause was probe-verified by planting the defect it claims to catch; all five plants failed on
+  both implementations.
+  Two clauses carry the weight, and both refuse rather than corrupt:
+  a response bearing **multiple `Set-Cookie` headers** is refused, because PSR-7's own comma-joining
+  reduction — right for every other header — produces a string no client can split back, cookie
+  values containing commas of their own; and a **failed upload's stream is never touched**, its
+  error code preserved verbatim, since PSR-7 permits `getStream()` to throw there.
+  Requires the core's whole-collection readers (`queryAll()` and friends), added in the same change
+  by ADR-0034.
 - Package scaffold (roadmap item **8.1**): `composer.json`, PSR-4 roots, PHPStan configuration at
   max level, this changelog and the package README — the boundary specified by
   [`docs/specs/02_spec_psr7_bridge.md`](../../docs/specs/02_spec_psr7_bridge.md) §2.
-  No converters yet: they land with their contract suite in item **8.2**, and publication in **8.3**.
+  Publication to Packagist lands in item **8.3**.

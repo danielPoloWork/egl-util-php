@@ -6,7 +6,7 @@
 > discipline as [`01_spec_utils.md`](01_spec_utils.md): a diverging implementation updates this spec
 > in the same PR, with a revision entry and a rationale.
 
-**Revision r1** — 2026-08-05. See [Revision history](#revision-history).
+**Revision r2** — 2026-08-05. See [Revision history](#revision-history).
 
 ## 1. Scope & non-goals
 
@@ -89,6 +89,14 @@ PSR-17 factory" (imported ADR-002) means *injected*, never discovered or default
 The core `Request` converts to **`ServerRequestInterface`** (not plain `RequestInterface`): it wraps
 superglobals, which is precisely PSR-7's server-side request.
 
+**Core API this depends on (added by [ADR-0034](../adr/0034-whole-collection-readers-on-request.md)).**
+When item 8.2 implemented these clauses, four of them turned out not to be implementable: the core's
+collection readers were all key-scoped, so a whole query, POST, cookie or uploaded-file collection
+could not be *enumerated* at all. POST and `$_FILES` were recoverable from nothing else the class
+exposed. `Request` therefore gained `queryAll()`, `postAll()`, `cookieAll()` and `uploadedFiles()` —
+additively, with no BC break, and without weakening the typed accessors' refusal semantics, which
+govern *scalar* reads and are untouched.
+
 ## 4. Conversion contract — requests
 
 Each clause is a testable obligation; §7 maps them to the suite. "Refused" always means a
@@ -107,9 +115,12 @@ crossing the bridge intact.
 - **BFR-05** — `getParsedBody()` equals the core's POST array.
 - **BFR-06** — `getCookieParams()` equals the core's cookie projection.
 - **BFR-07** — each file the core exposes becomes an `UploadedFileInterface` preserving size, error
-  code (`UPLOAD_ERR_*`, verbatim), client filename and client media type. The stream lazily wraps
-  `tmp_name`; **when `error !== UPLOAD_ERR_OK` the stream is never opened** — PSR-7 permits
-  `getStream()` to throw on a failed upload, and there is nothing valid to read.
+  code (`UPLOAD_ERR_*`, verbatim), client filename and client media type. The stream is created from
+  `tmp_name` through the injected `StreamFactoryInterface`; **when `error !== UPLOAD_ERR_OK` no
+  stream over `tmp_name` is created at all** — PSR-7 permits `getStream()` to throw on a failed
+  upload, and there is nothing valid to read. (r1 said the stream "lazily wraps" `tmp_name`;
+  whether a factory opens eagerly is the implementation's business and neither vendor defers, so the
+  clause states what the bridge controls.)
 - **BFR-08** — **detachment**: mutating a superglobal after conversion does not change the produced
   message. The conversion is a snapshot, not a view.
 
@@ -219,3 +230,4 @@ methodology rather than being invented here.
 | Rev | Date | Change |
 |-----|------|--------|
 | r1 | 2026-08-05 | Commissioned by ADR-0033 (item 7.4): package boundary, independent versioning, publication pipeline, and imported ADR-002's conversion contract as BFR-01…BFR-22. |
+| r2 | 2026-08-05 | Item 8.2, from implementing it. §3 records the four whole-collection readers `Request` gained (ADR-0034) — without them BFR-04–07 were not implementable, since every core collection reader was key-scoped and POST and `$_FILES` were recoverable from nothing else. BFR-07's wording corrected: r1 said the upload stream "lazily wraps" `tmp_name`, but eagerness is the PSR-17 factory's business and neither reference implementation defers, so the clause now states what the bridge controls — that no stream over `tmp_name` is created at all for a failed upload. |
