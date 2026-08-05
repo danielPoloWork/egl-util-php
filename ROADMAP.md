@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — The client picks the type, not the application](docs/journal/2026/08/2026-08-04-http-wrappers.md).
+  [2026-08-05 — A probe that passed, and this time it was the code](docs/journal/2026/08/2026-08-05-session-csrf.md).
 
 ## Model & effort routing (advisory)
 
@@ -358,8 +358,22 @@ The application-facing groups (RFC-0001).
       (response splitting) **at set time, not send time**, and stores names case-insensitively so a
       duplicate `Content-Type` cannot be smuggled past a proxy. PHPStan caught a type annotation
       that was a lie: `?0=zero` yields an **integer** key, so superglobals are `array<array-key>`.*
-- [ ] 6.2 `Session` hardening + `regenerate()`; `CsrfToken` — CSPRNG, `hash_equals`, per-form
+- [x] 6.2 `Session` hardening + `regenerate()`; `CsrfToken` — CSPRNG, `hash_equals`, per-form
       scoping; Http placement per RFC-0001 R-1 (security) — route: frontier-reasoning / extra
+      *(run at standard tier; mismatch recorded)* · **ADR-0026**. *One probe shaped the item: PHP
+      will not run a session in CLI — `session_start()`, `session_set_cookie_params()` and
+      `session_regenerate_id()` **all return `false`** — so the cookie policy is exposed as a pure
+      **value** (`cookieParams()`) and `CsrfToken` takes a `SessionStore` seam, or FR-15's flags
+      and all of CSRF validation would have had no unit assertion at all. **The finding:** replacing
+      `hash_equals()` with `===` **passed the entire suite** — they return identical values and
+      differ only in timing, so no behavioural test can see it. Now asserted as a **mechanism**
+      (item 4.6's pattern). `SameSite` became an enum after PHPStan rejected a validated string —
+      ADR-0015's reasoning, reached from the other direction. **Then the coverage gate found the
+      same shape a second time:** `start()` must apply the cookie parameters **before** starting,
+      and both orderings produce a working session — the wrong one just ships a cookie with none of
+      FR-15's flags. Nothing observable separates them, so the session functions moved behind a
+      `SessionApi` seam and a fake asserts the call sequence (**§8**). Honest gap remaining is
+      genuinely behavioural — a real cookie, a real identifier — and item 6.3 owns it.*
 - [ ] 6.3 T-03 session/CSRF integration suite against a real `php -S` process (RFC-0001)
       (security) — route: frontier-reasoning / extra
 - [ ] 6.4 `Container` (PSR-11) + `ServiceProvider`; NFR-02 benchmarks (RFC-0001, imported

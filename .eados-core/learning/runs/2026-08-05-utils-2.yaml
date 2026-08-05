@@ -1,0 +1,38 @@
+# Run record — appended by tools/record_run.py; a fact about a past run, never edited
+# after the fact. `phase` is the delivery phase that produced it (#215).
+slug: "utils"
+date: "2026-08-05"
+phase: "scaffold"
+lang: "php"
+kind: "library"
+outcome: "failed"
+overrides:
+  - key: "governance.capabilities.bench"
+    default: false
+    chosen: true
+  - key: "governance.capabilities.packaging"
+    default: false
+    chosen: true
+  - key: "governance.posture"
+    default: "standard"
+    chosen: "enterprise"
+  - key: "ownership.assignee"
+    default: "@me"
+    chosen: "danielPoloWork"
+  - key: "ownership.default_branch"
+    default: "main"
+    chosen: "master"
+  - key: "spec.provenance"
+    default: "coauthor"
+    chosen: "import"
+  - key: "toolchain.coverage_target"
+    default: 80
+    chosen: 90
+lessons_applied: []
+failures:
+  - gate: "coverage-floor"
+    message: "ADR-0007's 90% floor failed at 89.59%; Http\\Session 61.54%. start()/regenerate() had been written up in ADR-0026 as an acceptable gap owned by item 6.3, on the true premise that PHP returns false from every session function in CLI. The gate refused the writeup and was right to: the gap hid an unasserted correctness rule, not just uncovered lines — start() must apply the cookie parameters BEFORE session_start(), and both orderings yield a working session, so the wrong one ships a cookie without FR-15's three flags and no behavioural test can see it."
+rubric: {}
+route_mismatch:
+  routed: "frontier-reasoning/extra"
+  session: "standard"

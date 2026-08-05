@@ -147,6 +147,35 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `D4np\Utils\Http\Session`, `CsrfToken`, `SameSite`, and the `SessionStore` / `SessionApi`
+  interfaces with `NativeSessionApi`
+  (**ADR-0026**) — spec FR-12 and FR-15. `Session` applies `httponly`, `secure` and
+  `samesite=Lax` before starting, and `regenerate()` wraps `session_regenerate_id(true)` — the
+  `true` being the half that closes session fixation, since without it the old identifier keeps
+  working. `CsrfToken` issues 32 CSPRNG bytes per scope and compares with `hash_equals()`.
+  **The cookie policy is exposed as a value** (`cookieParams()`) and `CsrfToken` depends on a
+  three-method `SessionStore` rather than `$_SESSION`, because PHP will not run a session in CLI —
+  `session_start()`, `session_set_cookie_params()` and `session_regenerate_id()` all return
+  `false` — so without those seams FR-15's flags and all of CSRF validation would have had no unit
+  assertion at all.
+  `secure` defaults to `true` with an explicit named opt-out for local `http://` development,
+  rather than auto-detection from `$_SERVER['HTTPS']` which would silently disable the flag behind
+  a misconfigured proxy. `httponly` has **no** opt-out. `SameSite` is an enum, so an illegal value
+  is a compile-time impossibility; `None` without `Secure` is refused at construction, because
+  browsers drop that combination entirely.
+  A token is issued **once per scope and reused** — regenerating per render would invalidate the
+  token in another open tab — with `rotate()` as the explicit call for a privilege transition.
+  Scope names are validated: a scope becomes a session-storage key, so one taken from user input
+  would let a client grow the session record one key per request.
+  PHP's session functions themselves sit behind a third seam, `SessionApi` (**ADR-0026 §8**), whose
+  `NativeSessionApi` default is five single-statement delegations. That exists for one property
+  behaviour cannot see: the cookie parameters must be applied **before** the session starts, since
+  `session_set_cookie_params()` has no effect afterwards. Get it wrong and the session still works
+  perfectly — with a cookie carrying none of FR-15's flags. Only the call sequence distinguishes the
+  two, so a fake asserts the sequence.
+  **Known gap:** that a real browser cookie carries the flags, and that a real identifier changes
+  across `regenerate()`, remain behavioural — roadmap item 6.3's `php -S` integration suite owns
+  them.
 - `D4np\Utils\Http\Request` and `D4np\Utils\Http\Response` (**ADR-0025**) — opens Milestone 6.
   Native lightweight wrappers **mirroring PSR-7's naming without its types**, per RFC-0001: the
   optional `egl/utils-psr7-bridge` is the only sanctioned crossing point, and these never grow
