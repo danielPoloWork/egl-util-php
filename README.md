@@ -51,7 +51,7 @@ setup.
 | 3 | DTO & data mapping | ✅ done |
 | 4 | Database | ✅ done |
 | 5 | Security | ✅ done |
-| 6 | HTTP, container, errors | 🚧 in progress (6.5 remaining) |
+| 6 | HTTP, container, errors | ✅ done |
 | 7 | Release engineering & bridge | ⏳ planned |
 
 

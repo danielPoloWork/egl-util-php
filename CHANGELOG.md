@@ -12,6 +12,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `D4np\Utils\Errors\Result`, `Logger` and `ExceptionHandler` (**ADR-0029**) — spec FR-16, FR-17,
+  FR-18. **Milestone 6 is complete.**
+  **`Result`** replaces boolean/null returns for service outcomes (RFC-0001): `success()`,
+  `failure()`, `try()`, `map()`, `flatMap()`, `recover()`, `orElseThrow()`, `orElse()`, `error()`. A
+  failure carries a **`Throwable`**, so `orElseThrow()` rethrows the *original instance* with the
+  trace still pointing at where the operation failed — manufacturing an exception at unwrap time
+  would put the trace in the accessor. `map()` deliberately does **not** catch: a mapper that throws
+  has a defect, and converting a `TypeError` into a business failure would hide it. `Result::try()`
+  is the named opt-in for catching.
+  **`Logger`** is a PSR-3 logger writing one line per record. Two behaviours were probed rather than
+  assumed, and both defaults lose data in silence: `file_put_contents()` with `LOCK_EX` on a `php://`
+  stream returns **`false` and writes nothing**, so real files are locked and streams are not; and a
+  `Throwable` in the context **encodes to `{}`** — `json_encode()` sees only public properties — so
+  throwables are expanded explicitly, recursively through `getPrevious()`. The destination is
+  validated at construction and writes never throw, because a logger that throws inside an exception
+  handler turns a handled failure into a fatal one. An unknown level throws
+  `Psr\Log\InvalidArgumentException`, as PSR-3 requires.
+  **`ExceptionHandler`** produces an RFC 7807 problem document and captures fatal errors through a
+  shutdown handler — the only route by which an `E_ERROR` is ever reported. **In production it
+  withholds the exception message as well as the trace**, which is stricter than FR-18's letter and
+  recorded as such: a message names schemas (`Base table not found: 'users_backup'`) and paths
+  (`/srv/app/config/secrets.php`) just as effectively as a trace. A random **reference** goes into
+  both the response and the log record, so the two can be correlated. Debug is off unless the
+  environment says otherwise, so a missing `APP_DEBUG` cannot be what exposes a trace.
+
 - `D4np\Utils\Container\Container` (PSR-11), `ServiceProvider`, and the `ContainerException` /
   `NotFoundException` / `CircularDependencyException` trio (**ADR-0028**) — spec FR-04, FR-05,
   NFR-02, imported ADR-001. Constructor autowiring over the **shared** `ReflectionCache`, plus

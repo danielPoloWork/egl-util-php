@@ -113,6 +113,8 @@ deptrac:
       - Support
     Errors:
       - Support
+      # `Logger` implements PSR-3 and `ExceptionHandler` accepts one (spec FR-17, FR-18).
+      - Psr
 
     # Support is the bottom of the library: it depends on no group. An empty list here is the
     # load-bearing half of the rule — it is what makes a Support -> Dto import (the inversion
