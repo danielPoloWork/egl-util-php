@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — The contract that could not be implemented](docs/journal/2026/08/2026-08-05-bridge-converters.md).
+  [2026-08-05 — When the standing pattern is the wrong one](docs/journal/2026/08/2026-08-05-bridge-publish.md).
 
 ## Model & effort routing (advisory)
 
@@ -542,12 +542,26 @@ API-freeze review for the **core** is unaffected by this milestone.
       errors), an object parsed body accepted (2), a nested upload tree accepted (2), the body
       rewind dropped (2). Spec 02 → r2: BFR-07's "lazily wraps `tmp_name`" corrected, since
       eagerness is the PSR-17 factory's business and neither vendor defers.*
-- [ ] 8.3 Publication pipeline per spec 02 §6: signed-source-tag verification (ADR-0032 reused),
+- [x] 8.3 Publication pipeline per spec 02 §6: signed-source-tag verification (ADR-0032 reused),
       **release-mode** contract run against the released core, `git subtree split` + translated
       tag push to the read-only split repository; verify the `v*.*.*` / `utils-psr7-bridge-v*`
       tag-grammar isolation with a real tag before the first publication; one-time maintainer
       actions documented (create the split repo, register `egl/utils-psr7-bridge` on Packagist)
-      (severity:high — supply-chain surface) — route: standard / high
+      (severity:high — supply-chain surface) — route: standard / high *(session model matched the
+      route)* · **ADR-0035**, **spec 02 r3**. *Two details could not be built as written, for
+      opposite reasons. **Tag-grammar isolation**: r1 planned to verify GitHub's glob with a
+      throwaway tag — a side effect on a public repository to establish a fact that expires the day
+      GitHub changes its matcher. Both workflows now **guard their own ref shape** and refuse a tag
+      that is not theirs, which is stronger and makes the glob irrelevant; verified in both
+      directions locally. **Release mode**: the standing L-0010 pattern says skip-and-self-enable
+      when a gate cannot run yet, and that is **wrong here** — release mode is the only evidence for
+      the package's central published claim, so skipping would not defer a check, it would publish
+      an unverified package. It is a hard requirement, so **no bridge version can be published until
+      the core has a release**; the failure says exactly that. `bridge_release_gate.py` anchors a
+      bridge tag to the package changelog's `## [X.Y.Z]`, since a Composer library carries no
+      version constant for `release_gate.py` to check. **Most of this pipeline has never run and
+      cannot until a core release exists** — third item running (7.2, 7.3, 8.3) whose first real run
+      is its first real use; named in the ADR, not implied to be fine.*
 
 ---
 

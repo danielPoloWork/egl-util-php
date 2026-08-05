@@ -47,6 +47,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: This tag must belong to the core, not the bridge
+        shell: bash
+        run: |
+          # First, and before anything costs an API call. The bridge publishes from
+          # `utils-psr7-bridge-vX.Y.Z` (ADR-0033 §3), and both workflows guard their own ref shape
+          # rather than trusting GitHub's `tags:` glob to have kept the two grammars apart — a
+          # matcher's behaviour is a dependency like any other, and this one cannot be tested
+          # without pushing throwaway tags to a public repository (ADR-0035).
+          if ! printf '%s' "${{ github.ref_name }}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error title=Not a core release tag::${{ github.ref_name }} is not vMAJOR.MINOR.PATCH. A bridge release is utils-psr7-bridge-vMAJOR.MINOR.PATCH and belongs to bridge-release.yml."
+            exit 1
+          fi
+
       - name: The tag must be annotated, not lightweight
         shell: bash
         run: |
