@@ -1,0 +1,37 @@
+name: bench-experiment
+
+# TEMPORARY. Measures same-runner repeatability so item 7.1's regression
+# threshold can be chosen from evidence rather than from NFR-06's wording.
+# Deleted before this branch is proposed for merge.
+on:
+  push:
+    branches: [feat/bench-nightly-harness]
+
+permissions:
+  contents: read
+
+jobs:
+  repeatability:
+    name: same-runner repeatability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+          ini-values: opcache.enable_cli=0, opcache.jit=disable, opcache.jit_buffer_size=0
+      - run: composer install --no-interaction --prefer-dist
+      - name: Report whether OPcache and JIT are actually off
+        run: php -r 'printf("opcache_loaded=%s cli_enabled=%s jit=%s\n", var_export(extension_loaded("Zend OPcache"),true), ini_get("opcache.enable_cli"), var_export(ini_get("opcache.jit"),true));'
+      - name: Five consecutive phpbench runs on this one runner
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5; do
+            echo "=== pass $i ==="
+            vendor/bin/phpbench run --report=aggregate --progress=none 2>/dev/null \
+              | sed 's/\x1b\[[0-9;]*m//g' \
+              | grep -E "^\| (Hydration|QueryBuilder|Container)Bench" \
+              | awk -F'|' '{gsub(/ /,"",$3); gsub(/ /,"",$8); print "PASS'"$i"' " $3 " " $8}'
+          done
