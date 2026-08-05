@@ -23,6 +23,7 @@ One report per measured scenario, from [`template.md`](template.md). Keep the in
 
 | Date | Scenario | Version | Headline result | Report |
 |------|----------|---------|-----------------|--------|
+| 2026-08-05 | **Every NFR budget re-measured under NFR-06's own methodology** (item 7.1) | v0.0.0 | NFR-01 **0.958 µs / 2.40×**, NFR-03 **3.776 µs**, NFR-05 **148.3 ms** — all three previously recorded as over budget are **met**. The earlier runs used `--php-disable-ini` on Windows, which is not NFR-06's environment; still not the named reference CPU | [report](2026/08/nfr-budgets-under-nfr06-methodology.md) |
 | 2026-08-04 | NFR-05 password hashing cost (`Hash::make`, Argon2id defaults) | v0.0.0 | **349 ms** vs. the 50–200 ms range — over, but the *work factor* clears OWASP's floor; `verify()` costs the same and is the figure that scales | [report](2026/08/nfr05-password-hashing-cost.md) |
 | 2026-08-04 | NFR-03 QueryBuilder build time — **corrected workload** + 2 optimisations | v0.0.0 | literal 5-condition SELECT **14.43 → 12.98 µs**; still over ≤ 10 µs, but 1.3× not 2.3× | [report](2026/08/nfr03-querybuilder-build-time-corrected.md) |
 | 2026-08-04 | NFR-03 QueryBuilder build time (~~5-condition SELECT~~ — wrong workload) | v0.0.0 | ~23 µs — **superseded**, measured ~2× the work NFR-03 specifies | [report](2026/08/nfr03-querybuilder-build-time.md) |

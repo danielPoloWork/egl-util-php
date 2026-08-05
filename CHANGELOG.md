@@ -12,6 +12,35 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Benchmark regression and budget gates in CI** (**ADR-0030**) — spec NFR-06, plus
+  `.github/workflows/nightly.yml`. No production code changed.
+  NFR-06's *"regression > 10% fails"* could not be built against a stored baseline: measured from
+  this repository's own CI history, nine `master` runs with `QueryBuilder` and its benchmark
+  **provably unchanged** ranged **2.684–3.767 µs — 40.4% peak to peak** on GitHub's shared runners.
+  Five consecutive phpbench passes inside **one** job spread **0.4–1.5%**, so the gate measures the
+  base commit and HEAD **on the same runner** via `git worktree`, which leaves the 10% threshold
+  roughly six times the noise it must clear.
+  `tools/bench_regression_gate.py` (relative) and `tools/bench_budget_gate.py` (absolute ceilings,
+  and a *range* since NFR-05's lower bound is the serious one — a hash that got faster got weaker)
+  both hold `coverage_gate.py`'s absence-is-failure discipline. A subject new at HEAD is a notice; one
+  that disappeared is reported, because a deleted benchmark is how a regression stops being visible.
+  `tools/assert_bench_env.php` refuses to let the suite run outside NFR-06's environment (PHP 8.3,
+  OPcache and JIT off) rather than setting those values in a workflow and trusting them.
+  `tools/bench_ratio_gate.py` is finally wired into CI, having sat in the tree since item 3.5 marked
+  it "advisory today, not yet wired into CI".
+
+### Fixed
+
+- **All three deferred NFR budgets are met**, and the reason is a measurement error rather than an
+  optimisation — **no production code changed**. NFR-01 **0.958 µs / 2.40×** (≤ 5 µs, ≤ 3×), NFR-03
+  **3.776 µs** (≤ 10 µs), NFR-05 **148.3 ms** (50–200 ms). The earlier records reporting NFR-03 and
+  NFR-05 as *over* budget were produced with `--php-disable-ini`, which does not disable OPcache alone
+  but discards the entire `php.ini` and every extension with it, on Windows — not NFR-06's
+  environment. They were honest measurements of a different thing.
+  Still outstanding and named rather than skipped: the runner is not NFR-06's Ryzen 7 5800X, so every
+  budget is "met on this runner"; and NFR-04 is ungated, because it budgets a *memory delta* and
+  phpbench's `mem_peak` reports the whole process's peak.
+
 - `D4np\Utils\Errors\Result`, `Logger` and `ExceptionHandler` (**ADR-0029**) — spec FR-16, FR-17,
   FR-18. **Milestone 6 is complete.**
   **`Result`** replaces boolean/null returns for service outcomes (RFC-0001): `success()`,
