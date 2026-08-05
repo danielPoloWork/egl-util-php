@@ -12,6 +12,34 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A verified release path** (**ADR-0032**) — spec §8, NFR-07. `release.yml` previously drafted a
+  GitHub Release from whatever was tagged, having checked only that `composer install` succeeded. It
+  is now three jobs, and **nothing is drafted until all of them pass**, because a draft is
+  publishable:
+  the tag must be **annotated and signed** (`verified == true` per GitHub's own verification of the
+  tag object — asked of GitHub rather than verified with imported keys, so no key material reaches
+  the runner and no keyring goes stale on a rotation); it must **agree with the tree it points at**
+  (`tools/release_gate.py`); the repository's consistency invariants must hold **at the tag**; and
+  the tagged tree must pass the suite on **PHP 8.1, 8.2 and 8.3**, since a tag can point at a commit
+  CI never ran.
+  `release_gate.py` closes a hole no lint can reach: `consistency_lint.py` runs on a working copy and
+  has **no tag**, so `git tag -a v0.2.0` on a tree whose constant still says `0.1.0` ships a release
+  that installs as one version and reports itself as another, with nothing inside the tree
+  disagreeing. It also requires the release notes and per-version changelog split to exist *and be
+  indexed*.
+  **Packagist pulls rather than being pushed to**: it mirrors the repository through its own GitHub
+  integration, so no Packagist token lives here and AGENTS.md §11's boundary — the agent drafts, the
+  maintainer publishes — stays intact.
+
+### Fixed
+
+- **`release.yml` referenced `matrix.toolchain` in a job with no matrix**, so the PHP version
+  expression silently fell through to `'8.3'` — the same rendering artifact roadmap item 1.9 fixed in
+  `ci.yml` and which was left uncorrected here. It survived because `'8.3'` is a legal answer, so
+  nothing was ever red. The matrix is **restored** rather than the expression hardcoded: the release
+  must be tested on the PHP 8.1 floor this library promises. `coverage: pcov` is also dropped from
+  that job, which runs no coverage gate.
+
 - **Backward-compatibility gate on release PRs** (**ADR-0031**) — spec NFR-07, imported spec §8.
   A new `quality / backward compatibility` CI job plus `tools/bc_gate.py`.
   **`roave/backward-compatibility-check` is installed into a throwaway project, not into
