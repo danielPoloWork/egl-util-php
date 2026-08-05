@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-04 — A range, not a ceiling: measuring the wrong thing would have proved nothing](docs/journal/2026/08/2026-08-04-hash-matrix-nfr05.md).
+  [2026-08-04 — The client picks the type, not the application](docs/journal/2026/08/2026-08-04-http-wrappers.md).
 
 ## Model & effort routing (advisory)
 
@@ -345,8 +345,19 @@ Explicit-mechanism security helpers (RFC-0001; every item carries the protected 
 
 The application-facing groups (RFC-0001).
 
-- [ ] 6.1 `Request`/`Response` typed wrappers, PSR-7-mirroring naming (RFC-0001)
-      (severity:medium) — route: standard / medium
+- [x] 6.1 `Request`/`Response` typed wrappers, PSR-7-mirroring naming (RFC-0001)
+      (severity:medium) — route: standard / medium · **ADR-0025**. *Opens Milestone 6. **The typed
+      accessors refuse rather than coerce**, which is the security decision here: `?email[]=x` gives
+      the same key a different PHP type, chosen by the client, and a `(string)` cast yields the
+      literal `"Array"` while `implode()` invents a value nobody sent — both turn attacker-chosen
+      *shape* into a trusted value. Scalar accessors return their default instead;
+      `queryList()`/`postList()` exist for when a list is genuinely expected. `FILTER_VALIDATE_INT`
+      not a cast (`(int) "12abc"` is 12). Headers from `$_SERVER` since `getallheaders()` is
+      Apache-only; `isSecure()` ignores `X-Forwarded-Proto` (client-supplied absent a trusted
+      proxy) but does handle the `'off'` string. `Response` refuses CR/LF/NUL in header values
+      (response splitting) **at set time, not send time**, and stores names case-insensitively so a
+      duplicate `Content-Type` cannot be smuggled past a proxy. PHPStan caught a type annotation
+      that was a lie: `?0=zero` yields an **integer** key, so superglobals are `array<array-key>`.*
 - [ ] 6.2 `Session` hardening + `regenerate()`; `CsrfToken` — CSPRNG, `hash_equals`, per-form
       scoping; Http placement per RFC-0001 R-1 (security) — route: frontier-reasoning / extra
 - [ ] 6.3 T-03 session/CSRF integration suite against a real `php -S` process (RFC-0001)
