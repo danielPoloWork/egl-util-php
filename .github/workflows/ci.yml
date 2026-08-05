@@ -344,3 +344,113 @@ jobs:
           name: benchmark-reports
           path: build/logs/*.xml
           if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Backward-compatibility gate (spec NFR-07, ADR-0031).
+  #
+  # Runs only on a **release PR**, which the imported spec §8 defines as the place this check
+  # belongs. A release PR is detected mechanically — the PR changes `Version.php`'s VERSION
+  # constant, which is step 1 of docs/workflow/release.md — rather than by a label, because a
+  # label the maintainer forgets is a gate that silently does not run.
+  #
+  # Two things this job must not do:
+  #
+  # 1. **Fail before the first tag exists.** `roave/backward-compatibility-check` exits 1 with
+  #    "Could not detect any released versions for the given repository" when a repo has no tags —
+  #    verified. This one has none yet, and the first release PR is exactly when the check would
+  #    first run. So it SKIPS on a declared condition and self-enables at the first `v*.*.*` tag
+  #    (lesson L-0010).
+  # 2. **Enter this package's dependency graph.** Every version from 8.7.0 requires PHP >= 8.2,
+  #    later >= 8.3 and >= 8.4, while this library's floor is 8.1 — which is why
+  #    `config.platform.php` is pinned to 8.1.34. Adding it as a dev dependency would either break
+  #    the 8.1 matrix cell or abandon 8.1 support. It is installed into a throwaway project
+  #    instead, so the tool can be modern while the library stays on its floor.
+  # ---------------------------------------------------------------------------
+  backward-compatibility:
+    name: quality / backward compatibility
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Tags and the base commit are both needed; the default shallow fetch has neither.
+          fetch-depth: 0
+
+      - name: Is this a release PR, and is there anything to compare against?
+        id: scope
+        shell: bash
+        run: |
+          CURRENT="$(sed -n "s/.*VERSION = '\([^']*\)'.*/\1/p" src/main/php/d4np/utils/Version.php)"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          PREVIOUS="$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1)"
+          echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
+
+          BASE="${{ github.event.pull_request.base.sha }}"
+          RELEASE_PR=false
+          if [ -n "$BASE" ] && ! git diff --quiet "$BASE" HEAD -- src/main/php/d4np/utils/Version.php; then
+            RELEASE_PR=true
+          fi
+          echo "release_pr=$RELEASE_PR" >> "$GITHUB_OUTPUT"
+
+          if [ "$RELEASE_PR" != "true" ]; then
+            echo "::notice title=Not a release PR::Version.php is unchanged, so the BC check does not apply. Spec NFR-07 places it on release PRs."
+          elif [ -z "$PREVIOUS" ]; then
+            echo "::notice title=No released version yet::This repository has no v*.*.* tag, and roave/backward-compatibility-check needs one to compare against. The gate self-enables at the first tag."
+          else
+            echo "::notice title=BC check will run::Comparing $PREVIOUS against $CURRENT."
+          fi
+
+      - name: Set up PHP
+        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          # The tool's own floor, not this library's. See the header comment.
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install the BC checker outside this package's dependency graph
+        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/bc-tool"
+          # Constrained rather than floating: an unpinned tool that changes its own findings between
+          # runs makes a release gate unreviewable.
+          composer require --working-dir="$RUNNER_TEMP/bc-tool" --no-interaction \
+            "roave/backward-compatibility-check:^8.16"
+
+      - name: Install this package's own dependencies
+        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Detect backward-incompatible changes since ${{ steps.scope.outputs.previous }}
+        id: bc
+        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        shell: bash
+        run: |
+          set +e
+          php "$RUNNER_TEMP/bc-tool/vendor/bin/roave-backward-compatibility-check" \
+            --from="${{ steps.scope.outputs.previous }}" --format=markdown | tee bc-report.md
+          CODE=${PIPESTATUS[0]}
+          set -e
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "The checker exited $CODE (0 means no backward-incompatible change)."
+
+      - name: Gate the findings against the version bump
+        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        shell: bash
+        run: |
+          python3 tools/bc_gate.py \
+            --previous "${{ steps.scope.outputs.previous }}" \
+            --current "${{ steps.scope.outputs.current }}" \
+            --bc-exit "${{ steps.bc.outputs.code }}"
+
+      - name: Keep the BC report
+        if: always() && steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: backward-compatibility-report
+          path: bc-report.md
+          if-no-files-found: warn

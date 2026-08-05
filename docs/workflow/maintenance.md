@@ -51,10 +51,30 @@ advisory/CVE; backport to every supported line.
 
 ## Deprecation policy
 
-1. **Deprecate in a MINOR** — mark deprecated in the API docs + a `Deprecated` changelog
-   line; the symbol keeps working; record the replacement in an ADR.
-2. **Honour a window** — keep it for at least the rest of the current MAJOR line.
-3. **Remove in the next MAJOR** — with the breaking-change ADR + a migration note.
+The window is **one full published MINOR**, per the imported spec §8: *"deprecations live one minor
+before removal."* An earlier version of this section said "at least the rest of the current MAJOR
+line", which contradicted that; the spec is the contract and wins. Resolved in **ADR-0031**.
+
+1. **Deprecate in a MINOR** — mark it deprecated in the API docs, add a `Deprecated` changelog line,
+   and record the replacement in an ADR. **The symbol keeps working**, unchanged.
+2. **Let one full MINOR ship with it deprecated.** The window is measured in *published releases*,
+   not in time or commits: a symbol deprecated and removed inside the same release gave no consumer
+   any chance to see the warning, whatever the version numbers say.
+3. **Remove in a release whose bump permits a break** — a MAJOR after 1.0, or a MINOR while still on
+   `0.y.z`, where SemVer 2.0.0 §4 permits it. With the breaking-change ADR and a migration note.
+
+Removing a public symbol **is** a backward-incompatible change, which is why step 3 is about the
+bump and not merely about the window: satisfying the window does not license a removal in a PATCH.
+`tools/bc_gate.py` enforces exactly that boundary on release PRs — it permits detected breaks in a
+MAJOR bump, and in a pre-1.0 MINOR, and refuses them in a PATCH or in a post-1.0 MINOR.
+
+### While the version is still `0.y.z`
+
+SemVer 2.0.0 §4 says anything may change under `0.y.z`, and this project's pre-1.0 line bumps MINOR
+per completed milestone. So pre-1.0 the policy reads: deprecate in `0.N`, remove no earlier than
+`0.N+2` — one full published MINOR (`0.N+1`) must have shipped with the symbol present and
+deprecated. The relaxation SemVer grants is in *which bump may carry a break*, not in whether
+consumers get a warning first.
 
 ## Consistency lint — failure → remediation
 
