@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `D4np\Utils\Container\Container` (PSR-11), `ServiceProvider`, and the `ContainerException` /
+  `NotFoundException` / `CircularDependencyException` trio (**ADR-0028**) — spec FR-04, FR-05,
+  NFR-02, imported ADR-001. Constructor autowiring over the **shared** `ReflectionCache`, plus
+  `instance()`, `singleton()`, `factory()` and `bind()` definitions.
+  **The refusals are the design.** Imported ADR-001 bought a hand-written container by promising it
+  would fail loudly wherever a mature one adds a feature, so an unbound interface, an abstract
+  class, a non-public constructor, a built-in or untyped parameter without a default, and a
+  union-typed parameter are each declined with a message naming the parameter and the class.
+  Circular dependencies throw with the **full path** (`A -> B -> C -> A`) and are a distinct
+  exception type, because the container acts on the distinction: a parameter default may answer an
+  absent dependency and must not answer a cycle.
+  Autowired instances are **shared** by default, with `factory()` as the explicit opt-out; `has()`
+  answers for what `get()` would actually do rather than for the registration table.
+  **`get()` declares a conditional return type PSR-11 does not have** — `get(Mailer::class)` is a
+  `Mailer`, while a string-keyed entry stays `mixed`. `ContainerInterface::get()` carries no return
+  type at all in psr/container 2.0.2, so without this every consumer at PHPStan max would narrow at
+  every call site.
+  **NFR-02 measured and met**: 0.173 µs warm singleton resolve (≤ 2 µs) and 18.593 µs first
+  autowired resolve of a four-class graph (≤ 30 µs), on a developer machine rather than NFR-06's
+  reference machine — not asserted as a CI gate, per ADR-0018; nightly tracking is item 7.1.
+
 - **T-03**, spec §7's session/CSRF integration suite, against a real `php -S` process — 17 tests
   covering everything ADR-0026 structurally could not reach in CLI: FR-15's three flags on a live
   `Set-Cookie`, the configured policy reaching the header, state surviving across requests,

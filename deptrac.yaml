@@ -96,6 +96,11 @@ deptrac:
       - Support
     Container:
       - Support
+      # The Container implements PSR-11, and its exceptions implement PSR-11's own exception
+      # interfaces (spec FR-04, imported ADR-001). Those exceptions live in this group rather than
+      # in Support with the rest of the hierarchy precisely so this grant stays here: Support
+      # depends on nothing, and that must not change to accommodate one class (ADR-0028).
+      - Psr
     Database:
       - Support
     Security:
