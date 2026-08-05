@@ -12,6 +12,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`packages/utils-psr7-bridge/` scaffold** (roadmap item **8.1**, implementing ADR-0033 and
+  spec 02 §2) — a complete Composer package with its own manifest, PSR-4 roots
+  (`D4np\Utils\Bridge\Psr7\`), PHPStan configuration at max level, README and changelog. **No
+  converters yet**: they land with their contract suite in item 8.2, and a stub throwing
+  "not implemented" would be a worse artifact than an empty PSR-4 root.
+  A new **`quality / PSR-7 bridge contract`** CI job runs the package against the core **from the
+  working tree** via a path repository injected into the CI workspace only — the same-PR guarantee
+  ADR-0033 chose the monorepo for. It asserts `egl/utils` resolved with source type `path`, because
+  a quiet fallback to a published core would leave that guarantee a fiction with every test still
+  green. The job self-enables in two stages (absent package → notice; scaffold without tests →
+  notice; a test file appears → it runs), all three branches verified.
+  **`BridgePackageBoundaryTest` lives in the core's suite**, not the package's, because the
+  invariant with the sharpest consequence — no `repositories` entry in the committed manifest —
+  breaks only *standalone* installs of the published package, which nothing in this repository would
+  otherwise notice. Running PR mode locally mutates the manifest exactly that way; planting both
+  mutations fails two of its tests by name.
+  A **deptrac `Bridge` layer** makes a core → `D4np\Utils\Bridge\` dependency a build failure.
+  Verified, and instructively: an unused `use` statement produces **0 violations** — deptrac
+  resolves type dependencies, not imports — while a real type reference produces
+  `Response must not depend on Psr7Bridge`.
+  The package declares `egl/utils: ^0.7` against a core release that **does not exist yet**
+  (`VERSION` is `0.0.0`, no tag), so it is not installable standalone until the core ships `v0.7.0`.
+  That is a true statement of the dependency rather than a placeholder, and the package README says
+  so where someone would otherwise meet it as a resolution error.
+
 - **The PSR-7 bridge packaging decision** (**ADR-0033**, closing Milestone 7 and RFC-0001's A-8) —
   plus [`docs/specs/02_spec_psr7_bridge.md`](docs/specs/02_spec_psr7_bridge.md), the frozen contract
   Milestone 8 implements. **No code lands**: item 7.4's deliverable is the decision.

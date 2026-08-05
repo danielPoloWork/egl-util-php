@@ -454,3 +454,100 @@ jobs:
           name: backward-compatibility-report
           path: bc-report.md
           if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # The PSR-7 bridge's contract suite, in **PR mode** (ADR-0033, spec 02 §7).
+  #
+  # This is the property the monorepo topology was chosen for: the bridge is tested against the
+  # core **in the working tree**, so a core change that breaks the conversion contract fails in the
+  # pull request that introduces it — not later, in another repository's CI, after it merged.
+  #
+  # The path repository is injected into the CI **workspace only**. Committing it would point the
+  # published package at `../../`, which exists nowhere outside this monorepo, and every standalone
+  # install would fail while nothing here noticed. `BridgePackageBoundaryTest` in the core suite
+  # asserts the committed manifest stays clean — verified: planting the injection fails 2 of its
+  # tests.
+  #
+  # Self-enabling on the package's composer.json (lesson L-0010): item 8.1 ships the scaffold with
+  # no converters and no contract suite, so until 8.2 lands there is nothing to run. The job says
+  # so in a notice rather than passing silently, because a skip and a pass look identical on a
+  # green tick.
+  # ---------------------------------------------------------------------------
+  bridge-contract:
+    name: quality / PSR-7 bridge contract
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both PSR-17 implementations spec 02 §7 requires: one alone would let the contract
+        # silently encode that vendor's leniencies.
+        psr7: [nyholm, guzzle]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Does the bridge package have anything to run yet?
+        id: pkg
+        shell: bash
+        run: |
+          if [ ! -f packages/utils-psr7-bridge/composer.json ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Bridge package absent::packages/utils-psr7-bridge/composer.json does not exist, so there is nothing to test. This job enables itself when the package lands."
+            exit 0
+          fi
+          if [ -z "$(find packages/utils-psr7-bridge/src/test -name '*Test.php' -print -quit 2>/dev/null)" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Bridge contract suite pending::The package scaffold exists but carries no tests yet. The T-B conversion suite lands with roadmap item 8.2; this job runs it from then on."
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Set up PHP
+        if: steps.pkg.outputs.ready == 'true'
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          # The package's own floor. The bridge must not narrow the core's, and the core supports 8.1.
+          php-version: '8.1'
+          coverage: none
+
+      - name: Resolve the core from the working tree (workspace only — never committed)
+        if: steps.pkg.outputs.ready == 'true'
+        working-directory: packages/utils-psr7-bridge
+        run: |
+          composer config repositories.monorepo path ../../
+          composer require "egl/utils:@dev" --no-update --no-interaction
+          composer update --no-interaction --prefer-dist
+
+      - name: Prove the core really came from this checkout
+        if: steps.pkg.outputs.ready == 'true'
+        working-directory: packages/utils-psr7-bridge
+        shell: bash
+        run: |
+          # Without this, a resolution that quietly fell back to a published egl/utils would make
+          # the whole same-PR guarantee a fiction while every test still passed.
+          TYPE="$(php -r '$l=json_decode(file_get_contents("composer.lock"),true); foreach($l["packages"] as $p){ if($p["name"]==="egl/utils"){ echo $p["dist"]["type"] ?? ($p["source"]["type"] ?? "?"); } }')"
+          echo "egl/utils resolved as: $TYPE"
+          if [ "$TYPE" != "path" ]; then
+            echo "::error title=Core not from the working tree::egl/utils resolved as '$TYPE', not 'path'. The bridge would be tested against a published core instead of the code in this PR, which is the entire property ADR-0033 chose the monorepo for."
+            exit 1
+          fi
+
+      - name: Pin the PSR-17 implementation under test
+        if: steps.pkg.outputs.ready == 'true'
+        working-directory: packages/utils-psr7-bridge
+        run: |
+          composer remove --dev --no-interaction --no-update \
+            ${{ matrix.psr7 == 'nyholm' && 'guzzlehttp/psr7' || 'nyholm/psr7' }}
+          composer update --no-interaction --prefer-dist
+
+      - name: Contract suite (${{ matrix.psr7 }})
+        if: steps.pkg.outputs.ready == 'true'
+        working-directory: packages/utils-psr7-bridge
+        run: vendor/bin/phpunit
+
+      - name: PHPStan (max) over the package
+        if: steps.pkg.outputs.ready == 'true'
+        working-directory: packages/utils-psr7-bridge
+        run: vendor/bin/phpstan analyse --no-progress

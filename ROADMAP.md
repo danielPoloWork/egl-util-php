@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — The question under the question](docs/journal/2026/08/2026-08-05-bridge-packaging.md).
+  [2026-08-05 — A rule that looked right and did nothing](docs/journal/2026/08/2026-08-05-bridge-scaffold.md).
 
 ## Model & effort routing (advisory)
 
@@ -506,11 +506,24 @@ the core's minor-per-milestone rule (AGENTS.md §11) applies to milestones that 
 package, and the core-side work here (a CI job, docs) is chore-level. The post-M7 `1.0.0`
 API-freeze review for the **core** is unaffected by this milestone.
 
-- [ ] 8.1 Scaffold `packages/utils-psr7-bridge/` per spec 02 §2 (composer.json, PSR-4, quality
+- [x] 8.1 Scaffold `packages/utils-psr7-bridge/` per spec 02 §2 (composer.json, PSR-4, quality
       bar, in-package changelog) + the self-enabling `bridge-contract` CI job (PR mode: path
       repository injected in the CI workspace only; guard on the package's composer.json existing,
       lesson L-0010) + the core deptrac rule that a core → `D4np\Utils\Bridge\` import is a build
-      failure — route: standard / medium
+      failure — route: standard / medium *(session model matched the route)*. *Worked in an
+      isolated `git worktree`, since this checkout is shared with parallel sessions. **The deptrac
+      rule fired on nothing at first:** an unused `use D4np\Utils\Bridge\…` produced **0
+      violations** — deptrac resolves *type dependencies*, not imports — and only a real type
+      reference triggers `Response must not depend on Psr7Bridge`. Third verification this session
+      that itself needed verifying. **`^0.7` is declared against a core release that does not
+      exist** (`VERSION` is `0.0.0`, no tag), so a standalone install genuinely cannot resolve
+      today — kept, because it is true and a weaker constraint would be resolvable and wrong; the
+      README says so. PR mode verified end to end: `egl/utils` resolves with source type **`path`**
+      from the working tree, and the CI job now asserts that type, since a quiet fallback to a
+      published core would make the same-PR guarantee a fiction with every test still green.
+      Running PR mode locally **mutated the committed manifest** exactly as spec §6 forbids, so the
+      boundary invariants are asserted from the **core's** suite (runs on every PR, not only when
+      the package's job does) — planting the mutations fails two by name.*
 - [ ] 8.2 `Psr7Bridge` converters + the full **T-B** contract suite: every clause of spec 02
       §4–§5 (BFR-01…BFR-22) tested against **two** PSR-17 implementations (nyholm/psr7,
       guzzlehttp/psr7), each refusal and fidelity clause probe-verified by planting the defect it
