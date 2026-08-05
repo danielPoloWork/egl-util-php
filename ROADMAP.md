@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — The gate NFR-06 asked for would have fired on nothing](docs/journal/2026/08/2026-08-05-bench-harness.md).
+  [2026-08-05 — A tool whose own PHP floor is above ours](docs/journal/2026/08/2026-08-05-bc-gate.md).
 
 ## Model & effort routing (advisory)
 
@@ -439,8 +439,21 @@ dedicated post-M7 API-freeze review.
       the whole `php.ini`, not NFR-06's environment. The environment is now **asserted** rather than
       configured and hoped for. Still not the named reference CPU; NFR-04 stays ungated (a memory
       delta phpbench's `mem_peak` does not report) — both named, not quietly skipped.*
-- [ ] 7.2 `roave/backward-compatibility-check` wired to release PRs; deprecation policy
-      documented (RFC-0001) (severity:medium) — route: standard / medium
+- [x] 7.2 `roave/backward-compatibility-check` wired to release PRs; deprecation policy
+      documented (RFC-0001) (severity:medium) — route: standard / medium *(session model matched
+      the route)* · **ADR-0031**. *Three obstacles, each found by trying: the tool's own PHP floor
+      is **above this library's** (8.2+ from 8.7.0, later 8.3+/8.4+, against our pinned 8.1.34), so
+      it is installed into a **throwaway project** rather than `composer.json` — the 8.1 matrix cell,
+      `--prefer-lowest` and NFR-08 all stay untouched; upstream **ships no PHAR** any more; and it
+      **hard-fails with zero tags** (`Could not detect any released versions`), which is exactly the
+      state of this repo, so the job skips on a declared condition and self-enables at the first tag
+      (lesson L-0010). A release PR is detected from a **`Version.php` diff**, not a label a
+      maintainer could forget. The substance is `tools/bc_gate.py`: the checker cannot say whether a
+      break is *allowed in this bump*, and pre-1.0 that matters — SemVer §4 permits a break in
+      `0.7 → 0.8` and forbids the same break in `0.7.0 → 0.7.1`. **Also resolved a contradiction
+      already in the repo:** `maintenance.md` said deprecations last "the rest of the current MAJOR
+      line", the imported spec §8 says "one minor" — the spec wins, restated as **one full published
+      MINOR**, with the pre-1.0 case it previously lacked.*
 - [ ] 7.3 Signed tags → validated release action → Packagist publish (RFC-0001)
       (severity:high — supply-chain surface) — route: standard / high
 - [ ] 7.4 `egl/utils-psr7-bridge` packaging decision: subtree vs second repository (possibly a

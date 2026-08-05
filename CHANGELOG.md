@@ -12,6 +12,34 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Backward-compatibility gate on release PRs** (**ADR-0031**) — spec NFR-07, imported spec §8.
+  A new `quality / backward compatibility` CI job plus `tools/bc_gate.py`.
+  **`roave/backward-compatibility-check` is installed into a throwaway project, not into
+  `composer.json`.** Every release from 8.7.0 requires PHP ≥ 8.2 (later ≥ 8.3, ≥ 8.4) while this
+  library supports **8.1** — hence the `config.platform.php` pin at `8.1.34`. As a dev dependency it
+  would resolve to 8.6.0 at best, break the 8.1 matrix cell, or force abandoning 8.1. It analyses
+  this package from outside, so its floor need not be ours; upstream ships no PHAR any more.
+  **The job skips while no `v*.*.*` tag exists** and self-enables at the first one: the checker
+  hard-fails with *"Could not detect any released versions for the given repository"*, and the first
+  release PR is exactly when it would first run. A release PR is detected from a `Version.php` diff
+  — step 1 of the documented release process — rather than a label a maintainer could forget.
+  **`bc_gate.py` gates breaks by the bump they arrive in**, which the checker cannot: it reports
+  breaks but not whether *this* bump permits them, and pre-1.0 that matters — SemVer 2.0.0 §4 permits
+  a break in `0.7 → 0.8` and forbids the identical break in `0.7.0 → 0.7.1`. Breaks fail a PATCH and
+  a post-1.0 MINOR; they pass a MAJOR and a pre-1.0 MINOR, always printing what was permitted, since
+  "the gate passed" and "there were no breaks" are different facts.
+
+### Changed
+
+- **The deprecation window is now stated as one full *published* MINOR** (**ADR-0031**), resolving a
+  contradiction that had been in the repository since scaffold: `docs/workflow/maintenance.md` said
+  deprecations are kept *"for at least the rest of the current MAJOR line"* while the imported spec
+  §8 says they *"live one minor before removal"*. The spec is the contract.
+  The window is measured in released versions rather than time or commits — deprecating and removing
+  inside one release warns nobody, whatever the version numbers say — and removal must still land in
+  a bump that permits a break, since removing a public symbol *is* one. The section also gains the
+  pre-1.0 case it never had: deprecate in `0.N`, remove no earlier than `0.N+2`.
+
 - **Benchmark regression and budget gates in CI** (**ADR-0030**) — spec NFR-06, plus
   `.github/workflows/nightly.yml`. No production code changed.
   NFR-06's *"regression > 10% fails"* could not be built against a stored baseline: measured from
