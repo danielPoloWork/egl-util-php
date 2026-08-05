@@ -81,6 +81,20 @@ deptrac:
           # Doubled backslashes: a PCRE pattern, where a single `\L` would be a regex escape.
           value: ^Psr\\(Log|Container)\\.*
 
+    # The PSR-7 bridge (ADR-0033), whose source lives in `packages/utils-psr7-bridge/` and is
+    # therefore outside `paths` above — deptrac never analyses it. This layer exists to constrain
+    # the *other* direction: it is collected by class name so that a core file importing
+    # `D4np\Utils\Bridge\…` lands in a declared layer, and the empty ruleset entry below then makes
+    # that import a **violation** rather than an "uncovered dependency" nobody reads.
+    #
+    # The dependency direction is one-way by design: the bridge depends on the core's public API,
+    # and the core must never learn that the bridge exists — that is what keeps `psr/http-message`
+    # out of the core's requirements (NFR-08) and the bridge optional (imported ADR-002).
+    - name: Bridge
+      collectors:
+        - type: classLike
+          value: ^D4np\\Utils\\Bridge\\.*
+
     # `Version` sits at the namespace root, in no group — it is a single version constant. Given
     # its own layer rather than left uncollected so that "every production class belongs to a
     # declared layer" stays a fact this config states, rather than an assumption.
@@ -128,3 +142,9 @@ deptrac:
     # A vendored dependency is a leaf here: this repository does not constrain its internals.
     HtmlSanitizer: ~
     Psr: ~
+
+    # No group may reach the bridge. Absent from every ruleset above AND declared empty here, so a
+    # core -> Bridge import is a violation from both directions of deptrac's bookkeeping. This is
+    # the same shape as `Support: ~`, and load-bearing for the same reason: it is what makes the
+    # bridge's optionality a build property rather than a promise in an ADR.
+    Bridge: ~
