@@ -10,11 +10,20 @@ Negotiated at the `plan` phase (2026-08-03) from **RFC-0001** — the only appro
 protocol; scope confirmed in full by the owner. Milestones are **sequential** (solo-owner
 capacity; no parallel streams; no calendar dates by decision).
 
+Extended at a second `plan` pass (2026-08-06) from **RFC-0002**
+([docs/rfc/0002-application-layer-groups-from-legacy-intake.md](docs/rfc/0002-application-layer-groups-from-legacy-intake.md),
+approved 2026-08-05 at PR #49) by the same three-role protocol — all roles worn by the
+session agent, per-artifact authority checked and recorded in the journal; scope = RFC-0002's
+decision in full, owner-confirmed by the RFC approval and the explicit plan instruction.
+**M9–M12 map to core versions `v0.8.0`–`v0.11.0`** (M8 was bridge-scoped and consumed no core
+minor); the standing post-M7 **1.0.0 API-freeze review** may re-map them to 1.x MINORs — the
+items are additive either way, so the mapping shifts without rework.
+
 - **Versioning start:** pre-1.0 milestone-driven — one minor per milestone
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — When the standing pattern is the wrong one](docs/journal/2026/08/2026-08-05-bridge-publish.md).
+  [2026-08-06 — Four milestones from one RFC, and the routes came from the policy](docs/journal/2026/08/2026-08-06-plan-rfc-0002.md).
 
 ## Model & effort routing (advisory)
 
@@ -565,6 +574,121 @@ API-freeze review for the **core** is unaffected by this milestone.
 
 ---
 
+## Milestone 9 — Support & values (`v0.8.0`) · size: M
+
+The foundation additions RFC-0002's later groups consume (`Str::transcode` feeds
+`RowNormalizer`, `File`'s lock discipline feeds `FileSequence`); pure additive Support
+surface (RFC-0002 FR-27…FR-32).
+
+- [ ] 9.1 `Str` additions: `collapseWhitespace()`, `nullIfBlank()`, `transcode()` (strict by
+      default, lossy opt-in), multibyte-safe `padLeft()`/`padRight()`, `shortClassName()`,
+      `pascalCase()` (RFC-0002 FR-31) — size: S · route: fast / low
+- [ ] 9.2 `Lookup`: immutable code→label map with an explicit missing-key policy — `label()`
+      throws, `labelOr()`/`tryLabel()` for the tolerant reads; replaces silent sentinel
+      strings (RFC-0002 FR-30) — size: XS · route: fast / low
+- [ ] 9.3 `Url` value object: parse/normalize/build, query composition, **scheme-downgrade
+      refusal on rebuild** (RFC-0002 FR-27) (security) — size: S ·
+      route: frontier-reasoning / extra · ADR (URL scheme policy)
+- [ ] 9.4 `Csv` streaming write/read + `Delimiter` enum + `CsvSerializable`; typed failures
+      (never boolean), atomic write via `File`; formula-guard **opt-in, default off**, both
+      flag states tested (RFC-0002 FR-28/FR-29; T-08) (security) — size: M ·
+      route: frontier-reasoning / extra · ADR (formula-guard default)
+- [ ] 9.5 `FileSequence`: rolling lock-guarded counter with an explicit cap policy
+      (`SequenceExhaustedException`, never a silent wrap) + T-14 multi-process concurrency
+      suite (RFC-0002 FR-32; T-14) (severity:medium — concurrency/atomicity) — size: S ·
+      route: standard / medium
+- [ ] 9.6 phpbench: NFR-12 (Csv streaming) + NFR-10 (FileSequence) wired into the ADR-0030
+      same-runner harness (RFC-0002) (step:optimize) — size: S · route: fast / medium
+
+---
+
+## Milestone 10 — Persistence (`v0.9.0`) · size: L
+
+RFC-0002's centerpiece: the layer that makes value-interpolated SQL a library-impossible
+shape (the surveyed estate measured 199 interpolation sites against 0 bound parameters).
+First two named cross-group deptrac edges (RFC-0002 P-1).
+
+- [ ] 10.1 `Database\SqlStatement`: immutable SQL+binds value; connection-side execution
+      accepts **only** statements — text never travels without its parameters
+      (RFC-0002 FR-33) (security — the protected floor) — size: S ·
+      route: frontier-reasoning / extra · ADR (statement-only execution)
+- [ ] 10.2 `Persistence\RowNormalizer` policy object (strict/lossy transcode, trim,
+      empty→`null`) + T-15 policy table + the `Persistence` deptrac layer (edge to Support
+      only at this point) (RFC-0002 FR-36; T-15) (severity:medium) — size: S ·
+      route: standard / medium
+- [ ] 10.3 `Persistence\Repository` base gateway (`fetchAll`/`fetchOne`/`execute`/
+      `withTransaction`; rows normalized then hydrated via the shared Hydrator; every failure
+      throws — no sentinel returns) + the two named cross-group edges
+      (Persistence→Database, Persistence→Dto) proved by planted violations
+      (RFC-0002 FR-34, P-1) (severity:high; adr — the layering-rule extension) — size: M ·
+      route: frontier-reasoning / extra · ADR (Persistence layering edges)
+- [ ] 10.4 `Persistence\TableGateway`: Table Data Gateway over `QueryBuilder` —
+      select/insert/update/delete with allowlisted identifiers and bound values by
+      construction + patterns-catalogue adoption entry (RFC-0002 FR-35) (security) —
+      size: M · route: frontier-reasoning / extra · ADR (pattern adoption)
+- [ ] 10.5 T-13 injection suite over the gateway/statement paths: ADR-0017's 29-payload
+      corpus re-run through `Repository`/`TableGateway`, placeholder-only text asserted at
+      the PDO boundary via the `QueryLog` fixture (RFC-0002 T-13) (security) — size: M ·
+      route: frontier-reasoning / extra
+- [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
+      ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
+
+---
+
+## Milestone 11 — Http application layer (`v0.10.0`) · size: M
+
+The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
+
+- [ ] 11.1 `HttpClient`: stream-context transport (no ext-curl), JSON/raw bodies, **TLS
+      verification on by default**, explicit connect/read timeouts, typed
+      `HttpClientException`; deliberately not PSR-18 (RFC-0002 FR-37) (security) — size: M ·
+      route: frontier-reasoning / extra · ADR (transport TLS/timeout policy)
+- [ ] 11.2 `Router`: method+path matcher with `{param}` extraction, **404-vs-405 with
+      `Allow`**, callable handlers; stated non-goals (no middleware, no cache, no attribute
+      discovery) + T-11 matrix + Front Controller catalogue adoption + the endpoint-kernel
+      pattern doc (RFC-0002 FR-38; T-11) (adr — pattern adoption) — size: M ·
+      route: frontier-reasoning / extra · ADR
+- [ ] 11.3 `ApiEnvelope`: readonly envelope value, fixed JSON shape (`status`, `code`,
+      `messages`, `data`), outcome constructors (ok/created/updated/deleted/empty/invalid/
+      notFound/failed/caught); message strings caller-supplied, `Result`-mapping stays a
+      documented app-side pattern (RFC-0002 FR-39) (severity:medium — consumer-visible API
+      shape) — size: S · route: standard / medium
+- [ ] 11.4 T-07 `HttpClient` behavioural suite against a live `php -S` origin (timeout,
+      refusal and error-taxonomy paths; T-03's process discipline) (RFC-0002 T-07)
+      (security) — size: M · route: frontier-reasoning / extra
+- [ ] 11.5 phpbench: NFR-11 (router dispatch at 50 routes; envelope build) (RFC-0002)
+      (step:optimize) — size: XS · route: fast / medium
+
+---
+
+## Milestone 12 — Security & channels (`v0.11.0`) · size: M
+
+AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-44).
+
+- [ ] 12.1 `Crypto` + `SecretKey`: AES-256-GCM, versioned `v1.` base64url token, `decrypt()`
+      **throws** `CryptoException` on any failure (wrong key, tamper, malformed token);
+      ext-openssl suggested with constructor refusal when absent (ADR-0021/ADR-0022
+      pattern); `#[SensitiveParameter]` on secret-bearing signatures (RFC-0002 FR-40)
+      (security) — size: M · route: frontier-reasoning / extra · ADR (AEAD replaces
+      unauthenticated CBC)
+- [ ] 12.2 T-09 crypto suite: tamper/wrong-key/truncation vectors, nonce uniqueness across
+      10⁵ tokens, version-prefix handling (RFC-0002 T-09) (security) — size: S ·
+      route: frontier-reasoning / extra
+- [ ] 12.3 Logging channels: `Level` enum (PSR-3 mapping + ordering), `LevelFilteredLogger`,
+      `MultiLogger`, `LoggerFactory` (one config array → channel map), PSR-3-pure (no
+      Monolog dependency, NFR-08) + T-12 routing matrix + NFR-14 bench
+      (RFC-0002 FR-41/FR-42; T-12) (severity:medium) — size: M · route: standard / medium
+- [ ] 12.4 `Mail` group: `EmailAddress` (validated), `MailMessage` (**CR/LF/NUL in
+      header-bound values refused at construction**), `Mailer` + `NativeMailer` (explicit
+      constructor config, no global `ini_set`), `MailException`, the Mail deptrac layer
+      (Support-only edge) + T-10 header-injection corpus (RFC-0002 FR-43/FR-44; T-10)
+      (security) — size: M · route: frontier-reasoning / extra · ADR (header-injection
+      refusal + transport non-goals)
+- [ ] 12.5 phpbench: NFR-13 (crypto 1 KiB round-trip) (RFC-0002) (step:optimize) — size: XS ·
+      route: fast / medium
+
+---
+
 ## Spec Coverage Map
 
 Tracks which spec section is fulfilled by which roadmap item(s). Sections follow the frozen
@@ -574,11 +698,11 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
-| §2 | Functional items 1–25 (+9b) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5 | ✅ |
-| §3 | Architecture & layering (deptrac) | 1.1, 1.6, 2.1, 2.5 | ✅ |
-| §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ✅ |
-| §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ✅ |
-| §6 | API example / public interface | 1.6, 3.1 | ✅ |
-| §7 | Verification & test strategy (r2) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2 | 🚧 |
+| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | 🚧 |
+| §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | 🚧 |
+| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 11.5, 12.5 | 🚧 |
+| §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | 🚧 |
+| §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3 | 🚧 |
+| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 11.2, 11.4, 12.2–12.3 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
-| §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | ✅ |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 11.1–11.2, 12.1, 12.4 | 🚧 |
