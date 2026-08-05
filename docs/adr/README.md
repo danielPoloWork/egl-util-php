@@ -44,3 +44,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0026](0026-session-hardening-as-a-value-and-csrf-through-a-seam.md) | Session hardening as a value, CSRF through a seam, and a mechanism asserted because behaviour cannot see it | Accepted |
 | [0027](0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md) | Constant-time comparison asserted by mechanism, not by timing — the spec amended on measured evidence | Accepted |
 | [0028](0028-container-exceptions-live-in-the-container-group-and-get-carries-a-type.md) | Container exceptions in the Container group, a typed `get()`, and a benchmark that measured the harness | Accepted |
+| [0029](0029-result-carries-a-throwable-and-production-withholds-the-message-too.md) | A `Result` failure carries a throwable, `map()` does not catch, and production withholds the message too | Accepted |

@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — Two assumptions, and a benchmark that measured the harness](docs/journal/2026/08/2026-08-05-container.md).
+  [2026-08-05 — Two silent losses, found by probing](docs/journal/2026/08/2026-08-05-errors-milestone-6.md).
 
 ## Model & effort routing (advisory)
 
@@ -402,8 +402,20 @@ The application-facing groups (RFC-0001).
       depends on nothing and PSR-11 would have broken that (5 deptrac violations, probed). `get()`
       carries a **conditional return type** PSR-11 lacks, so consumers at PHPStan max are not taxed
       at every call site.*
-- [ ] 6.5 `Result`, PSR-3 `Logger`, `ExceptionHandler` with env-gated trace policy (RFC-0001)
-      (severity:medium) — route: standard / medium
+- [x] 6.5 `Result`, PSR-3 `Logger`, `ExceptionHandler` with env-gated trace policy (RFC-0001)
+      (severity:medium) — route: standard / medium *(session model matched the route)* ·
+      **ADR-0029**. *Two decisions settled by probing, both defaults losing data silently:
+      `file_put_contents()` with `LOCK_EX` on a `php://` stream returns **`false` and writes
+      nothing**, so a logger locking every write would discard every console record — real files get
+      the lock, streams do not, with a functional test over `php://output`; and a `Throwable` in a log
+      context **encodes to `{}`** because `json_encode()` only sees public properties, so throwables
+      are walked explicitly. `ExceptionHandler` does the opposite deliberately: production withholds
+      the **message as well as the trace** (a message names schemas and paths just as effectively) and
+      emits a reference that also lands in the log — **stricter than FR-18's letter, recorded as
+      such**. `problem()` is a pure value because `http_response_code()` warns inside PHPUnit under
+      `failOnWarning`. `Result` failures carry a `Throwable` so `orElseThrow()` rethrows the original
+      instance with its original trace, and `map()` deliberately does **not** catch — `Result::try()`
+      is the named opt-in.*
 
 ---
 
@@ -432,12 +444,12 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
-| §1 | Objective & design philosophy | 1.1, 1.6 | ⏳ |
-| §2 | Functional items 1–25 (+9b) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5 | 🚧 |
-| §3 | Architecture & layering (deptrac) | 1.1, 1.6, 2.1, 2.5 | ⏳ |
-| §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ⏳ |
+| §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
+| §2 | Functional items 1–25 (+9b) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5 | ✅ |
+| §3 | Architecture & layering (deptrac) | 1.1, 1.6, 2.1, 2.5 | ✅ |
+| §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | 🚧 |
 | §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ✅ |
-| §6 | API example / public interface | 1.6, 3.1 | ⏳ |
+| §6 | API example / public interface | 1.6, 3.1 | ✅ |
 | §7 | Verification & test strategy (r2) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3 | ✅ |
-| §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3 | ⏳ |
+| §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3 | 🚧 |
 | §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | 🚧 |
