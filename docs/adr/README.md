@@ -45,3 +45,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0027](0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md) | Constant-time comparison asserted by mechanism, not by timing — the spec amended on measured evidence | Accepted |
 | [0028](0028-container-exceptions-live-in-the-container-group-and-get-carries-a-type.md) | Container exceptions in the Container group, a typed `get()`, and a benchmark that measured the harness | Accepted |
 | [0029](0029-result-carries-a-throwable-and-production-withholds-the-message-too.md) | A `Result` failure carries a throwable, `map()` does not catch, and production withholds the message too | Accepted |
+| [0030](0030-same-runner-ab-because-a-stored-baseline-cannot-carry-a-10-percent-gate.md) | A same-runner A/B, because a stored baseline cannot carry NFR-06's 10% gate — and all three deferred budgets are met | Accepted |

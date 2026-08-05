@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — Two silent losses, found by probing](docs/journal/2026/08/2026-08-05-errors-milestone-6.md).
+  [2026-08-05 — The gate NFR-06 asked for would have fired on nothing](docs/journal/2026/08/2026-08-05-bench-harness.md).
 
 ## Model & effort routing (advisory)
 
@@ -424,8 +424,21 @@ The application-facing groups (RFC-0001).
 Ship `egl/utils` and settle the bridge (RFC-0001). The **1.0.0 decision** follows as a
 dedicated post-M7 API-freeze review.
 
-- [ ] 7.1 phpbench nightly CI harness (NFR-06 methodology) with >10% regression failure
-      (RFC-0001) (severity:medium) — route: standard / medium
+- [x] 7.1 phpbench nightly CI harness (NFR-06 methodology) with >10% regression failure
+      (RFC-0001) (severity:medium) — route: standard / medium *(session model matched the route)* ·
+      **ADR-0030**, **benchmark record**. *NFR-06's gate could not be built as written, and the
+      evidence was already in this repo's CI history: across nine `master` runs with `QueryBuilder`
+      and its bench **provably unchanged**, one subject ranged **2.684–3.767 µs — 40.4% peak to
+      peak**. A nightly 10% comparison would have failed most nights on nothing. Five consecutive
+      passes inside **one** job spread **0.4–1.5%**, so the gate measures base and HEAD on the same
+      runner via `git worktree` — the threshold was never the problem, the comparison was. Two gates:
+      relative (>10%) and absolute ceilings, the latter because twenty commits at +9% each pass every
+      relative check and still double the runtime. **All three deferred budgets are met** — NFR-01
+      **0.958 µs / 2.40×**, NFR-03 **3.776 µs**, NFR-05 **148.3 ms** — and not because anything got
+      faster: the earlier over-budget numbers came from `--php-disable-ini` on Windows, which discards
+      the whole `php.ini`, not NFR-06's environment. The environment is now **asserted** rather than
+      configured and hoped for. Still not the named reference CPU; NFR-04 stays ungated (a memory
+      delta phpbench's `mem_peak` does not report) — both named, not quietly skipped.*
 - [ ] 7.2 `roave/backward-compatibility-check` wired to release PRs; deprecation policy
       documented (RFC-0001) (severity:medium) — route: standard / medium
 - [ ] 7.3 Signed tags → validated release action → Packagist publish (RFC-0001)
@@ -447,7 +460,7 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
 | §2 | Functional items 1–25 (+9b) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5 | ✅ |
 | §3 | Architecture & layering (deptrac) | 1.1, 1.6, 2.1, 2.5 | ✅ |
-| §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | 🚧 |
+| §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ✅ |
 | §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ✅ |
 | §6 | API example / public interface | 1.6, 3.1 | ✅ |
 | §7 | Verification & test strategy (r2) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3 | ✅ |

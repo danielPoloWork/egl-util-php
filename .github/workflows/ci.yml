@@ -243,6 +243,19 @@ jobs:
   # Spec NFR-06 pins the benchmark interpreter to PHP 8.3; the rest of that methodology
   # (10 iterations x 100 revs, 5% retry threshold, OPcache + JIT off, >10% regression fails)
   # lands with the harness in roadmap item 7.1.
+  # ---------------------------------------------------------------------------
+  # Benchmarks (spec NFR-06). Two gates, because they catch different failures.
+  #
+  # `regression` compares HEAD against the base commit ON THE SAME RUNNER, which is what makes
+  # NFR-06's 10% threshold usable. Measured before it was chosen: across nine master runs where
+  # QueryBuilder and its benchmark were provably unchanged, one subject ranged 2.684-3.767us --
+  # 40.4% peak to peak on GitHub's shared runners -- while five consecutive passes inside ONE job
+  # spread 0.4-1.5%. A stored baseline at 10% would have fired on noise; a same-runner A/B gives
+  # the threshold roughly six times the noise it must clear.
+  #
+  # `budgets` checks the absolute NFR ceilings, which the relative gate structurally cannot:
+  # twenty commits at +9% each pass every regression check and still double the runtime.
+  # ---------------------------------------------------------------------------
   benchmark:
     name: benchmark / reproducible perf
     needs: bootstrap
@@ -251,6 +264,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The baseline half needs a second commit to check out, so the default shallow
+          # single-commit fetch is not enough.
+          fetch-depth: 0
       - name: Check for a phpbench config (job self-enables when the harness lands)
         id: cfg
         shell: bash
@@ -259,7 +276,7 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Benchmarks pending::No phpbench config yet, so the benchmark suite is skipped. It starts running by itself once roadmap item 3.5 lands the harness."
+            echo "::notice title=Benchmarks pending::No phpbench config yet, so the benchmark suite is skipped."
           fi
       - name: Set up PHP
         if: steps.cfg.outputs.present == 'true'
@@ -267,12 +284,63 @@ jobs:
         with:
           php-version: '8.3'   # spec NFR-06 benchmark methodology — not the build matrix
           coverage: none       # instrumentation would distort the measurements
+          # NFR-06 requires OPcache and JIT off. Asserted below rather than trusted.
+          ini-values: opcache.enable_cli=0, opcache.jit=disable, opcache.jit_buffer_size=0
+      - name: Assert the measurement environment matches NFR-06
+        if: steps.cfg.outputs.present == 'true'
+        run: php tools/assert_bench_env.php
       - name: Install dependencies
         if: steps.cfg.outputs.present == 'true'
         run: composer install --no-interaction --prefer-dist
-      - name: Run the benchmark suite
+      - name: Measure HEAD
         if: steps.cfg.outputs.present == 'true'
         shell: bash
-        run: vendor/bin/phpbench run --report=aggregate
-
-
+        run: |
+          mkdir -p build/logs
+          vendor/bin/phpbench run --report=aggregate --dump-file=build/logs/head.xml
+      - name: Absolute NFR budgets
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          python3 tools/bench_budget_gate.py build/logs/head.xml             --budget benchHydrateWarm=5             --budget benchBuildFiveConditionSelect=10             --budget benchWarmSingletonResolve=2             --budget benchFirstAutowiredResolve=30
+      - name: NFR-01 ratio — hydration vs manual construction
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          python3 tools/bench_ratio_gate.py build/logs/head.xml             --numerator benchHydrateWarm --denominator benchManualConstruction --max-ratio 3
+      - name: Resolve the base commit to compare against
+        if: steps.cfg.outputs.present == 'true'
+        id: base
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="$(git rev-parse HEAD~1 2>/dev/null || true)"
+          fi
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "sha=" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No baseline::No reachable base commit, so the regression gate has nothing to compare against. The absolute budgets above still ran."
+          else
+            echo "sha=$BASE" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Measure the base commit on this same runner
+        if: steps.cfg.outputs.present == 'true' && steps.base.outputs.sha != ''
+        shell: bash
+        run: |
+          git worktree add ../baseline "${{ steps.base.outputs.sha }}"
+          cd ../baseline
+          composer install --no-interaction --prefer-dist --quiet
+          # Written back into the HEAD workspace so both reports sit side by side.
+          vendor/bin/phpbench run --progress=none --dump-file="$GITHUB_WORKSPACE/build/logs/base.xml"
+      - name: Regression gate — NFR-06's 10% budget
+        if: steps.cfg.outputs.present == 'true' && steps.base.outputs.sha != ''
+        shell: bash
+        run: python3 tools/bench_regression_gate.py build/logs/base.xml build/logs/head.xml --max-regression 10
+      - name: Keep the reports
+        if: steps.cfg.outputs.present == 'true' && always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: benchmark-reports
+          path: build/logs/*.xml
+          if-no-files-found: warn
