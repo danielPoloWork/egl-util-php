@@ -150,9 +150,17 @@ status. So the map is a constructor argument, and anything unlisted is a 500.
   unconditionally fails 1 — the one written for it; dropping the throwable conversion fails 2;
   making `map()` catch fails 1.
 - `Errors` gains the `Psr` layer grant, for the same reason `Container` did in ADR-0028.
-- `ExceptionHandler::handle()` and `register()` remain uncovered — four and six statements of I/O
-  with every decision they act on tested above. Named here rather than left silent, as with
-  `NativeSessionApi` (ADR-0026 §8).
+- Coverage measured at **90.96%** overall (1047/1151). `Result` and `Logger` are both at **100%**;
+  `ExceptionHandler` is at **69.12%** (47/68).
+- Those **21 uncovered lines** are `handle()`, `register()`, and the two closures `register()`
+  installs. An earlier draft of this section called it "four and six statements", which understated
+  it by half — the shutdown closure that builds an `ErrorException` from `error_get_last()` is itself
+  most of the total. The reason it cannot be reached is unchanged and is the reason `isFatal()` was
+  extracted: a real fatal error takes the process with it, and `http_response_code()` warns inside
+  PHPUnit under `failOnWarning`. Every *decision* those lines act on — the status, the document, the
+  reference, the fatal classification — is covered. But the honest figure is 21, not 10, and a
+  handler's own emit path is a fair thing for a future item to want under an integration suite the
+  way T-03 covered `Session`.
 
 ## References
 
