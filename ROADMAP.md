@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — The same defect, in the second place it happened](docs/journal/2026/08/2026-08-05-release-gate.md).
+  [2026-08-05 — The question under the question](docs/journal/2026/08/2026-08-05-bridge-packaging.md).
 
 ## Model & effort routing (advisory)
 
@@ -471,9 +471,57 @@ dedicated post-M7 API-freeze review.
       than being pushed from CI: no Packagist token here, and AGENTS.md §11's line intact. Two
       one-time maintainer prerequisites are documented — a signing key on the GitHub account and the
       Packagist integration — and **the first release cannot succeed without them**.*
-- [ ] 7.4 `egl/utils-psr7-bridge` packaging decision: subtree vs second repository (possibly a
+- [x] 7.4 `egl/utils-psr7-bridge` packaging decision: subtree vs second repository (possibly a
       second EADOS run) + ADR-002's conversion contract tests (RFC-0001 A-8)
-      (adr, decision-heavy) — route: frontier-reasoning / extra
+      (adr, decision-heavy) — route: frontier-reasoning / extra *(run at the routed tier — the
+      maintainer switched the session to Fable 5 rather than accepting a sixth mismatch)* ·
+      **ADR-0033**, **spec 02 r1**. *Two findings reframed A-8's wording before options could be
+      weighed: Packagist needs `composer.json` at a repository root, so a second repository exists
+      under **every** option and the real question is authored vs **generated**; and the maintainer
+      struck a phantom cost from the analysis — EADOS is an external generation tool, not repository
+      governance, so "duplicating it" never belonged on the ledger. Decision: canonical source under
+      **`packages/utils-psr7-bridge/`** in this monorepo (own composer.json, namespace
+      `D4np\Utils\Bridge\Psr7\`, tests, static analysis, changelog); the split repository is a
+      **generated, read-only publication target** — no PRs, no authored commits; **independent
+      versioning by design, not inheritance**: `utils-psr7-bridge-vX.Y.Z` tags translate to
+      `vX.Y.Z` on the split repo, signed at the source and verified before splitting (ADR-0032's
+      mechanism). The load-bearing property is same-PR integration: a core change that breaks the
+      conversion contract fails in the PR that introduces it — with the flip side named, a
+      **release-mode** re-test against the released core before any bridge tag ships, because the
+      committed constraint is a claim PR-mode evidence cannot support. Imported ADR-002's
+      conversion contract is now **BFR-01…BFR-22**, including the two traps that make it more than
+      ceremony: multiple `Set-Cookie` headers are refused rather than comma-joined (RFC 6265), and
+      uploaded files cross the `$_FILES` ↔ stream boundary with no stream access on a failed
+      upload. **A decision, not an implementation** — the ADR-002 contract *tests* move to item
+      8.2, which is why the Spec Coverage Map's §7 row reopens. Milestone 8 carries the build.*
+
+---
+
+## Milestone 8 — PSR-7 bridge (`utils-psr7-bridge-v0.1.0`) · size: M
+
+The implementation of ADR-0033's decision, specified end to end by
+[`docs/specs/02_spec_psr7_bridge.md`](docs/specs/02_spec_psr7_bridge.md). **Bridge-scoped:** this
+milestone versions under the bridge's own tag line (`utils-psr7-bridge-v0.1.0`), not the core's —
+the core's minor-per-milestone rule (AGENTS.md §11) applies to milestones that change the core
+package, and the core-side work here (a CI job, docs) is chore-level. The post-M7 `1.0.0`
+API-freeze review for the **core** is unaffected by this milestone.
+
+- [ ] 8.1 Scaffold `packages/utils-psr7-bridge/` per spec 02 §2 (composer.json, PSR-4, quality
+      bar, in-package changelog) + the self-enabling `bridge-contract` CI job (PR mode: path
+      repository injected in the CI workspace only; guard on the package's composer.json existing,
+      lesson L-0010) + the core deptrac rule that a core → `D4np\Utils\Bridge\` import is a build
+      failure — route: standard / medium
+- [ ] 8.2 `Psr7Bridge` converters + the full **T-B** contract suite: every clause of spec 02
+      §4–§5 (BFR-01…BFR-22) tested against **two** PSR-17 implementations (nyholm/psr7,
+      guzzlehttp/psr7), each refusal and fidelity clause probe-verified by planting the defect it
+      claims to catch (severity:high — the conversion contract is the package's entire value) —
+      route: standard / high
+- [ ] 8.3 Publication pipeline per spec 02 §6: signed-source-tag verification (ADR-0032 reused),
+      **release-mode** contract run against the released core, `git subtree split` + translated
+      tag push to the read-only split repository; verify the `v*.*.*` / `utils-psr7-bridge-v*`
+      tag-grammar isolation with a real tag before the first publication; one-time maintainer
+      actions documented (create the split repo, register `egl/utils-psr7-bridge` on Packagist)
+      (severity:high — supply-chain surface) — route: standard / high
 
 ---
 
@@ -491,6 +539,6 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ✅ |
 | §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ✅ |
 | §6 | API example / public interface | 1.6, 3.1 | ✅ |
-| §7 | Verification & test strategy (r2) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3 | ✅ |
-| §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3 | 🚧 |
-| §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | 🚧 |
+| §7 | Verification & test strategy (r2) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2 | 🚧 |
+| §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
+| §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | ✅ |

@@ -12,6 +12,29 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The PSR-7 bridge packaging decision** (**ADR-0033**, closing Milestone 7 and RFC-0001's A-8) —
+  plus [`docs/specs/02_spec_psr7_bridge.md`](docs/specs/02_spec_psr7_bridge.md), the frozen contract
+  Milestone 8 implements. **No code lands**: item 7.4's deliverable is the decision.
+  Two findings reframed "subtree vs second repository" before options could be weighed: Packagist
+  requires `composer.json` at a repository root, so a second repository exists under **every**
+  option — the real question is whether it is authored or **generated**; and the maintainer struck a
+  phantom cost from the analysis (EADOS is an external generation tool, not repository governance,
+  so "duplicating" it never belonged on the ledger).
+  Decision: canonical source under **`packages/utils-psr7-bridge/`** in this monorepo; the split
+  repository is a generated, **read-only** publication target; **independent versioning by design**
+  — `utils-psr7-bridge-vX.Y.Z` tags, signed at the source and verified before splitting
+  (ADR-0032's mechanism), translate to `vX.Y.Z` on the split repository. The load-bearing property
+  is same-PR integration: a core change that breaks the conversion contract fails in the PR that
+  introduces it — with its flip side named, a **release-mode** re-test against the *released* core
+  before any bridge tag ships.
+  Imported ADR-002's conversion contract is now numbered, testable clauses (**BFR-01…BFR-22**),
+  including its two sharpest edges: a PSR-7 response bearing multiple `Set-Cookie` headers is
+  **refused** rather than comma-joined (RFC 6265 cookie strings contain commas — joining corrupts
+  them silently), and uploaded files cross the `$_FILES` ↔ `UploadedFileInterface` boundary with
+  error codes preserved verbatim and **no stream access on a failed upload**. Milestone 8
+  (items 8.1–8.3) carries the implementation; the Spec Coverage Map's §7 row honestly **reopens**,
+  since the spec-named bridge contract tests do not exist yet.
+
 - **A verified release path** (**ADR-0032**) — spec §8, NFR-07. `release.yml` previously drafted a
   GitHub Release from whatever was tagged, having checked only that `composer install` succeeded. It
   is now three jobs, and **nothing is drafted until all of them pass**, because a draft is
