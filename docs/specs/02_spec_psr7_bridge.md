@@ -6,7 +6,7 @@
 > discipline as [`01_spec_utils.md`](01_spec_utils.md): a diverging implementation updates this spec
 > in the same PR, with a revision entry and a rationale.
 
-**Revision r2** — 2026-08-05. See [Revision history](#revision-history).
+**Revision r3** — 2026-08-05. See [Revision history](#revision-history).
 
 ## 1. Scope & non-goals
 
@@ -188,9 +188,16 @@ crossing the bridge intact.
 - The committed `composer.json` **never contains a `repositories` entry**: a path repository
   pointing outside the package would break every standalone install of the split package. PR mode
   injects it in the CI workspace only (§7).
-- Tag-grammar isolation: core `v*.*.*` workflows do not match `utils-psr7-bridge-v*` tags and vice
-  versa. Documented GitHub pattern semantics; **item 8.3 verifies with a real tag before the first
-  publication.**
+- Tag-grammar isolation: **each workflow guards its own ref shape** and refuses a tag that is not
+  its own — `release.yml` requires `^v[0-9]+\.[0-9]+\.[0-9]+$`, `bridge_release_gate.py` requires
+  `^utils-psr7-bridge-v\d+\.\d+\.\d+$`. r1 planned to verify GitHub's `tags:` glob with a throwaway
+  tag; the guards are stronger and make the glob's behaviour irrelevant, so no such tag is pushed
+  (ADR-0035 §1).
+- **Release mode is never skipped.** It is the only evidence for the package's central published
+  claim — that its core constraint resolves and works — so an unavailable release mode blocks
+  publication rather than being deferred the way an unavailable *check* would be (ADR-0035 §2).
+  Consequently no bridge version can be published until `egl/utils` has a release matching the
+  committed constraint.
 - One-time maintainer actions, mirroring `docs/workflow/release.md`'s prerequisites section: create
   the split repository, register it on Packagist.
 
@@ -231,3 +238,4 @@ methodology rather than being invented here.
 |-----|------|--------|
 | r1 | 2026-08-05 | Commissioned by ADR-0033 (item 7.4): package boundary, independent versioning, publication pipeline, and imported ADR-002's conversion contract as BFR-01…BFR-22. |
 | r2 | 2026-08-05 | Item 8.2, from implementing it. §3 records the four whole-collection readers `Request` gained (ADR-0034) — without them BFR-04–07 were not implementable, since every core collection reader was key-scoped and POST and `$_FILES` were recoverable from nothing else. BFR-07's wording corrected: r1 said the upload stream "lazily wraps" `tmp_name`, but eagerness is the PSR-17 factory's business and neither reference implementation defers, so the clause now states what the bridge controls — that no stream over `tmp_name` is created at all for a failed upload. |
+| r3 | 2026-08-05 | Item 8.3, from building the pipeline. §6: tag-grammar isolation becomes an explicit **ref-shape guard in each workflow** rather than a throwaway tag verifying GitHub's glob — stronger, and it removes a side effect on a public repository (ADR-0035 §1). Release mode is stated as **never skipped**: it is the only evidence for the package's central published claim, so its unavailability blocks publication rather than deferring a check (ADR-0035 §2). |

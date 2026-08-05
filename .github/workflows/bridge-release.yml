@@ -1,0 +1,160 @@
+name: bridge-release
+
+# Publication pipeline for `egl/utils-psr7-bridge` (spec 02 §6, ADR-0033, ADR-0035).
+#
+# The bridge versions independently of the core: tags here are
+# `utils-psr7-bridge-vMAJOR.MINOR.PATCH`, and the split repository receives a plain
+# `vMAJOR.MINOR.PATCH`, which is what Packagist reads.
+#
+# Nothing is pushed anywhere until three things hold:
+#
+#   1. the tag is annotated, signed, and agrees with the package's changelog;
+#   2. the package passes its contract suite in **release mode** — a clean install resolving
+#      `egl/utils` from Packagist exactly as a consumer would, because the committed constraint is a
+#      claim about *released* core versions and PR-mode evidence (working tree) cannot support it;
+#   3. the split repository and its token are configured.
+#
+# **This pipeline cannot succeed until the core has a release.** `egl/utils: ^0.7` resolves to
+# nothing today, so release mode fails — correctly, and by design rather than by oversight. It is
+# not skipped: skipping would publish a package whose central claim is unverified. The prerequisite
+# check below says so before any work is done.
+
+on:
+  push:
+    tags: ['utils-psr7-bridge-v*']
+  # Available manually so the maintainer can dry-run the gates against an existing tag without
+  # cutting a new one.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'An existing bridge tag to validate (no push happens on a dispatch run)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish ${{ github.event.inputs.tag || github.ref_name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Resolve which tag this run is about
+        id: tag
+        shell: bash
+        run: |
+          NAME="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          # A dispatch run validates and stops; only a tag push publishes.
+          echo "publishes=${{ github.event_name == 'push' }}" >> "$GITHUB_OUTPUT"
+
+      - name: The tag must be a bridge release tag, and agree with the package
+        id: gate
+        shell: bash
+        run: |
+          # Refuses a core `vX.Y.Z` tag by name. Spec 02 r1 planned to verify with a throwaway tag
+          # that the core workflow's `v*.*.*` glob does not match `utils-psr7-bridge-v*`; an explicit
+          # shape guard in each workflow is strictly better, because it does not depend on GitHub's
+          # matcher staying what it is today (ADR-0035).
+          python3 tools/bridge_release_gate.py --tag "${{ steps.tag.outputs.name }}"
+          VERSION="$(python3 tools/bridge_release_gate.py --tag "${{ steps.tag.outputs.name }}" --print-version)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "The split repository will receive v$VERSION."
+
+      - name: The tag must be annotated and signed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NAME="${{ steps.tag.outputs.name }}"
+          TYPE="$(git cat-file -t "$NAME")"
+          if [ "$TYPE" != "tag" ]; then
+            echo "::error title=Lightweight tag::$NAME is a $TYPE, not an annotated tag, and cannot carry a signature. Re-create it with 'git tag -a -s'."
+            exit 1
+          fi
+          # ADR-0032's mechanism, reused: GitHub already holds the maintainer's keys, so no key
+          # material reaches this runner and no keyring goes stale on a rotation.
+          SHA="$(gh api "repos/${{ github.repository }}/git/ref/tags/$NAME" --jq '.object.sha')"
+          VERIFIED="$(gh api "repos/${{ github.repository }}/git/tags/$SHA" --jq '.verification.verified')"
+          REASON="$(gh api "repos/${{ github.repository }}/git/tags/$SHA" --jq '.verification.reason')"
+          echo "signature verified: $VERIFIED (reason: $REASON)"
+          if [ "$VERIFIED" != "true" ]; then
+            echo "::error title=Unsigned tag::$NAME reports verified=$VERIFIED, reason '$REASON'. The split repository's own tags are unsigned build artifacts, so this signature is the only authenticity assertion in the chain (ADR-0033 §5)."
+            exit 1
+          fi
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          # The package's floor, which is the core's. A release must install where it claims to.
+          php-version: '8.1'
+          coverage: none
+
+      - name: Release mode — install the package as a consumer would
+        shell: bash
+        run: |
+          # Copied out of the monorepo so no path repository can possibly be in scope: this install
+          # resolves egl/utils from Packagist, which is the claim the committed constraint makes and
+          # the one PR mode cannot test.
+          cp -r packages/utils-psr7-bridge "$RUNNER_TEMP/release-mode"
+          cd "$RUNNER_TEMP/release-mode"
+          rm -rf vendor composer.lock
+
+          if ! composer update --no-interaction --prefer-dist; then
+            echo "::error title=Release mode failed::The package could not be installed from published packages alone. Until egl/utils has a release matching this package's constraint, no bridge version can be published — the constraint would be a claim nobody can satisfy. Cut the core release first."
+            exit 1
+          fi
+
+      - name: Release mode — the contract suite against the released core
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/release-mode"
+          vendor/bin/phpunit
+
+      - name: Is the split repository configured?
+        id: split
+        shell: bash
+        run: |
+          if [ -z "${{ vars.BRIDGE_SPLIT_REPO }}" ] || [ -z "${{ secrets.BRIDGE_SPLIT_TOKEN }}" ]; then
+            echo "::error title=Split repository not configured::Publishing needs the variable BRIDGE_SPLIT_REPO (e.g. danielPoloWork/egl-utils-psr7-bridge) and the secret BRIDGE_SPLIT_TOKEN (a token with write access to it). Both are one-time maintainer actions — see docs/workflow/release.md. The gates above all passed; only the push is missing."
+            exit 1
+          fi
+          echo "repo=${{ vars.BRIDGE_SPLIT_REPO }}" >> "$GITHUB_OUTPUT"
+
+      - name: Split the package and push it with the translated tag
+        if: steps.tag.outputs.publishes == 'true'
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.BRIDGE_SPLIT_TOKEN }}
+        run: |
+          VERSION="${{ steps.gate.outputs.version }}"
+          TARGET="${{ steps.split.outputs.repo }}"
+
+          # `subtree split` rewrites the package's history with the package root at the top, which is
+          # what Packagist needs: a repository whose composer.json is at its root.
+          BRANCH="$(git subtree split --prefix=packages/utils-psr7-bridge)"
+          echo "split commit: $BRANCH"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # The split tag is a build artifact of a verified signed source, not an assertion of its
+          # own — the authenticity lives at the monorepo tag checked above (ADR-0033 §5).
+          git tag -a "v$VERSION" "$BRANCH" -m "egl/utils-psr7-bridge v$VERSION (generated from ${{ steps.tag.outputs.name }})"
+
+          git push "https://x-access-token:${TOKEN}@github.com/${TARGET}.git" "$BRANCH:refs/heads/main"
+          git push "https://x-access-token:${TOKEN}@github.com/${TARGET}.git" "refs/tags/v$VERSION"
+
+          echo "::notice title=Published::${TARGET} now carries v$VERSION. Packagist updates itself from that repository's own integration; confirm at https://packagist.org/packages/egl/utils-psr7-bridge."
+
+      - name: Dry run — validated, nothing pushed
+        if: steps.tag.outputs.publishes != 'true'
+        run: echo "::notice title=Dry run::Every gate passed for ${{ steps.tag.outputs.name }}. This was a manual dispatch, so nothing was pushed to the split repository."

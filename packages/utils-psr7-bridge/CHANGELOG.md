@@ -13,6 +13,15 @@ release does not imply a bridge release, or the reverse.
 
 ### Added
 
+- Publication pipeline (roadmap item **8.3**, **ADR-0035**): this package is released from a signed
+  `utils-psr7-bridge-vX.Y.Z` tag in the monorepo, verified and contract-tested against the
+  **released** core before anything is pushed, then split to the generated repository as `vX.Y.Z`.
+  **The first release waits on the core.** Release mode resolves `egl/utils` from Packagist exactly
+  as a consumer would, and the core has no release yet — so no version of this package can be
+  published until it does. That is enforced rather than assumed.
+  When cutting a version, add its `## [X.Y.Z]` heading here: it is what the release gate anchors the
+  tag to, since a Composer library carries no version constant of its own.
+
 - **`Psr7Bridge`** (roadmap item **8.2**) — bidirectional conversion between the core's HTTP values
   and PSR-7 messages: `requestToPsr7()`, `requestFromPsr7()`, `responseToPsr7()`,
   `responseFromPsr7()`. PSR-17 factories are **injected at construction**, never discovered or

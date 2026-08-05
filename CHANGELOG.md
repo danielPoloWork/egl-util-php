@@ -12,6 +12,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The PSR-7 bridge's publication pipeline** (**ADR-0035**, spec 02 r3) —
+  `.github/workflows/bridge-release.yml` and `tools/bridge_release_gate.py`, closing Milestone 8.
+  On a `utils-psr7-bridge-vX.Y.Z` tag it verifies the tag is annotated and signed (ADR-0032's
+  GitHub-side mechanism, reused), checks it against the package changelog's `## [X.Y.Z]` heading —
+  a Composer library carries no version constant, so the changelog is what anchors a bridge tag —
+  runs the contract suite in **release mode**, then splits the package and pushes it to the
+  generated split repository as a plain `vX.Y.Z`.
+  **Release mode is never skipped.** This project's standing pattern is to skip a gate that cannot
+  run yet and self-enable later (lesson L-0010), and that is right for a gate that *checks*
+  something and wrong for one that *establishes* something: release mode is the only evidence for
+  the package's central published claim, so skipping it would publish a package nobody has tested
+  against a released core. Consequently **no bridge version can be published until `egl/utils` has
+  a release** — the pipeline fails today, by design, saying exactly that.
+  **Tag-grammar isolation is a guard, not a glob.** Spec r1 planned to verify with a throwaway tag
+  that `v*.*.*` does not match `utils-psr7-bridge-v*`; each workflow now refuses a ref that is not
+  its own shape, which is stronger — it does not depend on GitHub's matcher staying what it is —
+  and pushes no test tag to a public repository. `release.yml` gains that guard as its first step.
+
 - **`Request::queryAll()`, `postAll()`, `cookieAll()` and `uploadedFiles()`** (**ADR-0034**) —
   whole-collection readers, added because roadmap item 8.2 found spec 02's BFR-04…BFR-07 were not
   implementable: every core collection reader was key-scoped, only `headers()` returned a whole
