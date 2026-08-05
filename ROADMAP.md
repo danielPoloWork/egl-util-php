@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — Measuring the requirement instead of arguing with it](docs/journal/2026/08/2026-08-05-t03-integration.md).
+  [2026-08-05 — Two assumptions, and a benchmark that measured the harness](docs/journal/2026/08/2026-08-05-container.md).
 
 ## Model & effort routing (advisory)
 
@@ -388,8 +388,20 @@ The application-facing groups (RFC-0001).
       T-03 r2 now requires the **mechanism assertion** instead, stated positively and negatively
       across every secret-comparison path, with a registry that guards its own completeness. No
       standing deviation. **No production code changed in this item.***
-- [ ] 6.4 `Container` (PSR-11) + `ServiceProvider`; NFR-02 benchmarks (RFC-0001, imported
-      ADR-001) (severity:medium) — route: standard / medium
+- [x] 6.4 `Container` (PSR-11) + `ServiceProvider`; NFR-02 benchmarks (RFC-0001, imported
+      ADR-001) (severity:medium) — route: standard / medium *(session model matched the route —
+      no mismatch)* · **ADR-0028**. *Constructor autowiring over the shared `ReflectionCache`,
+      singleton/factory/bind definitions, and imported ADR-001's non-goals enforced as refusals —
+      unbound interfaces, abstract classes, built-in and untyped parameters, and union types are all
+      declined with a message naming the parameter and the class. **NFR-02 met: 0.173 µs warm
+      (≤ 2), 18.593 µs first autowired (≤ 30).** Getting there needed two benchmark fixes: phpbench
+      runs `beforeMethods` once per *iteration*, so a cold subject must build its container inside
+      the subject; and the first revolution was paying Composer's autoloading, which phpbench
+      smeared across all revs — the tell was **93 µs at 200 revs vs 26 µs at 2000 for identical
+      work**. Container exceptions live in the `Container` group, not `Support`, because `Support`
+      depends on nothing and PSR-11 would have broken that (5 deptrac violations, probed). `get()`
+      carries a **conditional return type** PSR-11 lacks, so consumers at PHPStan max are not taxed
+      at every call site.*
 - [ ] 6.5 `Result`, PSR-3 `Logger`, `ExceptionHandler` with env-gated trace policy (RFC-0001)
       (severity:medium) — route: standard / medium
 

@@ -43,3 +43,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0025](0025-typed-http-wrappers-that-refuse-rather-than-coerce.md) | HTTP wrappers that mirror PSR-7's naming, and refuse rather than coerce | Accepted |
 | [0026](0026-session-hardening-as-a-value-and-csrf-through-a-seam.md) | Session hardening as a value, CSRF through a seam, and a mechanism asserted because behaviour cannot see it | Accepted |
 | [0027](0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md) | Constant-time comparison asserted by mechanism, not by timing — the spec amended on measured evidence | Accepted |
+| [0028](0028-container-exceptions-live-in-the-container-group-and-get-carries-a-type.md) | Container exceptions in the Container group, a typed `get()`, and a benchmark that measured the harness | Accepted |

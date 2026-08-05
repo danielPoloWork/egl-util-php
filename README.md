@@ -46,12 +46,12 @@ setup.
 
 | # | Title | Status |
 |---|---|---|
-| 1 | Project bootstrap & CI | ⏳ in progress |
-| 2 | Support layer | ⏳ planned |
-| 3 | DTO & data mapping | ⏳ planned |
-| 4 | Database | ⏳ planned |
-| 5 | Security | ⏳ planned |
-| 6 | HTTP, container, errors | ⏳ planned |
+| 1 | Project bootstrap & CI | ✅ done |
+| 2 | Support layer | ✅ done |
+| 3 | DTO & data mapping | ✅ done |
+| 4 | Database | ✅ done |
+| 5 | Security | ✅ done |
+| 6 | HTTP, container, errors | 🚧 in progress (6.5 remaining) |
 | 7 | Release engineering & bridge | ⏳ planned |
 
 
