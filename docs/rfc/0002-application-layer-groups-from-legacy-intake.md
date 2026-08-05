@@ -13,7 +13,10 @@
   (query-log injection proof), [ADR-0021](../adr/0021-delegate-rich-html-and-escape-like-wildcards-with-a-portable-character.md)
   (optional-dependency layer precedent), [ADR-0025](../adr/0025-typed-http-wrappers-that-refuse-rather-than-coerce.md)
   (refuse-don't-coerce), [ADR-0005](../adr/0005-atomic-file-writes-with-a-sidecar-lock.md)
-  (locked atomic file writes) · ROADMAP item 7.4 (in flight; independent — see Consequences)
+  (locked atomic file writes) · ROADMAP item 7.4 — settled by
+  [ADR-0033](../adr/0033-bridge-source-in-the-monorepo-published-through-a-generated-split-repository.md)
+  and implemented as Milestone 8 (PRs #45–#48) while this RFC was in draft; independent of
+  this RFC either way (see Consequences)
 
 > **Intake provenance.** This RFC generalizes patterns surveyed in two production PHP
 > applications from the library's target estate — a web console and the database-facing API
@@ -280,8 +283,9 @@ why it is not an SMTP client (the ADR answers).
   per §7 discipline, item 6.3 precedent).
 - Roadmap: advisory grouping into three-to-four milestones — *Support & values*,
   *Persistence*, *Http application layer*, *Security & channels (Crypto, logging, Mail)* —
-  **numbers assigned by the plan phase** after the in-flight bridge milestone (item 7.4's
-  outcome) takes its slot. Security-tagged items route frontier per `os/routing`.
+  **numbers assigned by the plan phase**; the bridge milestone (item 7.4's outcome) took
+  M8 while this RFC was in draft, so these would number from M9. Security-tagged items
+  route frontier per `os/routing`.
 - ADRs at implementation: Persistence layering edges; SqlStatement-only execution;
   AEAD/`Crypto`; `Mail` header-injection refusal; `HttpClient` TLS/scheme policy; CSV
   formula-guard default. Patterns catalogue: *Table Data Gateway* (adopt), *Front
