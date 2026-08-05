@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — A tool whose own PHP floor is above ours](docs/journal/2026/08/2026-08-05-bc-gate.md).
+  [2026-08-05 — The same defect, in the second place it happened](docs/journal/2026/08/2026-08-05-release-gate.md).
 
 ## Model & effort routing (advisory)
 
@@ -454,8 +454,23 @@ dedicated post-M7 API-freeze review.
       already in the repo:** `maintenance.md` said deprecations last "the rest of the current MAJOR
       line", the imported spec §8 says "one minor" — the spec wins, restated as **one full published
       MINOR**, with the pre-1.0 case it previously lacked.*
-- [ ] 7.3 Signed tags → validated release action → Packagist publish (RFC-0001)
-      (severity:high — supply-chain surface) — route: standard / high
+- [x] 7.3 Signed tags → validated release action → Packagist publish (RFC-0001)
+      (severity:high — supply-chain surface) — route: standard / high *(session model matched the
+      route)* · **ADR-0032**. *`release.yml` drafted whatever was tagged, checking only that
+      `composer install` succeeded. Now three jobs: the tag must be **annotated and signed** (asked
+      of GitHub's own verification, so no key material reaches the runner and no keyring goes stale
+      on rotation), must **agree with the tree it points at**, and the tagged tree must pass on
+      **8.1/8.2/8.3** — a tag can point at a commit CI never ran. Nothing is drafted until all of it
+      passes, because a draft is publishable. `tools/release_gate.py` closes a hole no lint can
+      reach: `consistency_lint` runs on a working copy and has **no tag**, so `git tag -a v0.2.0` on
+      a tree whose constant says `0.1.0` ships a release that installs as one version and reports
+      itself as another with nothing inside the tree disagreeing. **Found the item 1.9 defect in a
+      second place** — `matrix.toolchain` referenced in a job with no matrix, silently falling
+      through to '8.3'; the matrix is restored rather than the expression hardcoded, since the
+      release must be tested on the 8.1 floor. Packagist **pulls** via its own integration rather
+      than being pushed from CI: no Packagist token here, and AGENTS.md §11's line intact. Two
+      one-time maintainer prerequisites are documented — a signing key on the GitHub account and the
+      Packagist integration — and **the first release cannot succeed without them**.*
 - [ ] 7.4 `egl/utils-psr7-bridge` packaging decision: subtree vs second repository (possibly a
       second EADOS run) + ADR-002's conversion contract tests (RFC-0001 A-8)
       (adr, decision-heavy) — route: frontier-reasoning / extra
