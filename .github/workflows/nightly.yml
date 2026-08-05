@@ -1,0 +1,79 @@
+name: nightly
+
+# Spec NFR-06 asks for a *nightly* benchmark run, and it earns its place by catching two things
+# the per-PR gate in `ci.yml` structurally cannot.
+#
+# 1. **Slow drift.** The per-PR gate compares HEAD against its base, so twenty commits at +9% each
+#    pass every one of its checks and still double the runtime. The absolute NFR ceilings are what
+#    notice that, and here they run against no baseline at all.
+# 2. **Change that arrives without a commit.** `composer install` re-resolves on every run, so an
+#    upstream dependency that got slower shows up here even on a week with no pushes.
+#
+# What this deliberately does NOT do is compare against a stored baseline from a previous night.
+# Measured: across nine `master` runs where the subject's code was provably unchanged, one
+# benchmark ranged 2.684-3.767us — 40.4% peak to peak on GitHub's shared runners. A 10%
+# night-to-night comparison would report a regression most nights and mean nothing. The per-PR gate
+# gets its 10% threshold honestly by measuring both sides on the same runner; this one does not
+# pretend to.
+
+on:
+  schedule:
+    # 03:17 UTC. Not on the hour: GitHub's scheduler queues heavily at :00, and a benchmark that
+    # waits in a queue is a benchmark measuring a busier machine.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  benchmarks:
+    name: nightly / NFR budgets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'   # spec NFR-06 benchmark methodology
+          coverage: none       # instrumentation would distort the measurements
+          ini-values: opcache.enable_cli=0, opcache.jit=disable, opcache.jit_buffer_size=0
+
+      - name: Assert the measurement environment matches NFR-06
+        run: php tools/assert_bench_env.php
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run the benchmark suite
+        run: |
+          mkdir -p build/logs
+          vendor/bin/phpbench run --report=aggregate --dump-file=build/logs/nightly.xml
+
+      - name: Absolute NFR budgets
+        run: |
+          python3 tools/bench_budget_gate.py build/logs/nightly.xml \
+            --budget benchHydrateWarm=5 \
+            --budget benchBuildFiveConditionSelect=10 \
+            --budget benchWarmSingletonResolve=2 \
+            --budget benchFirstAutowiredResolve=30
+
+      - name: NFR-01 ratio — hydration vs manual construction
+        run: |
+          python3 tools/bench_ratio_gate.py build/logs/nightly.xml \
+            --numerator benchHydrateWarm --denominator benchManualConstruction --max-ratio 3
+
+      - name: Keep the report as the night's record
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: nightly-benchmark-${{ github.run_number }}
+          path: build/logs/nightly.xml
+          if-no-files-found: error
+          retention-days: 90
