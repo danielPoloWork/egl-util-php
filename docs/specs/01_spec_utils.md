@@ -3,6 +3,8 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
+**Revision r2** — 2026-08-05. See [Revision history](#revision-history).
+
 ## 1. Objective & Business Context
 
 Provide EGL PHP projects (framework-based and native/legacy) with a modern utilities library — Composer package egl/utils, PSR-4 namespace D4np\Utils\, PHP 8.1+ — offering typed readonly DTOs, explicit-mechanism security helpers, safe PDO access, hardened session/CSRF handling, and a minimal PSR-11 DI container, replacing ad-hoc per-project solutions (associative-array DTOs, blocklist sanitizers, string-built SQL, silent PDO error modes).
@@ -87,8 +89,54 @@ Consumers import via `use D4np\Utils\Dto\DataTransferObject;`. The public surfac
 
 ## 6. Verification & Test Strategy
 
-Five suites (spec s7): T-01 DTO hydration matrix (nested, collections, nullables, enums, strict/lenient, withers, missing-key cases per RFC-0001 R-4); T-02 injection suite (fuzzed value payloads reach the driver only as bound parameters via query-log assertion; identifier injection throws DatabaseException; LIKE-wildcard escapes); T-03 session/CSRF integration against a real php -S process (cookie flags HttpOnly/Secure/SameSite, session id changes across regenerate(), hash_equals timing, cross-session token rejection); T-04 transaction semantics (exception -> rollback -> rethrow; savepoint nesting); T-05 property tests (Json round-trips, Str::slug idempotence, Env boolean coercion table). Plus: OWASP XSS cheat-sheet corpus per Escaper context (snapshot suite); DOM-bypass corpus for richText(); Hash argon2id/bcrypt-fallback matrix; bridge conversion-fidelity contract tests in egl/utils-psr7-bridge CI (imported ADR-002). CI proves failure via the NFR-07 gate set.
+Five suites (spec s7): T-01 DTO hydration matrix (nested, collections, nullables, enums, strict/lenient, withers, missing-key cases per RFC-0001 R-4); T-02 injection suite (fuzzed value payloads reach the driver only as bound parameters via query-log assertion; identifier injection throws DatabaseException; LIKE-wildcard escapes); T-03 session/CSRF integration against a real php -S process (cookie flags HttpOnly/Secure/SameSite, session id changes across regenerate() and the pre-rotation identifier ceases to resolve, constant-time comparison verified by mechanism assertion per ADR-0026 §7 — positively, that `hash_equals()` is the comparator on every secret-comparison path, and negatively, that `==`, `===`, `strcmp()`, `strncmp()` and equivalents are absent from those paths — cross-session token rejection); T-04 transaction semantics (exception -> rollback -> rethrow; savepoint nesting); T-05 property tests (Json round-trips, Str::slug idempotence, Env boolean coercion table). Plus: OWASP XSS cheat-sheet corpus per Escaper context (snapshot suite); DOM-bypass corpus for richText(); Hash argon2id/bcrypt-fallback matrix; bridge conversion-fidelity contract tests in egl/utils-psr7-bridge CI (imported ADR-002). CI proves failure via the NFR-07 gate set.
 
 Toolchain: built with Composer (PSR-4 autoload), tested with PHPUnit (Pest optional), checked with
 PHPStan max level (type soundness); PCOV for coverage, coverage target ≥ 90% line. Every functional and
 non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).
+
+
+## Revision history
+
+| Rev | Date | Change |
+|-----|------|--------|
+| r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
+| r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+
+### r2 rationale — why T-03 asserts a mechanism instead of measuring time
+
+The original requirement asked for a timing test. It was measured before being changed, and the
+signal such a test depends on is not there to be measured.
+
+A timing test distinguishes `hash_equals()` from `===` by exploiting the fact that `===`
+short-circuits on the first differing byte, so an early difference should be measurably faster
+than a late one. On 64-character tokens, 2,000,000 iterations × 5 rounds, PHP 8.3.1:
+
+| scenario | median ns/op | within-scenario spread |
+|---|---|---|
+| `===`, differing at byte 0 | 101.517 | 2.63 ns |
+| `===`, differing at byte 63 | 104.352 | 2.12 ns |
+| `hash_equals()`, differing at byte 0 | 232.103 | 38.22 ns |
+| `hash_equals()`, differing at byte 63 | 227.929 | 29.85 ns |
+
+The gradient the test needs — `===` late minus early — is **+2.8 ns/op**, against a worst
+within-scenario noise of **38 ns/op**: the signal sits roughly **13× below the noise floor** on an
+idle developer machine. `hash_equals()`'s own gradient comes out **negative** (−4.2 ns/op), which is
+noise with a sign. Over HTTP, as T-03 runs, 2.8 ns sits **six orders of magnitude** below request
+latency; shared-vCPU CI runners are noisier still.
+
+**Scoping.** The constant-time property *of `hash_equals()` itself* is PHP's contract, verified
+upstream in PHP's own test suite; re-deriving it here would be testing someone else's implementation
+through a worse instrument. The property that exists at *this* layer is **which comparator the code
+invokes** — and that is decidable exactly, from the source, with no measurement at all. The
+mechanism assertion tests that property, deterministically, in both directions.
+
+**Rejected alternatives.** Asserting that `hash_equals()` is measurably *slower* than `===` (a 2.3×
+gap, comfortably above noise) tests an implementation artifact with an inverted failure profile: red
+on a legitimate PHP optimisation, green on a slow but non-constant-time comparator. A full
+statistical (dudect-style) test applies the right technique at the wrong abstraction layer — at this
+signal-to-noise ratio its discriminative power is zero, so it would be either flaky or tuned into
+vacuity.
+
+T-03 therefore ships with its behavioural suite and no timing test, and this is an amendment rather
+than a standing deviation: there is nothing left to track.

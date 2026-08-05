@@ -42,3 +42,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0024](0024-assert-the-work-factor-not-the-wall-clock.md) | Assert the work factor, not the wall clock — NFR-05 split by what each half can actually prove | Accepted |
 | [0025](0025-typed-http-wrappers-that-refuse-rather-than-coerce.md) | HTTP wrappers that mirror PSR-7's naming, and refuse rather than coerce | Accepted |
 | [0026](0026-session-hardening-as-a-value-and-csrf-through-a-seam.md) | Session hardening as a value, CSRF through a seam, and a mechanism asserted because behaviour cannot see it | Accepted |
+| [0027](0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md) | Constant-time comparison asserted by mechanism, not by timing — the spec amended on measured evidence | Accepted |

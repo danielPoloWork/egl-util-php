@@ -107,50 +107,16 @@ final class CsrfTokenTest extends TestCase
         self::assertFalse($this->csrf->validate(''));
     }
 
-    /**
-     * **Constant-time comparison, asserted as a mechanism because it is invisible as a behaviour.**
+    /*
+     * The constant-time assertion for `validate()` used to live here.
      *
-     * `hash_equals($a, $b)` and `$a === $b` return *identical values* for every input. They differ
-     * only in how long they take, so no functional assertion can tell them apart — and a timing
-     * assertion at PHP level is too noisy to be anything but flaky. Proven, not assumed: replacing
-     * `hash_equals()` with `===` was planted as a probe and the whole suite still **passed**.
+     * It moved to `Security\ConstantTimeComparisonTest` when spec revision **r2** made the mechanism
+     * assertion a requirement across *every* secret-comparison path rather than this one method, and
+     * added a registry-completeness guard so a new path cannot go unasserted. Two copies of the same
+     * property in two files is how they drift, so this is a pointer rather than a duplicate.
      *
-     * So the mechanism is asserted directly. This is the pattern roadmap item 4.6 settled when a
-     * saving sat under the measurement noise floor: when the property cannot be observed in
-     * behaviour, assert the thing that produces it rather than pretending a behavioural test
-     * covers it.
-     *
-     * A `===` on the two tokens leaks the length of the matching prefix through timing, which is
-     * enough to reconstruct a token byte by byte given enough attempts.
+     * The property is unchanged and still probe-verified: `hash_equals()` → `===` fails there.
      */
-    public function testValidationComparesInConstantTime(): void
-    {
-        $method = new \ReflectionMethod(CsrfToken::class, 'validate');
-        $file = $method->getFileName();
-        self::assertIsString($file);
-
-        $lines = file($file);
-        self::assertIsArray($lines);
-
-        $body = implode('', array_slice(
-            $lines,
-            $method->getStartLine() - 1,
-            $method->getEndLine() - $method->getStartLine() + 1,
-        ));
-
-        self::assertStringContainsString(
-            'hash_equals(',
-            $body,
-            'CsrfToken::validate() must compare with hash_equals(); a === comparison leaks the '
-            . 'matching prefix length through timing, and returns the same value so no other test '
-            . 'in this file would notice.',
-        );
-        self::assertDoesNotMatchRegularExpression(
-            '/\$stored\s*={2,3}\s*\$token|\$token\s*={2,3}\s*\$stored/',
-            $body,
-            'the tokens must not be compared with == or ===',
-        );
-    }
 
     // ---- per-form scoping ------------------------------------------------------------------------
 

@@ -14,7 +14,7 @@ capacity; no parallel streams; no calendar dates by decision).
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-05 — A probe that passed, and this time it was the code](docs/journal/2026/08/2026-08-05-session-csrf.md).
+  [2026-08-05 — Measuring the requirement instead of arguing with it](docs/journal/2026/08/2026-08-05-t03-integration.md).
 
 ## Model & effort routing (advisory)
 
@@ -374,8 +374,20 @@ The application-facing groups (RFC-0001).
       FR-15's flags. Nothing observable separates them, so the session functions moved behind a
       `SessionApi` seam and a fake asserts the call sequence (**§8**). Honest gap remaining is
       genuinely behavioural — a real cookie, a real identifier — and item 6.3 owns it.*
-- [ ] 6.3 T-03 session/CSRF integration suite against a real `php -S` process (RFC-0001)
-      (security) — route: frontier-reasoning / extra
+- [x] 6.3 T-03 session/CSRF integration suite against a real `php -S` process (RFC-0001)
+      (security) — route: frontier-reasoning / extra *(run at standard tier; mismatch recorded)* ·
+      **ADR-0027**, **spec r2**. *17 behavioural tests against a live server, which is where
+      everything ADR-0026 could not reach finally gets exercised — the flags on a real `Set-Cookie`,
+      a real identifier rotating, cross-session token rejection. Two probe findings shaped it:
+      **`Secure` is emitted over plain HTTP** (PHP writes the attribute unconditionally and leaves
+      enforcement to the browser), which is what makes the suite possible without TLS; and reading a
+      live process's pipe blocks forever, so the server's output goes to a file. **The spec was
+      amended, with the maintainer's authorisation:** §7 asked for a `hash_equals` **timing test**,
+      and measuring first showed the signal it needs is **+2.8 ns/op against 38 ns/op of noise** —
+      ~13× below the noise floor locally, six orders of magnitude below request latency over HTTP.
+      T-03 r2 now requires the **mechanism assertion** instead, stated positively and negatively
+      across every secret-comparison path, with a registry that guards its own completeness. No
+      standing deviation. **No production code changed in this item.***
 - [ ] 6.4 `Container` (PSR-11) + `ServiceProvider`; NFR-02 benchmarks (RFC-0001, imported
       ADR-001) (severity:medium) — route: standard / medium
 - [ ] 6.5 `Result`, PSR-3 `Logger`, `ExceptionHandler` with env-gated trace policy (RFC-0001)
@@ -412,8 +424,8 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §2 | Functional items 1–25 (+9b) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5 | 🚧 |
 | §3 | Architecture & layering (deptrac) | 1.1, 1.6, 2.1, 2.5 | ⏳ |
 | §4 | NFR budgets & benchmark methodology | 3.5, 4.5, 5.5, 6.4, 7.1 | ⏳ |
-| §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ⏳ |
+| §5 | Security test criteria | 4.4, 5.4, 5.5, 6.3 | ✅ |
 | §6 | API example / public interface | 1.6, 3.1 | ⏳ |
-| §7 | Verification & test strategy | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3 | 🚧 |
+| §7 | Verification & test strategy (r2) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3 | ✅ |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3 | ⏳ |
 | §9 | Decision log (imported + seeded ADRs) | 2.1, 5.3, 7.4 | 🚧 |
