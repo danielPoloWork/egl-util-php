@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Six `Str` additions** (spec r3 **FR-31**, RFC-0002; roadmap item **9.1**) —
+  `collapseWhitespace()` (ASCII-scope, UTF-8-safe by construction), `nullIfBlank()`
+  (judges blankness, mutates nothing), `transcode()` (**strict by default** — lossy
+  conversion is an explicit opt-in flag, and a missing `ext-iconv` is a clear refusal
+  rather than silent degradation; unknown encodings are named distinctly from
+  unconvertible data), multibyte-safe `padLeft()`/`padRight()` (PHP 8.3
+  `mb_str_pad()`-compatible semantics; code points counted via PCRE, no mbstring
+  dependency), `shortClassName()` (deterministic `class@anonymous` for anonymous classes —
+  their runtime names embed a platform-shaped file path), and `pascalCase()`
+  (ASCII case mapping, multibyte pass-through, deliberately not idempotent and documented
+  as such). `ext-iconv` joins composer `suggest`.
+
 - **The PSR-7 bridge's publication pipeline** (**ADR-0035**, spec 02 r3) —
   `.github/workflows/bridge-release.yml` and `tools/bridge_release_gate.py`, closing Milestone 8.
   On a `utils-psr7-bridge-vX.Y.Z` tag it verifies the tag is annotated and signed (ADR-0032's

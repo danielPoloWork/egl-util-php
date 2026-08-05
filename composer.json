@@ -38,6 +38,7 @@
         "symfony/html-sanitizer": "^6.4"
     },
     "suggest": {
+        "ext-iconv": "Required by Str::transcode() (spec r3 FR-31); also improves Str::slug() transliteration when ext-intl is absent. transcode() raises a clear UtilsException if called without it, rather than degrading silently.",
         "symfony/html-sanitizer": "Required by Sanitizer::richText() to sanitize user-authored HTML (spec FR-09b). Not needed unless you render untrusted markup; richText() raises a clear UtilsException if it is called without this installed, rather than returning the input unsanitized."
     },
     "minimum-stability": "stable",

@@ -7,7 +7,9 @@ namespace D4np\Utils\Support;
 use InvalidArgumentException;
 
 /**
- * String utilities: URL-friendly slugs, UUIDs, and CSPRNG tokens (spec §2 items 19–21).
+ * String utilities: URL-friendly slugs, UUIDs, CSPRNG tokens (spec §2 items 19–21), and the
+ * FR-31 additions — whitespace collapsing, blank-to-null, charset transcoding, multibyte-safe
+ * padding, class-name and case helpers (spec r3, RFC-0002).
  */
 final class Str
 {
@@ -106,6 +108,220 @@ final class Str
         }
 
         return $token;
+    }
+
+    /**
+     * Trims the value and collapses every internal run of whitespace to a single space.
+     *
+     * Whitespace here is the ASCII set (`space`, `\t`, `\n`, `\r`, `\f`, vertical tab) — the
+     * bytes `trim()` and PCRE's un-flagged `\s` agree on. That byte-oriented match is
+     * deliberately **UTF-8-safe without a `u` flag**: every byte of a multibyte UTF-8 sequence
+     * is `>= 0x80`, so an ASCII-set match can never split one. Unicode spaces (NBSP, U+2028…)
+     * pass through untouched; a caller who needs those normalized transcodes or replaces them
+     * explicitly first, rather than this method guessing.
+     */
+    public static function collapseWhitespace(string $value): string
+    {
+        return preg_replace('/\s+/', ' ', trim($value)) ?? '';
+    }
+
+    /**
+     * `null` when the value is `null` or contains nothing but whitespace; the value itself,
+     * **unmodified**, otherwise.
+     *
+     * Blankness is judged by `trim()`, but the non-blank return is deliberately not trimmed —
+     * this method answers exactly one question ("is there content?") and mutates nothing, so it
+     * composes without surprises: `Str::nullIfBlank(Str::collapseWhitespace($x))` is the
+     * common cleanup pipeline, each step doing its one job.
+     */
+    public static function nullIfBlank(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Converts `$value` from `$from` to `$to` (default UTF-8) via `iconv`.
+     *
+     * **Strict by default**: input the source encoding cannot parse, or characters the target
+     * cannot represent, throw a {@see UtilsException} — silently dropping bytes is data loss,
+     * and data loss must be opted into, never defaulted into (the same honesty rule as
+     * `Escaper`'s U+FFFD substitution, ADR-0019). Pass `$lossy = true` to drop what the target
+     * cannot represent (`//IGNORE`).
+     *
+     * `ext-iconv` is a **suggested** dependency: on a build without it this method refuses
+     * with a clear message rather than degrading (the `Sanitizer::richText()` /
+     * `Hash` fail-fast pattern, ADR-0021/ADR-0022). It is not `require`d because nothing else
+     * in the core needs it and NFR-08 keeps the dependency floor where it is.
+     *
+     * @throws UtilsException when `ext-iconv` is absent, when an encoding name is unknown, or
+     *                        — in strict mode — when the value does not survive conversion
+     *                        losslessly
+     */
+    public static function transcode(
+        string $value,
+        string $from,
+        string $to = 'UTF-8',
+        bool $lossy = false,
+    ): string {
+        if (!function_exists('iconv')) {
+            throw new UtilsException(
+                'Str::transcode() requires ext-iconv, which is not loaded. Install/enable '
+                . 'ext-iconv (composer.json lists it under "suggest").',
+            );
+        }
+
+        // Probe the encoding pair on the empty string first: iconv() signals "unknown
+        // encoding" and "unconvertible input" identically (false + a notice), and the empty
+        // string can only fail for the first reason — so the two failures stay distinguishable
+        // in the message.
+        if (@iconv($from, $to, '') === false) {
+            throw new UtilsException(sprintf(
+                'Str::transcode(): unknown encoding in pair "%s" -> "%s".',
+                $from,
+                $to,
+            ));
+        }
+
+        $target = $lossy ? $to . '//IGNORE' : $to;
+        $result = @iconv($from, $target, $value);
+
+        if ($result === false) {
+            throw new UtilsException(sprintf(
+                'Str::transcode(): value is not losslessly convertible from "%s" to "%s" '
+                . '(invalid byte sequence or unrepresentable character). '
+                . 'Pass $lossy = true to drop unrepresentable characters explicitly.',
+                $from,
+                $to,
+            ));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Left-pads to `$length` **characters** (Unicode code points), not bytes.
+     *
+     * `str_pad()` counts bytes, so it under-pads any multibyte string — `str_pad('héllo', 7)`
+     * adds one space, not two. This method counts code points via PCRE (always available; no
+     * `ext-mbstring` dependency) and follows the semantics of PHP 8.3's `mb_str_pad()`, so a
+     * consumer on a newer floor can migrate to the native function without a behavior change:
+     * a `$length` at or below the current character count returns the value unchanged, and an
+     * empty `$pad` is refused.
+     *
+     * @throws InvalidArgumentException if `$pad` is empty, or `$value`/`$pad` is not valid UTF-8
+     */
+    public static function padLeft(string $value, int $length, string $pad = ' '): string
+    {
+        return self::pad($value, $length, $pad, STR_PAD_LEFT);
+    }
+
+    /**
+     * Right-pads to `$length` **characters** (Unicode code points), not bytes.
+     *
+     * See {@see self::padLeft()} for the semantics; only the side differs.
+     *
+     * @throws InvalidArgumentException if `$pad` is empty, or `$value`/`$pad` is not valid UTF-8
+     */
+    public static function padRight(string $value, int $length, string $pad = ' '): string
+    {
+        return self::pad($value, $length, $pad, STR_PAD_RIGHT);
+    }
+
+    /**
+     * The class name after the final namespace separator — `D4np\Utils\Support\Str` → `Str`.
+     *
+     * Accepts an object (its concrete class is used) or any backslash-separated name; the
+     * string form is **not** required to name a loaded class, so the helper works on names
+     * from configuration or logs without autoloading anything. An anonymous class returns the
+     * literal `class@anonymous`: its runtime name embeds a NUL byte and the defining file
+     * path, which is platform-shaped — one deterministic answer beats a fragment of a path.
+     *
+     * @throws InvalidArgumentException if the string is empty or ends in a separator (no name
+     *                                   remains after the final `\`)
+     */
+    public static function shortClassName(object|string $class): string
+    {
+        $name = is_object($class) ? get_class($class) : $class;
+
+        // Anonymous-class runtime names embed a NUL byte and the defining FILE PATH — which
+        // contains backslashes on Windows, so naive last-separator surgery would return a
+        // platform-dependent fragment. One deterministic answer on every platform instead.
+        if (str_starts_with($name, 'class@anonymous')) {
+            return 'class@anonymous';
+        }
+
+        $position = strrpos($name, '\\');
+        $short = $position === false ? $name : substr($name, $position + 1);
+
+        if ($short === '') {
+            throw new InvalidArgumentException(sprintf(
+                'shortClassName(): "%s" carries no class name after the final "\\".',
+                $name,
+            ));
+        }
+
+        return $short;
+    }
+
+    /**
+     * PascalCase from words separated by whitespace, underscores, or hyphens —
+     * `"order line"` / `"order_line"` / `"ORDER-LINE"` → `OrderLine`.
+     *
+     * Case mapping is ASCII-only (`strtolower`/`ucwords`): multibyte characters pass through
+     * unchanged rather than being half-mapped byte by byte. Word boundaries are the three
+     * separator classes named above — an already-PascalCase input is therefore a single word
+     * and comes back with only its first letter guaranteed uppercase, not re-split.
+     */
+    public static function pascalCase(string $value): string
+    {
+        $worded = preg_replace('/[\s_\-]+/', ' ', trim($value)) ?? '';
+
+        return str_replace(' ', '', ucwords(strtolower($worded)));
+    }
+
+    /**
+     * The shared engine behind {@see self::padLeft()} / {@see self::padRight()}: mb_str_pad()
+     * semantics over PCRE code-point counting, so the promise ("characters, not bytes") holds
+     * with no extension dependency.
+     */
+    private static function pad(string $value, int $length, string $pad, int $side): string
+    {
+        if ($pad === '') {
+            throw new InvalidArgumentException('$pad must not be empty.');
+        }
+
+        $valueChars = self::countCodePoints($value, '$value');
+        $deficit = $length - $valueChars;
+
+        if ($deficit <= 0) {
+            return $value;
+        }
+
+        $padChars = self::countCodePoints($pad, '$pad');
+        $repeated = str_repeat($pad, (int) ceil($deficit / $padChars));
+        $codePoints = preg_split('//u', $repeated, -1, PREG_SPLIT_NO_EMPTY);
+        $padding = implode('', array_slice($codePoints === false ? [] : $codePoints, 0, $deficit));
+
+        return $side === STR_PAD_LEFT ? $padding . $value : $value . $padding;
+    }
+
+    /**
+     * Code points in `$value`, throwing (with the offending parameter named) on invalid UTF-8 —
+     * a padder that miscounts mojibake would pad it wrongly and silently.
+     */
+    private static function countCodePoints(string $value, string $parameter): int
+    {
+        $count = preg_match_all('/./su', $value);
+
+        if ($count === false) {
+            throw new InvalidArgumentException(sprintf('%s is not valid UTF-8.', $parameter));
+        }
+
+        return $count;
     }
 
     private static function transliterateToAscii(string $value): string
