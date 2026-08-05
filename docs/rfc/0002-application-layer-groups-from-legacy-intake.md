@@ -1,10 +1,9 @@
 # RFC-0002: Application-layer utility groups from legacy intake
 
-- **Status:** In review
+- **Status:** Accepted
 - **Author:** tech-lead (agent-drafted) · **Reviewers:** reviewer, enterprise-architect
-  (cross-cutting: two new groups and a new deptrac layer) · **Approver:** tech-lead — the
-  approval record is added only on the maintainer's decision at PR review (AGENTS.md §6.1;
-  no RFC self-approves)
+  (cross-cutting: two new groups and a new deptrac layer) · **Approver:** tech-lead —
+  recorded on the maintainer's decision at PR #49 review (AGENTS.md §6.1)
 - **Date:** 2026-08-05
 - **Related:** [RFC-0001](0001-egl-utils-library.md) · frozen spec
   [`docs/specs/01_spec_utils.md`](../specs/01_spec_utils.md) ·
@@ -299,14 +298,15 @@ why it is not an SMTP client (the ADR answers).
 
 ## Approval
 
-Filled by the approver **after** review — pending the maintainer's decision; deliberately
-absent from this draft (`rfc_check` is expected red on exactly this field until then):
+Recorded after review, on the maintainer's approval of PR #49 (2026-08-05):
 
 ```
-approved-by:
+approved-by: tech-lead (2026-08-05)
 ```
 
-Reviewers (structured findings addressed): reviewer — ▢ · enterprise-architect — ▢.
+Reviewers (structured findings addressed): maintainer review at PR #49 — approved with no
+findings left to resolve; the reviewer and enterprise-architect passes collapsed into the
+terminal human review (AGENTS.md §6.1).
 
 ## References
 
