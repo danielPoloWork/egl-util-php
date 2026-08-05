@@ -53,7 +53,11 @@ setup.
 | 5 | Security | ✅ done |
 | 6 | HTTP, container, errors | ✅ done |
 | 7 | Release engineering & bridge | ✅ done |
-| 8 | PSR-7 bridge (`packages/utils-psr7-bridge`) | ⏳ planned |
+| 8 | PSR-7 bridge (`packages/utils-psr7-bridge`) | ✅ done |
+| 9 | Support & values | ⏳ planned |
+| 10 | Persistence | ⏳ planned |
+| 11 | Http application layer | ⏳ planned |
+| 12 | Security & channels | ⏳ planned |
 
 
 ## License

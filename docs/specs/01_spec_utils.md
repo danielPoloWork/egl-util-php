@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r2** — 2026-08-05. See [Revision history](#revision-history).
+**Revision r3** — 2026-08-06. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -36,6 +36,32 @@ Provide EGL PHP projects (framework-based and native/legacy) with a modern utili
 - FR-25 Json: encode()/decode() with JSON_THROW_ON_ERROR; library JsonException wraps and rethrows PHP's native \JsonException (RFC-0001 R-7)
 - FR-26 Exception hierarchy: UtilsException <- DatabaseException, HydrationException (<- UnknownKeyException, TypeMismatchException, MissingKeyException), HttpException, FileException, JsonException
 
+**r3 addendum (RFC-0002)** — normative detail in
+[RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md); one error-model rule
+spans all of it: **no silent sentinel returns** — every new failure path throws a typed
+exception in the FR-26 hierarchy (new: CsvException, SequenceExhaustedException,
+HttpClientException, RouteNotFoundException, MethodNotAllowedException, CryptoException,
+MailException).
+
+- FR-27 Url: parse/normalize/build value object; refuses scheme downgrade on rebuild; query composition without hand-concatenation
+- FR-28 Csv + Delimiter enum: streaming write/read, typed failures (never boolean), atomic write via File; formula-guard opt-in (default off — input-mutilation lesson, spec §1)
+- FR-29 CsvSerializable: csvHeader()/csvRow() contract; reflective default documented via ClassMetadata
+- FR-30 Lookup: immutable code→label map; label() throws on a missing key, labelOr()/tryLabel() tolerant
+- FR-31 Str additions: collapseWhitespace(), nullIfBlank(), transcode() (strict default, lossy opt-in), multibyte-safe padLeft()/padRight(), shortClassName(), pascalCase()
+- FR-32 FileSequence: rolling flock-guarded counter with an explicit cap (SequenceExhaustedException); never wraps silently
+- FR-33 SqlStatement (Database): immutable SQL+params value — the only shape connection-side execution accepts; hand-written dialect SQL always travels with its binds
+- FR-34 Repository (Persistence): fetchAll/fetchOne/execute/withTransaction; rows normalized (FR-36) then hydrated via the shared Hydrator; every failure throws DatabaseException
+- FR-35 TableGateway (Persistence): Table Data Gateway over QueryBuilder — identifiers allowlisted, values bound, by construction
+- FR-36 RowNormalizer (Persistence): strict/lossy charset transcode + trim + empty→null as one explicit, testable policy object
+- FR-37 HttpClient: stream-context transport (no ext-curl), JSON/raw bodies, TLS verification on by default, explicit connect/read timeouts, HttpClientException; deliberately not PSR-18 (native wrappers + optional bridge, RFC-0001 Alt. #3)
+- FR-38 Router: method+path matching with {param} extraction; 404 vs 405 with Allow; callable handlers; non-goals: middleware, route caching, attribute discovery
+- FR-39 ApiEnvelope: readonly envelope (status, code, messages, data) with outcome constructors (ok/created/updated/deleted/empty/invalid/notFound/failed/caught); message strings caller-supplied — localization stays app-side
+- FR-40 Crypto + SecretKey: AES-256-GCM, versioned v1. base64url compact token; decrypt() throws CryptoException on any failure; ext-openssl suggested with constructor refusal when absent; #[SensitiveParameter] on secret-bearing signatures (inert on the 8.1 floor, effective 8.2+)
+- FR-41 Level + LevelFilteredLogger: backed enum mapping to PSR-3 level strings with ordering; min-level PSR-3 decorator
+- FR-42 MultiLogger + LoggerFactory: PSR-3 fan-out over N loggers; one config array → channel map; no Monolog dependency (NFR-08)
+- FR-43 EmailAddress + MailMessage: validated address value object; readonly message; CR/LF/NUL in any header-bound value refused at construction (SMTP header-injection defense)
+- FR-44 Mailer + NativeMailer: transport interface + mail() implementation configured explicitly via constructor (no global ini_set); failures throw MailException; non-goal: an SMTP client implementation
+
 
 ## 3. Non-Functional Requirements
 
@@ -50,6 +76,16 @@ Provide EGL PHP projects (framework-based and native/legacy) with a modern utili
 - NFR-06 Benchmark methodology: phpbench, 10 iterations x 100 revs, 5% retry threshold, PHP 8.3 CLI with OPcache+JIT off, reference machine Ryzen 7 5800X, harness in bench/, nightly CI; regression > 10% fails
 - NFR-07 Quality gates: PHPUnit line coverage >= 90%; Infection mutation score >= 70% on Security/Database/Dto namespaces; PHPStan max level; deptrac layer rules; composer-normalize; composer audit; roave/backward-compatibility-check on release PRs
 - NFR-08 Dependency policy: no third-party implementation dependencies in the core (php>=8.1 + ext-pdo + ext-fileinfo; interface-only psr/container and psr/log excepted — RFC-0001 R-3 correction); symfony/html-sanitizer and the PSR-7 bridge are optional
+
+**r3 addendum (RFC-0002)** — advisory until first measured under the NFR-06/ADR-0030 harness:
+
+- NFR-09 Repository/TableGateway: fetch + normalize + hydrate 100 rows <= 1.5x a hand-written PDO loop doing the same work
+- NFR-10 FileSequence::next() <= 200 us on local disk, lock included
+- NFR-11 Router dispatch <= 5 us against a 50-route table; ApiEnvelope construction <= 2 us
+- NFR-12 Csv: 10 000 x 10 write <= 150 ms, memory O(row) (streaming, never a full-table buffer)
+- NFR-13 Crypto: 1 KiB encrypt+decrypt round-trip <= 60 us
+- NFR-14 Logger fan-out: a level-suppressed record costs <= 0.5 us
+- Declared unbudgeted (NFR-05's rationale): HttpClient and NativeMailer latency — network/MTA-dominated; their budgets are the T-07/T-10 correctness suites
 
 
 ## 4. Logical Architecture & Core Algorithm
@@ -71,6 +107,14 @@ deptrac layer globs are defined against that exact tree (RFC-0001 A-9). Mixed-ve
 (package egl/utils, namespace D4np\Utils\) is a recorded maintainer decision (RFC-0001
 Alternatives #5) and must be stated in composer.json and the README.
 
+**r3 (RFC-0002):** two groups join the component view — **Persistence** (`Repository`,
+`TableGateway`, `RowNormalizer`, consuming `Database\SqlStatement`) and **Mail**
+(Support-only edge) — plus additions inside Support/Database/Http/Security/Errors. The
+dependency rule gains its **first two named cross-group edges**, `Persistence→Database` and
+`Persistence→Dto`, allowlisted in deptrac, proved by planted violations, and recorded by ADR
+at implementation (RFC-0002 P-1; ADR-0021's named-layer precedent). The `Result`→`ApiEnvelope`
+mapping is deliberately app-side glue: an `Http→Errors` import would breach the rule.
+
 ## 5. Public Interface
 
 <!-- The API contract (the design "api" fold): each operation with its payload shapes, the error
@@ -86,10 +130,25 @@ Consumers import via `use D4np\Utils\Dto\DataTransferObject;`. The public surfac
 - D4np\Utils\Errors\ — Result::map/flatMap/orElseThrow, PSR-3 Logger, ExceptionHandler
 - D4np\Utils\Support\ — Str::slug/uuid/random, File::write/read/mime, Env::get, Json::encode/decode, UtilsException hierarchy
 
+r3 (RFC-0002) additions:
+
+- D4np\Utils\Persistence\ — Repository (fetchAll/fetchOne/execute/withTransaction), TableGateway (select/insert/update/delete), RowNormalizer
+- D4np\Utils\Mail\ — EmailAddress, MailMessage, Mailer, NativeMailer
+- D4np\Utils\Database\ — + SqlStatement · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, Str additions (FR-31)
+
 
 ## 6. Verification & Test Strategy
 
 Five suites (spec s7): T-01 DTO hydration matrix (nested, collections, nullables, enums, strict/lenient, withers, missing-key cases per RFC-0001 R-4); T-02 injection suite (fuzzed value payloads reach the driver only as bound parameters via query-log assertion; identifier injection throws DatabaseException; LIKE-wildcard escapes); T-03 session/CSRF integration against a real php -S process (cookie flags HttpOnly/Secure/SameSite, session id changes across regenerate() and the pre-rotation identifier ceases to resolve, constant-time comparison verified by mechanism assertion per ADR-0026 §7 — positively, that `hash_equals()` is the comparator on every secret-comparison path, and negatively, that `==`, `===`, `strcmp()`, `strncmp()` and equivalents are absent from those paths — cross-session token rejection); T-04 transaction semantics (exception -> rollback -> rethrow; savepoint nesting); T-05 property tests (Json round-trips, Str::slug idempotence, Env boolean coercion table). Plus: OWASP XSS cheat-sheet corpus per Escaper context (snapshot suite); DOM-bypass corpus for richText(); Hash argon2id/bcrypt-fallback matrix; bridge conversion-fidelity contract tests in egl/utils-psr7-bridge CI (imported ADR-002). CI proves failure via the NFR-07 gate set.
+
+**r3 (RFC-0002)** adds nine suites: T-07 HttpClient against a live `php -S` origin (T-03's
+process discipline); T-08 Csv property/round-trip + formula-guard corpus, both flag states;
+T-09 Crypto vectors — tamper, wrong key, truncation, nonce uniqueness across 10^5 tokens,
+version-prefix handling; T-10 mail header-injection corpus; T-11 router matrix
+(404/405/Allow/params); T-12 logger routing matrix; T-13 gateway/statement injection —
+ADR-0017's 29-payload corpus re-run through Repository/TableGateway with the
+placeholder-only PDO-boundary assertion; T-14 FileSequence under concurrent processes (no
+duplicates, cap enforced); T-15 RowNormalizer policy table.
 
 Toolchain: built with Composer (PSR-4 autoload), tested with PHPUnit (Pest optional), checked with
 PHPStan max level (type soundness); PCOV for coverage, coverage target ≥ 90% line. Every functional and
@@ -102,6 +161,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r3 | 2026-08-06 | §2–§6: the RFC-0002 surface — FR-27…FR-44, NFR-09…NFR-14, suites T-07…T-15, the Persistence/Mail groups and the two named layering edges. Additive; no existing requirement changed. Source: [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md) (approved 2026-08-05, PR #49); roadmap: M9–M12. |
 
 ### r2 rationale — why T-03 asserts a mechanism instead of measuring time
 
