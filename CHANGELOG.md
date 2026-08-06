@@ -10,6 +10,28 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **`D4np\Utils\Persistence\RowNormalizer`**, and the `Persistence` group it opens (spec r9
+  **FR-36**, RFC-0002; roadmap item **10.2**; **ADR-0042**) — the row-cleanup pipeline the
+  surveyed estate carried **seventeen times**, once per data-access class, as one immutable
+  policy object: charset transcode, trim, collapse internal whitespace, blank→`null`.
+  **Only `trim` defaults on.** The other three change data, and a library that quietly rewrites
+  a consumer's values is the shape spec §1 rejects — so transcoding, collapsing and blank→`null`
+  are opt-in, while trim earns its default by being the step whose *absence* surprises people
+  (trailing spaces from a fixed-width `CHAR` are storage, not content).
+  **The step order is fixed, and the estate's was a latent bug:** it trimmed *before*
+  transcoding, which is harmless for a single-byte source encoding and destructive for any
+  multibyte one. Here the transcode runs first, and blank→`null` runs last so it judges what the
+  earlier steps produced. Failure is strict by default — an unconvertible value raises
+  `DatabaseException` **naming the column**, the reverse of the estate's silent `//IGNORE`, with
+  `$lossy = true` as the explicit opt-out. Keys are never touched (a column name is schema, not
+  data) and non-string values pass through by identity, so a BLOB resource is never fed to
+  `iconv()`. Pinned by suite **T-15**, a 26-row policy table that includes the case a
+  hand-rolled version gets wrong: **`'0'` is not blank**, whatever `empty()` thinks.
+  The `Persistence` deptrac layer arrives with a **Support-only** edge; the two cross-group
+  edges RFC-0002 anticipates are deferred to item 10.3 and proved closed by a planted violation.
+
 ### Changed
 
 - **`SqlStatement`'s constructor is now private, behind three named entry points** (spec r8
