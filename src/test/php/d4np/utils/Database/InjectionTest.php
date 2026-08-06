@@ -11,6 +11,7 @@ use D4np\Utils\Database\Sort;
 use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Database\Transaction;
 use D4np\Utils\Security\Sanitizer;
+use D4np\Utils\Tests\Database\Fixture\InjectionPayloads;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\QueryLog;
 use PDO;
@@ -65,47 +66,13 @@ final class InjectionTest extends TestCase
     }
 
     /**
-     * A corpus aimed at the ways SQL injection actually works, rather than a list of scary
-     * strings: quote break-out, comment truncation, stacked statements, UNION exfiltration,
-     * backslash and multibyte escaping tricks, and the encoding edge cases that defeat naive
-     * escapers.
+     * The value corpus, from the one place it lives (item 10.5).
      *
      * @return iterable<string, array{string}>
      */
     public static function payloads(): iterable
     {
-        yield 'classic tautology' => ["' OR '1'='1"];
-        yield 'tautology, double quotes' => ['" OR ""="'];
-        yield 'stacked drop' => ["Robert'); DROP TABLE users;--"];
-        yield 'stacked delete' => ['1; DELETE FROM users'];
-        yield 'comment truncation (dash)' => ["admin'--"];
-        yield 'comment truncation (hash)' => ['admin\'#'];
-        yield 'block comment' => ["admin'/*"];
-        yield 'union exfiltration' => ["' UNION SELECT token FROM secrets --"];
-        yield 'union with null padding' => ["' UNION SELECT NULL, token FROM secrets --"];
-        yield 'backslash escape' => ["\\' OR 1=1 --"];
-        yield 'double backslash' => ["\\\\' OR 1=1 --"];
-        // The classic charset attack: 0xBF 0x27 is a valid GBK character whose second byte is a
-        // quote. It defeats a client-side escaper that does not know the connection charset --
-        // which is exactly the scenario ADR-0014's real-prepares pin removes.
-        yield 'GBK multibyte quote' => ["\xbf\x27 OR 1=1 --"];
-        yield 'null byte' => ["admin\0' OR 1=1"];
-        yield 'newline injection' => ["admin'\nOR 1=1"];
-        yield 'CRLF injection' => ["admin'\r\nOR 1=1"];
-        yield 'tab injection' => ["admin'\tOR 1=1"];
-        yield 'nested quotes' => ["''''''"];
-        yield 'percent wildcard' => ['100%'];
-        yield 'underscore wildcard' => ['a_b'];
-        yield 'sqlite pragma' => ["'; PRAGMA writable_schema = 1;--"];
-        yield 'sqlite attach' => ["'; ATTACH DATABASE '/tmp/x' AS x;--"];
-        yield 'unicode quote lookalike' => ["admin\u{2019} OR 1=1"];
-        yield 'emoji' => ['🙂 OR 1=1'];
-        yield 'very long' => [str_repeat("' OR 1=1 --", 500)];
-        yield 'only whitespace' => ['   '];
-        yield 'empty string' => [''];
-        yield 'json-ish' => ['{"$ne": null}'];
-        yield 'template expression' => ['${1+1}'];
-        yield 'sprintf token' => ['%s %d %%'];
+        yield from InjectionPayloads::values();
     }
 
     /**

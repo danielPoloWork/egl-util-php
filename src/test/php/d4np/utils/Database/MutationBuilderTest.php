@@ -8,6 +8,7 @@ use D4np\Utils\Database\DatabaseConnection;
 use D4np\Utils\Database\MutationBuilder;
 use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Support\DatabaseException;
+use D4np\Utils\Tests\Database\Fixture\InjectionPayloads;
 use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
@@ -162,20 +163,18 @@ final class MutationBuilderTest extends TestCase
     // ---- the allowlist, on every identifier surface ---------------------------------------------
 
     /**
+     * The identifier corpus — the shared one.
+     *
+     * This suite shipped with a **shorter copy** at item 10.4: ten payloads where the read builder
+     * faced nineteen, so the newer of the two builders was held to the weaker list while both
+     * suites stayed green. Item 10.5 unified them into {@see InjectionPayloads}, which is the
+     * argument ADR-0044 makes about the allowlist, applied to the corpus that tests it.
+     *
      * @return iterable<string, array{string}>
      */
     public static function hostileIdentifiers(): iterable
     {
-        yield 'statement terminator'   => ['id; DROP TABLE users'];
-        yield 'comment'                => ['id -- '];
-        yield 'quote'                  => ['id"'];
-        yield 'backtick'               => ['id`'];
-        yield 'space'                  => ['user name'];
-        yield 'qualified name'         => ['users.id'];
-        yield 'trailing newline'       => ["id\n"];
-        yield 'leading digit'          => ['1id'];
-        yield 'empty'                  => [''];
-        yield 'parenthesis'            => ['count(*)'];
+        yield from InjectionPayloads::identifiers();
     }
 
     #[DataProvider('hostileIdentifiers')]

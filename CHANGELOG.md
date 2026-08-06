@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Spec §7's T-13 suite** (roadmap item **10.5**; spec **r12**) — 578 tests proving, at the PDO
+  boundary, that every `TableGateway`/`Repository`/`MutationBuilder` path sends **placeholders
+  only**, with the payload appearing solely in the bound-parameter array. Two legs: the value
+  corpus across every value-accepting surface (including inside a transaction and with a
+  `RowNormalizer` configured), and the hostile-identifier corpus across every surface where a
+  column name can arrive from a caller — the latter asserting not just the refusal but that
+  **nothing was prepared**, since a refusal issued after the driver already had the statement
+  would pass any exception assertion. Adds three consequence assertions a boundary check cannot
+  make: the payload round-trips through hydration intact, a tautology criterion matches and
+  deletes nothing, and an `UPDATE`'s `SET` values bind **before** its `WHERE` criteria.
+
+### Changed
+
+- **One injection corpus, shared** (item 10.5) — the value and identifier payload lists move into
+  a single `InjectionPayloads` fixture used by T-02, T-13 and both builder suites. `MutationBuilder`
+  had shipped with a **shorter copy** of the identifier corpus at item 10.4 (ten payloads against
+  the read builder's nineteen), so the newer builder was being held to the weaker list while both
+  suites stayed green — the same "two rules, the weaker decides" failure ADR-0044 argues about for
+  the allowlist itself. No production behaviour changes; the write builder now faces 21 identifier
+  payloads instead of 10.
+
 - **`D4np\Utils\Persistence\TableGateway`** (spec r11 **FR-35**, RFC-0002; roadmap item **10.4**;
   **ADR-0044**; patterns catalogue: *Table Data Gateway*, the catalogue's first entry) — one
   object per table: `find()`, `all()`, `findBy()`, `findOneBy()`, `insert()`, `update()`,
