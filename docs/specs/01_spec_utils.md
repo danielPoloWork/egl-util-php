@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r11** — 2026-08-06. See [Revision history](#revision-history).
+**Revision r12** — 2026-08-06. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -153,6 +153,20 @@ ADR-0017's 29-payload corpus re-run through Repository/TableGateway with the
 placeholder-only PDO-boundary assertion; T-14 FileSequence under concurrent processes (no
 duplicates, cap enforced); T-15 RowNormalizer policy table.
 
+**T-13, as delivered (r12, item 10.5)** — two legs, not one. The **value leg** is the corpus
+above through every value-accepting gateway path (`insert`, `find`, `findBy`, `findOneBy`,
+`update`, `updateBy`, `deleteBy`, `MutationBuilder` directly, `Repository::fetchAll` with
+hand-written SQL, inside `withTransaction`, and with a `RowNormalizer` configured), plus the
+consequence assertions a boundary check cannot make: the payload round-trips through hydration
+intact, a tautology criterion matches and deletes nothing, and **the two parameter groups of an
+`UPDATE` bind in order** (`SET` before `WHERE` — swapped, the statement still runs and writes the
+criterion into the column, which no syntax-level assertion would see). The **identifier leg** runs
+the hostile-identifier corpus over every surface where a column name can arrive from a caller —
+criteria keys and value keys on each operation, plus the table name — and asserts not only the
+refusal but that **nothing was prepared**: a refusal issued after the statement reached the driver
+is a refusal that arrived too late, and a round-trip assertion cannot tell the two apart. Both
+corpora live in one fixture shared by T-02, T-13 and the builder suites.
+
 Toolchain: built with Composer (PSR-4 autoload), tested with PHPUnit (Pest optional), checked with
 PHPStan max level (type soundness); PCOV for coverage, coverage target ≥ 90% line. Every functional and
 non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).
@@ -164,6 +178,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r12 | 2026-08-06 | §6: **T-13 stated as delivered** (item 10.5) — the suite has an identifier leg the one-line description did not mention, asserting that a hostile column name is refused **before anything is prepared**, and consequence assertions the boundary check cannot make (round-trip through hydration, a tautology that matches nothing, and `SET`-before-`WHERE` parameter order). No requirement changed; the spec now describes what exists. No new ADR: the boundary decision is [ADR-0017](../adr/0017-prove-binding-at-the-pdo-boundary-and-defer-t02s-like-leg.md)'s and this applies it. |
 | r11 | 2026-08-06 | §2/§5: **FR-35 corrected** — its "composed exclusively through QueryBuilder" (carried from RFC-0002) was not implementable, because `QueryBuilder` builds `SELECT` and only `SELECT`. Reads keep it; writes get **FR-33b** `MutationBuilder`, and the FR-07 allowlist is extracted into a shared `Identifier` so one rule serves both. Adds `SqlStatement::fromMutation()` as a fourth named door, leaving `composed()` at zero in-library uses. FR-35's normative behaviours recorded: empty criteria refused, the DTO projected rather than `SELECT *`, the table allowlisted at construction. Honest limit recorded in the ADR: on SQLite a DTO/table mismatch is caught by strict hydration rather than the driver, and is invisible against an empty table. See [ADR-0044](../adr/0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md). |
 | r10 | 2026-08-06 | §2/§3: FR-34 stated to the precision item 10.3 implemented (no catch anywhere — the requirement met by omission and asserted against the source; strict hydration kept with a protected seam; opt-in normalization, settling ADR-0042's deferral; a row count rather than a boolean). §3's dependency rule gains its **first two named cross-group edges**, `Persistence→Database` and `Persistence→Dto` — granted, not a general relaxation, and proved in three directions (both grants live, a non-granted edge refused, the inversion refused). See [ADR-0043](../adr/0043-two-named-edges-out-of-persistence-and-no-catch-at-all.md). |
 | r9 | 2026-08-06 | §2/§3: FR-36 stated to the precision item 10.2 implemented (the asymmetric defaults and why, the fixed step order, the column-naming strict failure, what is never touched); §3's `Persistence` group arrives with a **Support-only** edge, the two cross-group edges of RFC-0002 P-1 deliberately deferred to item 10.3 and **proved closed** by a planted `Persistence → Database` violation. Additive; see [ADR-0042](../adr/0042-trim-is-the-only-default-and-the-transcode-runs-first.md). |

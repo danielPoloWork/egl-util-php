@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The verb that was never there, and a defect campaign that proved nothing](docs/journal/2026/08/2026-08-06-table-gateway.md).
+  [2026-08-06 — The corpus that protected the older builder](docs/journal/2026/08/2026-08-06-t13-gateway-injection.md).
 
 ## Model & effort routing (advisory)
 
@@ -820,10 +820,29 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       noticed in two untouched tests. 1770 tests (+119); 10 planted defects, 10 caught — and the
       **first run of that campaign was itself invalid** (the new files were untracked, so the
       restore step silently did nothing and defects accumulated), redone against a staged index.
-- [ ] 10.5 T-13 injection suite over the gateway/statement paths: ADR-0017's 29-payload
+- [x] 10.5 T-13 injection suite over the gateway/statement paths: ADR-0017's 29-payload
       corpus re-run through `Repository`/`TableGateway`, placeholder-only text asserted at
       the PDO boundary via the `QueryLog` fixture (RFC-0002 T-13) (security) — size: M ·
-      route: frontier-reasoning / extra
+      route: frontier-reasoning / extra *(run at standard tier; mismatch accepted by the
+      maintainer and recorded)* · **spec r12**, **no new ADR** — the boundary decision is
+      ADR-0017's and this applies it, which is worth saying rather than minting an ADR to look
+      thorough. *578 tests under `--group T-13`. **The item found a defect it had itself
+      introduced one PR earlier:** item 10.4 shipped `MutationBuilderTest` with its **own,
+      shorter identifier corpus** — ten payloads where `QueryBuilderTest` had nineteen — so the
+      newer builder was held to the weaker list while both suites stayed green. That is the
+      "two rules, the weaker decides" argument ADR-0044 makes about the allowlist, reproduced
+      one layer up in the tests. Both corpora now live in one `InjectionPayloads` fixture shared
+      by T-02, T-13 and the builder suites; unification alone added **21 identifier cases to the
+      write builder** and two to the read builder. **The identifier leg asserts more than the
+      refusal:** the log must be **empty** — a hostile column name rejected *after* the statement
+      reached the driver would satisfy every exception assertion while having already run the
+      injection, and no round-trip test can see the difference. **The value leg adds what a
+      boundary check cannot say:** the payload round-trips through hydration intact, a tautology
+      criterion matches and deletes nothing, and an `UPDATE`'s two parameter groups bind in order
+      — swap `SET` and `WHERE` and the statement still runs, affects a plausible row count, and
+      writes the criterion into the column. 7 planted defects, 7 caught, including one aimed at
+      the suite's own vacuity guard; the restore step worked this time because item 10.4's lesson
+      (stage the files first) was applied.*
 - [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
       ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
 - [x] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
@@ -889,6 +908,23 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       escaped set is now a CI artifact with a per-mutator breakdown but is **not** chased here;
       and the MSI cannot be measured on the maintainer's machine (no coverage driver — the
       same limit as the suite's 9 skips and item 9.6's benchmark caveat).*
+- [ ] 10.9 Decide what the >10% regression gate should do about **I/O-bound and memory-hard
+      subjects**, which it currently cannot measure to that precision. Filed from evidence
+      produced by item 10.5, a **test-only** PR whose diff touches no file under `src/main`
+      (verified, not assumed): the gate failed with
+      `FileSequenceBench::benchSequenceNext 75.503 → 105.779 µs (+40.10%)` and
+      `HashBench::benchVerifyArgon2id 113465.370 → 129072.012 µs (+13.75%)`, and **the same
+      commit passed on re-run** (run 31114681269). Both subjects stayed far inside their
+      absolute budgets; only the relative comparison fired. This is not the stored-baseline
+      problem ADR-0030 already solved — base and HEAD were measured on the same runner, as that
+      ADR requires — so it is a second, narrower finding: **a same-runner A/B is still not
+      precise enough for a subject dominated by filesystem locking or by memory-hard hashing**,
+      where the shared runner's noise is in the same order as the budget. Options to weigh (none
+      chosen here): a per-subject threshold, best-of-N for the two classes, excluding them from
+      the relative gate while keeping their absolute ceilings, or accepting re-runs as the
+      documented protocol. Whichever is picked, **a gate that cries wolf on a docs-and-tests PR
+      teaches people to re-run until green**, which is the failure mode worth spending an item on
+      — route: standard / medium (adr)
 
 ---
 

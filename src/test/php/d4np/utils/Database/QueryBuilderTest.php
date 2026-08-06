@@ -11,6 +11,7 @@ use D4np\Utils\Database\Sort;
 use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Tests\Database\Fixture\DriverLookupCountingPdo;
+use D4np\Utils\Tests\Database\Fixture\InjectionPayloads;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\PretendDriverPdo;
 use D4np\Utils\Tests\Database\Fixture\QueryLog;
@@ -128,34 +129,15 @@ final class QueryBuilderTest extends TestCase
     }
 
     /**
-     * The heart of FR-07. Each of these is a real way an identifier has been used to inject SQL;
-     * none of them can be bound as a parameter, so each must be refused outright.
+     * The heart of FR-07: each of these is a real way an identifier has been used to inject SQL,
+     * none can be bound as a parameter, and each must be refused outright. The list itself moved
+     * to {@see InjectionPayloads} at item 10.5, so the write builder is held to the same one.
      *
      * @return iterable<string, array{string}>
      */
     public static function hostileIdentifiers(): iterable
     {
-        yield 'statement terminator' => ['id; DROP TABLE users'];
-        yield 'comment' => ['id -- '];
-        yield 'block comment' => ['id /* x */'];
-        yield 'union' => ['id UNION SELECT password FROM admins'];
-        yield 'quote break-out (double)' => ['id" FROM users; --'];
-        yield 'quote break-out (backtick)' => ['id` FROM users; --'];
-        yield 'quote break-out (bracket)' => ['id] FROM users; --'];
-        yield 'subquery' => ['(SELECT 1)'];
-        yield 'wildcard' => ['*'];
-        yield 'qualified name' => ['users.id'];
-        yield 'space' => ['user name'];
-        yield 'leading digit' => ['1id'];
-        yield 'empty' => [''];
-        yield 'whitespace only' => ['   '];
-        yield 'newline smuggling' => ["id\nDROP TABLE users"];
-        // PCRE's `$` matches before a trailing newline, so FR-07's allowlist transcribed
-        // literally admits this one. It did, until the pattern was anchored with `\z`.
-        yield 'trailing newline (the `$` anchor hole)' => ["id\n"];
-        yield 'trailing CRLF' => ["id\r\n"];
-        yield 'null byte' => ["id\0"];
-        yield 'unicode lookalike' => ['ｉd'];
+        yield from InjectionPayloads::identifiers();
     }
 
     #[DataProvider('hostileIdentifiers')]

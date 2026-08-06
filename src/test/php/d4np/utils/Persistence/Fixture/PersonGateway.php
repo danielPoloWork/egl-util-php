@@ -39,4 +39,30 @@ final class PersonGateway extends TableGateway
             Person::class,
         );
     }
+
+    /**
+     * `Repository::fetchAll()` reached with hand-written SQL — the path T-13 covers that the
+     * gateway's own methods do not, since here the caller supplies the statement.
+     *
+     * @return list<Person>
+     */
+    public function named(string $name): array
+    {
+        return $this->fetchAll(
+            SqlStatement::literal('SELECT id, name, age, status FROM people WHERE name = ?', [$name]),
+            Person::class,
+        );
+    }
+
+    /**
+     * A gateway write inside `Repository::withTransaction()`, so T-13 can assert that binding
+     * survives the transaction wrapper (T-02 asserts the same for the connection).
+     *
+     * @param array<array-key, mixed> $values
+     */
+    public function insertInTransaction(array $values): int
+    {
+        /** @var int */
+        return $this->withTransaction(fn (): int => $this->insert($values));
+    }
 }
