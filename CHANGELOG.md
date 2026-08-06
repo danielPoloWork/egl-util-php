@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **phpbench benchmarks for NFR-10 (`FileSequence`) and NFR-12 (`Csv`)** (spec r6 §3,
+  RFC-0002; roadmap item **9.6**, closing **Milestone 9**): `FileSequenceBench` and
+  `CsvBench` under `src/bench/php/d4np/utils/`, wired into the same
+  `bench_budget_gate.py` call ADR-0030 already established for the other four subjects
+  (`benchSequenceNext<=200µs`, `benchWriteTenThousandByTen<=150000µs`). No new ADR and no
+  production code change: ADR-0030's standing decision (CI-gated on Linux, same-runner,
+  environment-asserted) already covers two more subjects added to it. NFR-12's other
+  clause — streaming memory, never a full-table buffer — is `Csv::write()`'s
+  construction, proven by `CsvRoundTripTest`, not benchmarked: a stopwatch cannot see an
+  absence. This developer's machine measured `benchSequenceNext` at roughly 250× its
+  budget via direct timing; read as the same environment artifact ADR-0030 already named
+  on this exact box (Windows/NTFS I/O latency, not NFR-06's methodology), not as a defect
+  — the Linux CI run is the authoritative measurement.
+
 - **`D4np\Utils\Support\FileSequence`, `SequenceExhaustedException`** and **`File::update()`**
   (spec r6 **FR-32**, RFC-0002; roadmap item **9.5**; **ADR-0038**) — a rolling counter
   persisted to a file and safe across processes. The whole read-modify-write runs under
