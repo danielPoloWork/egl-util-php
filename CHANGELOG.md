@@ -12,6 +12,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Persistence\Repository`** (spec r10 **FR-34**, RFC-0002; roadmap item **10.3**;
+  **ADR-0043**) — the abstract data-access base: `fetchAll()`/`fetchOne()` hydrate rows into a
+  DTO, `execute()` returns the affected-row count, `withTransaction()` delegates to `Transaction`
+  (ADR-0016's semantics, savepoints included) and passes the repository to the closure.
+  **It contains no `try`/`catch` at all, and that is the feature.** FR-34 asks that every failure
+  throw and that no `[]`/`false`/`-1` path exist — the surveyed estate had **74** catches
+  returning exactly those — and the way to satisfy it was to *not write* them:
+  `DatabaseConnection`, the hydrator and `RowNormalizer` each raise a typed failure naming what
+  went wrong, and all of them propagate. Since an absence is what a suite loses unnoticed, the
+  class's own source is asserted to contain no catch, and that assertion was proved non-vacuous
+  by planting the estate's exact sentinel and watching it fail.
+  Hydration stays **strict** (ADR-0008), so a projected column the DTO does not declare raises —
+  `SELECT *` into a typed DTO fails by design, with `hydrate()` left protected and non-final for
+  a subclass that wants lenient. Normalization is **opt-in**: without a `RowNormalizer`, rows
+  hydrate exactly as the driver returned them.
+  This is also the library's **first cross-group layering exception**: `Persistence → Database`
+  and `Persistence → Dto` are granted by name in `deptrac.yaml`, not as a general relaxation, and
+  proved in three directions — both grants live, a non-granted edge (`Persistence → Errors`)
+  refused, and the inversion (`Dto → Persistence`) refused.
+
 - **`D4np\Utils\Persistence\RowNormalizer`**, and the `Persistence` group it opens (spec r9
   **FR-36**, RFC-0002; roadmap item **10.2**; **ADR-0042**) — the row-cleanup pipeline the
   surveyed estate carried **seventeen times**, once per data-access class, as one immutable

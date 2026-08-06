@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — Seventeen copies, and the question none of them had to answer](docs/journal/2026/08/2026-08-06-row-normalizer.md).
+  [2026-08-06 — A requirement satisfied by not writing code, and the rule's first exception](docs/journal/2026/08/2026-08-06-repository.md).
 
 ## Model & effort routing (advisory)
 
@@ -765,12 +765,31 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       **proved closed**: a planted `Persistence → Database` type dependency is rejected
       (`RowNormalizer must not depend on SqlStatement`) — exactly the edge item 10.3 must argue
       for, rather than one granted early for code that does not exist yet.*
-- [ ] 10.3 `Persistence\Repository` base gateway (`fetchAll`/`fetchOne`/`execute`/
+- [x] 10.3 `Persistence\Repository` base gateway (`fetchAll`/`fetchOne`/`execute`/
       `withTransaction`; rows normalized then hydrated via the shared Hydrator; every failure
       throws — no sentinel returns) + the two named cross-group edges
       (Persistence→Database, Persistence→Dto) proved by planted violations
-      (RFC-0002 FR-34, P-1) (severity:high; adr — the layering-rule extension) — size: M ·
-      route: frontier-reasoning / extra · ADR (Persistence layering edges)
+      (RFC-0002 FR-34, P-1) (severity:high; adr — the layering-rule extension) —
+      route: frontier-reasoning / extra · **ADR-0043**, **spec r10**. *The first and only
+      exception to RFC-0001's "groups depend downward on Support only" — `Repository` exists
+      precisely to sit between two siblings (a `SqlStatement` in, a hydrated DTO out), so a
+      version obeying the rule could not be written; RFC-0002 P-1's two alternatives both push
+      the normalize-then-hydrate loop back into every caller, which is the seventeen-copies
+      problem restated. Granted as **two named edges** on ADR-0021's precedent, not as a
+      relaxation, and **proved in three directions**: both grants live (0 violations, 192
+      allowed), a **non**-granted edge refused (`Repository must not depend on Result`), and the
+      **inversion** refused (`Hydrator must not depend on RowNormalizer`) — the middle one being
+      what distinguishes a grant from an opening. **FR-34's "every failure throws" is satisfied
+      by omission**: there is no `try`/`catch` in the class at all, because
+      `DatabaseConnection`, the hydrator and `RowNormalizer` each already raise a typed failure
+      that must pass through. An absence is what a suite loses unnoticed — a re-added catch
+      keeps every happy-path test green — so it is asserted against the class's own source, and
+      that assertion was **proved non-vacuous** by planting the estate's exact sentinel
+      (`catch (DatabaseException) { return -1; }`) and watching it fail. Two smaller decisions:
+      hydration stays **strict**, so `SELECT *` into a typed DTO fails by design with
+      `hydrate()` left protected and non-final as the lenient seam; and normalization is
+      **opt-in**, settling the question ADR-0042 deferred — ADR-0042 answers "what does a
+      normalizer do", this answers "did you ask for one".*
 - [ ] 10.4 `Persistence\TableGateway`: Table Data Gateway over `QueryBuilder` —
       select/insert/update/delete with allowlisted identifiers and bound values by
       construction + patterns-catalogue adoption entry (RFC-0002 FR-35) (security) —
