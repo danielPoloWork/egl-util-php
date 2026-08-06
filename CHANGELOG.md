@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Support\FileSequence`, `SequenceExhaustedException`** and **`File::update()`**
+  (spec r6 **FR-32**, RFC-0002; roadmap item **9.5**; **ADR-0038**) — a rolling counter
+  persisted to a file and safe across processes. The whole read-modify-write runs under
+  **one** exclusive lock: `read()` + `write()` as two separately locked calls lets two
+  processes both read `5` and both write `6`, and for a sequence a lost increment is a
+  **duplicate identifier**. The cap **refuses** (`SequenceExhaustedException`) rather than
+  wrapping, since wrapping re-issues identifiers already in use, and the refusal leaves the
+  state untouched. A corrupt state file is refused and **left on disk as evidence** rather
+  than reset — resetting re-issues the whole window; an absent or blank file is a legitimate
+  fresh start. The window is a caller-supplied opaque string, so no timezone decision happens
+  inside the library. `File::update()` is the general read-modify-write primitive this
+  needed, sharing ADR-0005's lock, temporary file and atomic rename with the other two
+  writers. Verified by **T-14**: four real processes, each number issued exactly once.
+
 - **`D4np\Utils\Support\Csv`, `Delimiter`, `CsvSerializable`, `CsvException`** and
   **`File::writeStream()`** (spec r5 **FR-28/FR-29**, RFC-0002; roadmap item **9.4**;
   **ADR-0037**) — streaming CSV whose memory cost is one row, written through the atomic

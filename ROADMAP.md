@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The escape character that eats a row](docs/journal/2026/08/2026-08-06-csv.md).
+  [2026-08-06 — Two locks are one too many](docs/journal/2026/08/2026-08-06-file-sequence.md).
 
 ## Model & effort routing (advisory)
 
@@ -662,10 +662,33 @@ surface (RFC-0002 FR-27…FR-32).
       through the writer callback, which was fixed the honest way — `writeStream()` now
       documents `@throws Throwable`, the propagation contract `Transaction::run()` already
       had.*
-- [ ] 9.5 `FileSequence`: rolling lock-guarded counter with an explicit cap policy
+- [x] 9.5 `FileSequence`: rolling lock-guarded counter with an explicit cap policy
       (`SequenceExhaustedException`, never a silent wrap) + T-14 multi-process concurrency
       suite (RFC-0002 FR-32; T-14) (severity:medium — concurrency/atomicity) — size: S ·
-      route: standard / medium
+      route: standard / medium *(session model matched the route — no mismatch)* ·
+      **ADR-0038**, **spec r6**. ***The item's real problem was not the counter.*** *A
+      sequence is a **read-modify-write**, and this library's primitives could not express one
+      safely: `read()` takes a shared lock and `write()` an exclusive one, so composing them
+      lets two processes both read `5` and both write `6` — and a lost increment in a sequence
+      is a **duplicate identifier**. `File` therefore gains `update()`, which holds one
+      exclusive lock across both halves and calls the mutator **before** writing, so a
+      refusal leaves the file untouched. Following ADR-0037's precedent rather than
+      re-deciding it: `FileSequence` opening its own `flock()` would have put ADR-0005's
+      discipline in a second place. **T-14 is the load-bearing suite and it is real** — four
+      separate PHP processes drawing 30 numbers each, asserting the union is exactly 1..120
+      with no duplicate and no gap; everything inside one process shares a lock owner, so an
+      in-process "concurrency" test would pass against an implementation with no locking at
+      all. Proved by planting the split-lock race: **T-14 catches it**. Three refusals decided
+      against their tempting alternatives: the cap **refuses instead of wrapping** (wrapping
+      re-issues live identifiers, silently, at peak load); a **corrupt state file is refused
+      and left on disk** as evidence (resetting is the reflex and it re-issues the entire
+      window), while an absent or blank file — what `touch` and deploy scripts leave — is a
+      legitimate fresh start; and the **window stays a caller-supplied opaque string**, so no
+      timezone decision happens inside the library (the estate's helper called
+      `date_default_timezone_set()` as a side effect of minting an id). Recorded limit: opaque
+      windows cannot be ordered, so any change resets — a lexicographic guard was considered
+      and rejected because it silently breaks unpadded numeric windows. 41 tests; **suite
+      proved non-vacuous with 8 planted defects**, all caught.*
 - [ ] 9.6 phpbench: NFR-12 (Csv streaming) + NFR-10 (FileSequence) wired into the ADR-0030
       same-runner harness (RFC-0002) (step:optimize) — size: S · route: fast / medium
 
