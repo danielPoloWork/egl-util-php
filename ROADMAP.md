@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The first RFC-0002 item, and three failures that earned their keep](docs/journal/2026/08/2026-08-06-str-additions.md).
+  [2026-08-06 — A lookup that refuses to lie](docs/journal/2026/08/2026-08-06-lookup.md).
 
 ## Model & effort routing (advisory)
 
@@ -599,9 +599,15 @@ surface (RFC-0002 FR-27…FR-32).
       strict `transcode()` failures throw `UtilsException` with precise messages — spec r3's
       exception enumeration is the contract; a finer type waits for a consumer who needs the
       distinct catch.*
-- [ ] 9.2 `Lookup`: immutable code→label map with an explicit missing-key policy — `label()`
+- [x] 9.2 `Lookup`: immutable code→label map with an explicit missing-key policy — `label()`
       throws, `labelOr()`/`tryLabel()` for the tolerant reads; replaces silent sentinel
-      strings (RFC-0002 FR-30) — size: XS · route: fast / low
+      strings (RFC-0002 FR-30) — size: XS · route: fast / low. *Shipped as written, first
+      run green: `OutOfBoundsException` (the SPL type PHP itself uses for a bounded lookup
+      miss) rather than a new library exception — spec r3 does not name one for FR-30, and
+      the item's own precedent (9.1) is to add a type only when a consumer needs the
+      distinct catch. `array_key_exists()`, not `??`/`isset()`, is the presence check
+      throughout: a code deliberately mapped to `''` must read as present, which `??` would
+      silently treat as absent — pinned by its own test.*
 - [ ] 9.3 `Url` value object: parse/normalize/build, query composition, **scheme-downgrade
       refusal on rebuild** (RFC-0002 FR-27) (security) — size: S ·
       route: frontier-reasoning / extra · ADR (URL scheme policy)

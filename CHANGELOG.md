@@ -12,6 +12,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Support\Lookup`** (spec r3 **FR-30**, RFC-0002; roadmap item **9.2**) — an
+  immutable code→label map with an explicit missing-key policy: `label()` throws
+  `OutOfBoundsException`, `labelOr()` substitutes a caller-supplied default, `tryLabel()`
+  returns `null`. Replaces the estate pattern of a silent `"missing: {key}"` placeholder
+  string, indistinguishable from real data once it reaches a UI or a CSV export. A code
+  mapped to `''` is distinguished from an absent code (`array_key_exists()`, not `??`).
+
 - **Six `Str` additions** (spec r3 **FR-31**, RFC-0002; roadmap item **9.1**) —
   `collapseWhitespace()` (ASCII-scope, UTF-8-safe by construction), `nullIfBlank()`
   (judges blankness, mutates nothing), `transcode()` (**strict by default** — lossy
