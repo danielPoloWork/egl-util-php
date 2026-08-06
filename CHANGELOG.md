@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **phpbench benchmark for NFR-09** (spec §3, RFC-0002; roadmap item **10.6**): `GatewayBench`
+  under `src/bench/php/d4np/utils/`, wired into the `bench_ratio_gate.py` cross-subject
+  comparison ADR-0011 established (`benchGatewayFetchNormalizeHydrate` /
+  `benchHandWrittenPdoLoop` ≤ 1.5×). No new ADR and no production code change: ADR-0011's
+  standing decision (a same-invocation ratio, since PHPBench's own `@Assert` cannot compare two
+  subjects in one run) already covers a new pair. Both subjects share one `PDO` connection and
+  a 100-row table seeded once, so the comparison is `TableGateway::all()` (select, normalize via
+  `RowNormalizer`, hydrate through the warmed reflection cache) against a hand-written loop over
+  the identical read and the identical `trim()`-only normalization, applied by hand.
+
 - **Spec §7's T-13 suite** (roadmap item **10.5**; spec **r12**) — 578 tests proving, at the PDO
   boundary, that every `TableGateway`/`Repository`/`MutationBuilder` path sends **placeholders
   only**, with the payload appearing solely in the bound-parameter array. Two legs: the value

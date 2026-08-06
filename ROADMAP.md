@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The corpus that protected the older builder](docs/journal/2026/08/2026-08-06-t13-gateway-injection.md).
+  [2026-08-06 — Measuring the overhead a gateway is honest about](docs/journal/2026/08/2026-08-06-gateway-bench.md).
 
 ## Model & effort routing (advisory)
 
@@ -843,8 +843,28 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       writes the criterion into the column. 7 planted defects, 7 caught, including one aimed at
       the suite's own vacuity guard; the restore step worked this time because item 10.4's lesson
       (stage the files first) was applied.*
-- [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
-      ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
+- [x] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
+      ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium ·
+      **no new ADR** — the ratio-gate mechanism is ADR-0011's, applied to a new pair of
+      subjects, same as item 9.6 applied ADR-0030's harness rather than re-arguing it.
+      *`GatewayBench` measures `TableGateway::all()` (fetch + normalize-via-`RowNormalizer` +
+      hydrate, 100 rows) against a hand-written loop over the same shared `PDO` connection and
+      table — the identical `SELECT`, the identical `trim()`-only normalization applied by
+      hand under the same `is_string()` guard `RowNormalizer` itself uses, and a direct
+      `new GatewayRow(...)` with no reflection. Both subjects share one connection (SQLite
+      `:memory:` cannot be reopened) and one 100-row table, seeded once outside every timed
+      iteration — item 3.5's warm-cache convention, applied to a warmed `ReflectionCache` and
+      one discarded warm-up call so the gateway's own lazily-cached column projection is paid
+      for before the clock starts, exactly as NFR-01's benchmark warms reflection first.
+      **The comparison choice worth stating:** the manual loop reads via `$pdo->query()`
+      rather than `DatabaseConnection::select()`, because the statement has no bound value at
+      all — nobody hand-rolling this read would reach for a prepared statement over a literal
+      `SELECT`, and the gateway is not exempt from real prepares (ADR-0014) just because this
+      benchmark exists. That asymmetry is the overhead NFR-09 is measuring, not a thumb on the
+      scale. **Local timing is informative only** (this machine's `vendor/bin/phpbench` fails
+      its own environment-detection capture before any subject runs — the pre-existing,
+      documented quirk items 4.5/4.6/9.6 all hit); CI's `ubuntu-24.04` run is what the ≤ 1.5×
+      gate is wired against.
 - [x] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
       `SqlStatement::__construct()`'s `$sql` as `@param literal-string`, so PHPStan at max
       level — a gate this project already runs — *refuses* a value interpolated or
