@@ -340,7 +340,7 @@ final class QueryBuilder
      */
     public function get(): array
     {
-        return $this->connection->select($this->toSql(), $this->bindings);
+        return $this->connection->select(new SqlStatement($this->toSql(), $this->bindings));
     }
 
     /**
@@ -352,7 +352,7 @@ final class QueryBuilder
      */
     public function first(): ?array
     {
-        return $this->connection->selectOne($this->toSql(), $this->bindings);
+        return $this->connection->selectOne(new SqlStatement($this->toSql(), $this->bindings));
     }
 
     /**

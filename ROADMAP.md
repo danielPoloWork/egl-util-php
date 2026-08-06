@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — A budget this machine cannot honestly measure](docs/journal/2026/08/2026-08-06-utils-benchmarks.md).
+  [2026-08-06 — What one value type actually closes](docs/journal/2026/08/2026-08-06-sql-statement.md).
 
 ## Model & effort routing (advisory)
 
@@ -727,10 +727,22 @@ RFC-0002's centerpiece: the layer that makes value-interpolated SQL a library-im
 shape (the surveyed estate measured 199 interpolation sites against 0 bound parameters).
 First two named cross-group deptrac edges (RFC-0002 P-1).
 
-- [ ] 10.1 `Database\SqlStatement`: immutable SQL+binds value; connection-side execution
+- [x] 10.1 `Database\SqlStatement`: immutable SQL+binds value; connection-side execution
       accepts **only** statements — text never travels without its parameters
-      (RFC-0002 FR-33) (security — the protected floor) — size: S ·
-      route: frontier-reasoning / extra · ADR (statement-only execution)
+      (RFC-0002 FR-33) (security — the protected floor) —
+      route: frontier-reasoning / extra · **ADR-0039**, **spec r7**. *Opens Milestone 10.
+      **What this does and does not close, stated plainly**: every existing call site was
+      already binding real parameters (ADR-0014's real prepares) — a `(string, array)`
+      signature never let a value reach the driver unbound. What it changes is where a
+      reviewer has to look: after this item, `DatabaseConnection::select()`/`selectOne()`/
+      `execute()` accept **only** a `SqlStatement`, so text and parameters cannot be two
+      separately-assembled variables at the one true boundary to the driver — the estate's
+      199-interpolation/0-binding failure mode, generalized as a type rather than left as a
+      discipline every future call site has to re-earn. `QueryBuilder::get()`/`first()` and
+      every test in `Database`/`Security` migrated in this item; a pre-1.0 breaking change
+      to a public signature, permitted under SemVer §4 and `tools/bc_gate.py`. No new
+      deptrac edge — `SqlStatement` stays in `Database`, where `Persistence` (10.2–10.4)
+      will consume it as one of its own two named edges.*
 - [ ] 10.2 `Persistence\RowNormalizer` policy object (strict/lossy transcode, trim,
       empty→`null`) + T-15 policy table + the `Persistence` deptrac layer (edge to Support
       only at this point) (RFC-0002 FR-36; T-15) (severity:medium) — size: S ·

@@ -8,6 +8,7 @@ use D4np\Utils\Database\DatabaseConnection;
 use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\Sort;
+use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Tests\Database\Fixture\DriverLookupCountingPdo;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
@@ -34,7 +35,7 @@ final class QueryBuilderTest extends TestCase
     private function connection(): DatabaseConnection
     {
         $connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $connection->execute('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)');
+        $connection->execute(new SqlStatement('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)'));
 
         return $connection;
     }
@@ -297,9 +298,9 @@ final class QueryBuilderTest extends TestCase
     public function testEndToEndAgainstARealDriver(): void
     {
         $connection = $this->connection();
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]);
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]);
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]));
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]));
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]));
 
         $rows = (new QueryBuilder($connection, 'users'))
             ->select('name')
@@ -323,11 +324,11 @@ final class QueryBuilderTest extends TestCase
     {
         $connection = $this->connection();
         $payload = "'; DROP TABLE users; --";
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', [$payload, 1]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', [$payload, 1]));
 
         $row = (new QueryBuilder($connection, 'users'))->where('name', Operator::Equals, $payload)->first();
 
         self::assertSame($payload, $row['name'] ?? null);
-        self::assertSame([['n' => 1]], $connection->select('SELECT COUNT(*) AS n FROM users'));
+        self::assertSame([['n' => 1]], $connection->select(new SqlStatement('SELECT COUNT(*) AS n FROM users')));
     }
 }

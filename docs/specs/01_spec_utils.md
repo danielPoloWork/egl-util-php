@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r6** — 2026-08-06. See [Revision history](#revision-history).
+**Revision r7** — 2026-08-06. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -125,7 +125,7 @@ Consumers import via `use D4np\Utils\Dto\DataTransferObject;`. The public surfac
 
 - D4np\Utils\Dto\ — DataTransferObject::fromArray()/lenient(), WithersTrait::with(), Collection<T>
 - D4np\Utils\Container\ — PSR-11 Container (get/has, autowire, singleton/factory), ServiceProvider
-- D4np\Utils\Database\ — DatabaseConnection (pinned PDO defaults), QueryBuilder (fluent, Sort enum), Transaction::run(closure)
+- D4np\Utils\Database\ — DatabaseConnection (pinned PDO defaults; `select`/`selectOne`/`execute` take a `SqlStatement`, r7 ADR-0039), QueryBuilder (fluent, Sort enum), Transaction::run(closure)
 - D4np\Utils\Security\ — Escaper::html/attr/js/url, Sanitizer::richText/sqlLikePattern, Hash::make/verify/needsRehash
 - D4np\Utils\Http\ — Request (typed superglobal reader), Response, Session::regenerate(), CsrfToken; PSR-7 via optional egl/utils-psr7-bridge
 - D4np\Utils\Errors\ — Result::map/flatMap/orElseThrow, PSR-3 Logger, ExceptionHandler
@@ -135,7 +135,7 @@ r3 (RFC-0002) additions:
 
 - D4np\Utils\Persistence\ — Repository (fetchAll/fetchOne/execute/withTransaction), TableGateway (select/insert/update/delete), RowNormalizer
 - D4np\Utils\Mail\ — EmailAddress, MailMessage, Mailer, NativeMailer
-- D4np\Utils\Database\ — + SqlStatement · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, SequenceExhaustedException, File::writeStream(), File::update(), Str additions (FR-31)
+- D4np\Utils\Database\ — + SqlStatement (r7: the only shape `DatabaseConnection`'s query methods accept, ADR-0039) · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, SequenceExhaustedException, File::writeStream(), File::update(), Str additions (FR-31)
 
 
 ## 6. Verification & Test Strategy
@@ -162,6 +162,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r7 | 2026-08-06 | §2/§5: FR-33 realized as the only shape `DatabaseConnection::select()`/`selectOne()`/`execute()` accept — the `(string, array)` pair is retired in favor of one `SqlStatement` argument (item 10.1, opens Milestone 10). A pre-1.0 breaking change to the `Database` group's public signature, permitted and migrated in the same PR. See [ADR-0039](../adr/0039-sql-text-and-its-parameters-become-one-value-not-two-arguments.md). |
 | r6 | 2026-08-06 | §2/§6: FR-32 stated to the precision item 9.5 implemented (one lock across the read-modify-write, corrupt state refused rather than reset, the caller-supplied window and its recorded ordering limit); FR-22/23 gains `File::update()`, without which a safe counter cannot be built from this library's primitives; §6 gains suite **T-14** (multi-process concurrency: each number issued exactly once, cap holds). Additive; see [ADR-0038](../adr/0038-one-lock-across-the-read-and-the-write-and-a-sequence-that-refuses-to-wrap.md). |
 | r5 | 2026-08-06 | §2: FR-28/FR-29 stated to the precision item 9.4 implemented (PHP's backslash escape disabled, the single-empty-field and zero-column shapes, blank-line handling, the enforced header/row pairing, the guard's leader set); FR-22/23 gains `File::writeStream()`, without which a streaming CSV could not honour NFR-12; `CsvException` added to the exception enumeration. Additive; see [ADR-0037](../adr/0037-disable-phps-escape-character-and-keep-the-formula-guard-opt-in.md). |
 | r4 | 2026-08-06 | §2: FR-27 stated to the precision item 9.3 implemented (control-character refusal, absolute-only, the named downgrade pairs and their recorded limit, query preservation), and `InvalidUrlException` added to the r3 exception enumeration, which had not anticipated it. Additive; see [ADR-0036](../adr/0036-refuse-the-downgrade-and-the-characters-parse-url-launders.md). |

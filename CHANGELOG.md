@@ -12,6 +12,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Database\SqlStatement`** (spec r7 **FR-33**, RFC-0002; roadmap item **10.1**,
+  opening **Milestone 10**; **ADR-0039**) — an immutable pairing of SQL text and its bound
+  parameters. Motivated by the surveyed estate's 199 sites where a value was interpolated
+  into SQL text against 0 sites where one was bound: a `(string, array)` method signature
+  never stopped that from happening, because nothing in it says the two were assembled
+  together. `SqlStatement` makes text-and-parameters one value, and `Persistence\Repository`
+  (upcoming, item 10.3) will accept nothing else from a caller with hand-written SQL.
+
+### Changed
+
+- **`DatabaseConnection::select()`, `selectOne()` and `execute()` now take a single
+  `SqlStatement` argument** instead of `(string $sql, array $parameters = [])` (ADR-0039).
+  A breaking change to the `Database` group's public signature, made in a pre-1.0 MINOR
+  (SemVer §4 permits it; `tools/bc_gate.py` treats it as bump-legal). No behavior changes:
+  every value was already bound as a real parameter (ADR-0014's real prepares) under the
+  old shape — this moves where a reviewer has to look, not what the driver receives.
+  `QueryBuilder::get()`/`first()` and every test call site are migrated in the same PR.
+
 - **phpbench benchmarks for NFR-10 (`FileSequence`) and NFR-12 (`Csv`)** (spec r6 §3,
   RFC-0002; roadmap item **9.6**, closing **Milestone 9**): `FileSequenceBench` and
   `CsvBench` under `src/bench/php/d4np/utils/`, wired into the same

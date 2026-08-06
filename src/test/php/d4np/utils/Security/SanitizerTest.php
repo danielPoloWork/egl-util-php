@@ -7,6 +7,7 @@ namespace D4np\Utils\Tests\Security;
 use D4np\Utils\Database\DatabaseConnection;
 use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
+use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Security\Sanitizer;
 use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -62,9 +63,9 @@ final class SanitizerTest extends TestCase
     private function seeded(): DatabaseConnection
     {
         $connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $connection->execute('CREATE TABLE t (v TEXT)');
+        $connection->execute(new SqlStatement('CREATE TABLE t (v TEXT)'));
         foreach (['100%', '100X', '1000', 'a_b', 'axb', 'plain'] as $value) {
-            $connection->execute('INSERT INTO t (v) VALUES (?)', [$value]);
+            $connection->execute(new SqlStatement('INSERT INTO t (v) VALUES (?)', [$value]));
         }
 
         return $connection;
