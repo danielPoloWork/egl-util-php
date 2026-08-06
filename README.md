@@ -54,7 +54,7 @@ setup.
 | 6 | HTTP, container, errors | ✅ done |
 | 7 | Release engineering & bridge | ✅ done |
 | 8 | PSR-7 bridge (`packages/utils-psr7-bridge`) | ✅ done |
-| 9 | Support & values | ⏳ planned |
+| 9 | Support & values | ✅ done |
 | 10 | Persistence | ⏳ planned |
 | 11 | Http application layer | ⏳ planned |
 | 12 | Security & channels | ⏳ planned |

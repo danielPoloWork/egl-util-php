@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — Two locks are one too many](docs/journal/2026/08/2026-08-06-file-sequence.md).
+  [2026-08-06 — A budget this machine cannot honestly measure](docs/journal/2026/08/2026-08-06-utils-benchmarks.md).
 
 ## Model & effort routing (advisory)
 
@@ -689,8 +689,28 @@ surface (RFC-0002 FR-27…FR-32).
       windows cannot be ordered, so any change resets — a lexicographic guard was considered
       and rejected because it silently breaks unpadded numeric windows. 41 tests; **suite
       proved non-vacuous with 8 planted defects**, all caught.*
-- [ ] 9.6 phpbench: NFR-12 (Csv streaming) + NFR-10 (FileSequence) wired into the ADR-0030
-      same-runner harness (RFC-0002) (step:optimize) — size: S · route: fast / medium
+- [x] 9.6 phpbench: NFR-12 (Csv streaming) + NFR-10 (FileSequence) wired into the ADR-0030
+      same-runner harness (RFC-0002) (step:optimize) — route: fast / medium. **Closes
+      Milestone 9.** *`FileSequenceBench::benchSequenceNext()` and
+      `CsvBench::benchWriteTenThousandByTen()` follow the established shape exactly:
+      `Revs(1)` for Csv (10 000 rows already is NFR-12's unit, `MemoryBench`'s precedent),
+      1000 same-file revolutions for FileSequence since `next()`'s cost is dominated by the
+      lock-and-rewrite, not by the counter's value — unlike `ContainerBench`'s cold subject,
+      no per-revolution freshness is needed. Both wired into `ci.yml`/`nightly.yml`'s
+      existing `bench_budget_gate.py` call (`benchSequenceNext<=200`,
+      `benchWriteTenThousandByTen<=150000`, phpbench's native µs). NFR-12's other clause —
+      "memory O(row)" — is `Csv::write()`/`File::writeStream()`'s streaming-by-construction,
+      proven by `CsvRoundTripTest`, not by a benchmark that cannot see an absence (item 4.5's
+      "0 queries" precedent). **Honest limit:** this developer machine could not produce a
+      trustworthy number for either subject — direct timing (bypassing phpbench's own broken
+      environment-detection capture on this box, a pre-existing quirk) measured
+      `benchSequenceNext` at **~49.8 ms**, roughly 250× the budget, on Windows/NTFS with the
+      antivirus-scanned temp directory `File::update()`'s lock-create/rename cycle runs
+      through. ADR-0030 already named this exact machine unreliable for benchmark numbers
+      (`--php-disable-ini` there, extension-load warnings corrupting phpbench's own capture
+      here); repeating the workaround was rejected for the same reason ADR-0030 rejected it.
+      The budgets are therefore verified by CI's Linux runner, not locally — the same
+      division of labor as every other absolute NFR in this project.*
 
 ---
 
