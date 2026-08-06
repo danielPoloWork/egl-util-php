@@ -8,6 +8,7 @@ use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Support\FileException;
 use D4np\Utils\Support\HttpException;
 use D4np\Utils\Support\HydrationException;
+use D4np\Utils\Support\InvalidUrlException;
 use D4np\Utils\Support\JsonException;
 use D4np\Utils\Support\MissingKeyException;
 use D4np\Utils\Support\TypeMismatchException;
@@ -89,6 +90,7 @@ final class ExceptionHierarchyTest extends TestCase
                 FileException::class,
                 HttpException::class,
                 HydrationException::class,
+                InvalidUrlException::class,
                 JsonException::class,
                 MissingKeyException::class,
                 TypeMismatchException::class,
@@ -160,6 +162,7 @@ final class ExceptionHierarchyTest extends TestCase
             DatabaseException::class,
             FileException::class,
             HttpException::class,
+            InvalidUrlException::class,
             JsonException::class,
             MissingKeyException::class,
             TypeMismatchException::class,

@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Support\Url`** and **`InvalidUrlException`** (spec r4 **FR-27**, RFC-0002;
+  roadmap item **9.3**; **ADR-0036**) — an immutable absolute-URL value: parse, inspect,
+  recompose, compose queries. Three refusals, each a defect from the intake:
+  **control characters are rejected up front** (probed: `parse_url()` does not reject them,
+  it rewrites each to `_`, so a CRLF payload parses "clean" with components that differ
+  from the input); **a scheme downgrade is refused** (`https`→`http`, `wss`→`ws`,
+  `ftps`/`sftp`→`ftp`; an unknown target scheme is allowed through — a recorded limit); and
+  **a `null` query value is refused at any depth** (`http_build_query()` drops it silently).
+  An untouched query is preserved **byte-exact** so signatures computed over a URL survive;
+  composition encodes per RFC 3986, not as an HTML form. `userInfo()` reports credentials
+  truthfully and `withoutUserInfo()` strips them for logging.
+
 - **`D4np\Utils\Support\Lookup`** (spec r3 **FR-30**, RFC-0002; roadmap item **9.2**) — an
   immutable code→label map with an explicit missing-key policy: `label()` throws
   `OutOfBoundsException`, `labelOr()` substitutes a caller-supplied default, `tryLabel()`
