@@ -59,3 +59,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0041](0041-constrain-sql-text-by-type-and-name-the-one-escape-hatch.md) | Constrain SQL text by type, and name the one escape hatch (amends 0039) | Accepted |
 | [0042](0042-trim-is-the-only-default-and-the-transcode-runs-first.md) | Trim is the only default, and the transcode runs first | Accepted |
 | [0043](0043-two-named-edges-out-of-persistence-and-no-catch-at-all.md) | Two named edges out of Persistence, and no catch at all | Accepted |
+| [0044](0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md) | The write builder `QueryBuilder` never had, and one allowlist for both | Accepted |

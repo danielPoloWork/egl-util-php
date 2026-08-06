@@ -19,7 +19,9 @@ use D4np\Utils\Support\DatabaseException;
  * - **Values** — always bound (`?` placeholders, {@see self::bindings()}). No method on this class
  *   concatenates a value into the SQL text.
  * - **Identifiers** — must match `^[A-Za-z_][A-Za-z0-9_]*$` exactly, or a {@see DatabaseException}
- *   is raised. Not sanitised, not truncated, not quoted-and-hoped: **refused**.
+ *   is raised. Not sanitised, not truncated, not quoted-and-hoped: **refused**. The allowlist and
+ *   the quoting live in {@see Identifier} since item 10.4, so that the write side
+ *   ({@see MutationBuilder}) enforces the same one rather than a copy of it.
  * - **Keywords** — the `ORDER BY` direction and the comparison operator are closed enums
  *   ({@see Sort}, {@see Operator}), so no caller-supplied string reaches the SQL text at all.
  * - **`LIMIT`/`OFFSET`** — `int` by signature, and negative values are refused.
@@ -48,19 +50,6 @@ use D4np\Utils\Support\DatabaseException;
 final class QueryBuilder
 {
     /**
-     * Spec FR-07 writes this allowlist as `^[A-Za-z_][A-Za-z0-9_]*$`. Transcribed into PHP
-     * literally, **that pattern has a hole**: PCRE's `$` also matches immediately before a
-     * trailing newline, so `"id\n"` satisfies it. Verified directly — it rendered as
-     * `SELECT "id\n" FROM "users"`, past an allowlist that is supposed to be the only thing
-     * standing between an identifier and the SQL text.
-     *
-     * `\z` anchors at the true end of the subject and admits nothing after the last character.
-     * This is the spec's *intent* implemented rather than its notation copied; ADR-0015 records
-     * the difference so nobody later "corrects" it back to `$` for fidelity to FR-07's wording.
-     */
-    private const IDENTIFIER = '/^[A-Za-z_][A-Za-z0-9_]*\z/';
-
-    /**
      * The escape character {@see whereLike()} declares in its `ESCAPE` clause.
      *
      * Deliberately duplicated from `Sanitizer::LIKE_ESCAPE` rather than imported: `Sanitizer` is
@@ -87,36 +76,37 @@ final class QueryBuilder
     private ?int $offset = null;
 
     /**
-     * The driver's quoting characters, resolved once (roadmap 4.6, ADR-0020).
+     * The allowlist and quoting rules, resolved once (roadmap 4.6, ADR-0020).
      *
-     * `[open, close]`. Every identifier this builder quotes uses the same pair, because the
+     * Every identifier this builder quotes goes through the same instance, because the
      * connection's driver cannot change during the builder's life — but before this was cached,
-     * {@see quote()} asked {@see DatabaseConnection::driver()} afresh on every call, which is a
+     * quoting asked {@see DatabaseConnection::driver()} afresh on every call, which is a
      * `PDO::getAttribute()` round trip per identifier. Measured at 0.125 µs each, paid a dozen
      * times in a realistic query.
      *
      * Carried across clones for free: `clone` copies the property, so the fluent chain resolves
      * the driver exactly once no matter how long it gets.
-     *
-     * @var array{string, string}
      */
-    private readonly array $quoteCharacters;
+    private readonly Identifier $identifiers;
+
+    /**
+     * The table name, allowlisted and quoted in the constructor.
+     *
+     * Held quoted rather than raw so that {@see self::toSql()} — which may be called many times
+     * on one builder — does not re-run the allowlist for a name that was already checked before
+     * the instance existed.
+     */
+    private readonly string $quotedTable;
 
     /**
      * @throws DatabaseException if the table name fails the allowlist
      */
     public function __construct(
         private readonly DatabaseConnection $connection,
-        private readonly string $table,
+        string $table,
     ) {
-        $this->quoteCharacters = match ($connection->driver()) {
-            'mysql' => ['`', '`'],
-            'sqlsrv', 'dblib', 'mssql' => ['[', ']'],
-            // The SQL standard's own form, and what SQLite, PostgreSQL, Oracle and the rest use.
-            default => ['"', '"'],
-        };
-
-        $this->identifier($table);
+        $this->identifiers = Identifier::forDriver($connection->driver());
+        $this->quotedTable = $this->identifiers->quote($table);
     }
 
     /**
@@ -296,7 +286,7 @@ final class QueryBuilder
     {
         $sql = 'SELECT '
             . ($this->columns === [] ? '*' : implode(', ', $this->columns))
-            . ' FROM ' . $this->quote($this->table);
+            . ' FROM ' . $this->quotedTable;
 
         if ($this->conditions !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $this->conditions);
@@ -358,44 +348,15 @@ final class QueryBuilder
     /**
      * Refuse anything that is not a bare identifier, then quote what survives.
      *
-     * A qualified name (`users.id`) does **not** match, and that is deliberate rather than an
-     * oversight: FR-07's allowlist has no `.` in it, this builder has no `JOIN`, and a single-table
-     * query never needs the qualification. Accepting it later — by validating each dot-separated
-     * part — widens the allowlist and stays backward compatible; having accepted it and needing to
-     * take it back would not.
+     * Delegated to {@see Identifier} since item 10.4 so that this builder and
+     * {@see MutationBuilder} enforce one allowlist rather than two copies of it (ADR-0044). The
+     * behaviour is unchanged, and {@see \D4np\Utils\Tests\Database\InjectionTest} is what says so.
      *
      * @throws DatabaseException
      */
     private function identifier(string $name): string
     {
-        if (preg_match(self::IDENTIFIER, $name) !== 1) {
-            throw new DatabaseException(sprintf(
-                'The identifier "%s" is not allowed. Table and column names cannot be bound as '
-                . 'parameters — a prepared statement has no placeholder for them — so this '
-                . 'builder allows only bare names matching %s and refuses everything else. If '
-                . 'this name came from user input, that is the vulnerability this refusal exists '
-                . 'to stop; map the input to a known column at the call site instead.',
-                $name,
-                self::IDENTIFIER,
-            ));
-        }
-
-        return $this->quote($name);
-    }
-
-    /**
-     * Wrap an already-allowlisted identifier in the driver's quoting characters.
-     *
-     * The doubling below is unreachable for anything that passed {@see self::identifier()} — such
-     * a name has no quote character in it. It is written correctly anyway rather than skipped,
-     * because a quoting function that is only safe when called in the right order is a trap for
-     * whoever calls it next.
-     */
-    private function quote(string $identifier): string
-    {
-        [$open, $close] = $this->quoteCharacters;
-
-        return $open . str_replace($close, $close . $close, $identifier) . $close;
+        return $this->identifiers->quote($name);
     }
 
     /**

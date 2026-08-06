@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — A requirement satisfied by not writing code, and the rule's first exception](docs/journal/2026/08/2026-08-06-repository.md).
+  [2026-08-06 — The verb that was never there, and a defect campaign that proved nothing](docs/journal/2026/08/2026-08-06-table-gateway.md).
 
 ## Model & effort routing (advisory)
 
@@ -790,10 +790,36 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       `hydrate()` left protected and non-final as the lenient seam; and normalization is
       **opt-in**, settling the question ADR-0042 deferred — ADR-0042 answers "what does a
       normalizer do", this answers "did you ask for one".*
-- [ ] 10.4 `Persistence\TableGateway`: Table Data Gateway over `QueryBuilder` —
+- [x] 10.4 `Persistence\TableGateway`: Table Data Gateway over `QueryBuilder` —
       select/insert/update/delete with allowlisted identifiers and bound values by
       construction + patterns-catalogue adoption entry (RFC-0002 FR-35) (security) —
-      size: M · route: frontier-reasoning / extra · ADR (pattern adoption)
+      size: M · route: frontier-reasoning / extra *(run at standard tier; mismatch accepted by
+      the maintainer and recorded)* · **ADR-0044**, **spec r11**, **patterns catalogue: first
+      entry**. ***The item as written could not be built: `QueryBuilder` is `SELECT`-only and
+      always was*** — no write verb exists anywhere in the `Database` group, so "compose
+      exclusively through `QueryBuilder`" (FR-35's words, carried from RFC-0002) covers the read
+      half and leaves the write half nowhere to go. Found by grep before any code was written;
+      **spec FR-35 is corrected in this PR rather than left describing something absent**.
+      The write side became `MutationBuilder`, placed in `Database` beside the read builder for
+      two reasons: composing SQL inside `Persistence` would put a second generator in the group
+      whose job is to *call* one, and its text could only enter `SqlStatement` through
+      `composed()` — spending ADR-0041's review-list property on machine-generated SQL that has a
+      checker. Instead `fromMutation()` is a fourth named door and **`composed()` keeps its zero
+      in-library uses**. The FR-07 allowlist is extracted to a shared `Identifier` (one rule, not
+      two copies: a drifting `LIKE_ESCAPE` yields a wrong query, a drifting allowlist yields a
+      vulnerability), asserted by a mechanism test that the pattern appears **exactly once** in
+      the production tree, comments excluded. Three gateway decisions are normative: **empty
+      criteria refused** on every filtered operation (`all()` is the named whole-table read),
+      **the DTO projected rather than `SELECT *`** (strict hydration, ADR-0008), and the table
+      allowlisted **at construction** as well as per statement (ADR-0022's fail-fast). Honest
+      limit, found by a test failing for the wrong reason: **on SQLite a DTO/table mismatch is
+      not a driver error** — the double-quoted-string misfeature returns the column name as a
+      string literal, so strict hydration catches it on the first row and **nothing catches it
+      against an empty table**; both behaviours asserted, the schema-round-trip fix declined in
+      the ADR. Extracting `Identifier` also made `QueryBuilder::toSql()` **pure**, which PHPStan
+      noticed in two untouched tests. 1770 tests (+119); 10 planted defects, 10 caught — and the
+      **first run of that campaign was itself invalid** (the new files were untracked, so the
+      restore step silently did nothing and defects accumulated), redone against a staged index.
 - [ ] 10.5 T-13 injection suite over the gateway/statement paths: ADR-0017's 29-payload
       corpus re-run through `Repository`/`TableGateway`, placeholder-only text asserted at
       the PDO boundary via the `QueryLog` fixture (RFC-0002 T-13) (security) — size: M ·

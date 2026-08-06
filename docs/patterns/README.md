@@ -34,16 +34,19 @@ _Patterns named in the spec at intake are seeded below as **Planned**; each beco
 
 | # | Pattern | Status | Problem it addresses | Code location | ADR / PR |
 |---|---------|--------|----------------------|---------------|----------|
-| — | —       | —      | —                    | —             | —        |
+| 1 | Table Data Gateway | Implemented | Per-entity CRUD boilerplate: the surveyed estate wrote a `Dao` + `Query` + `CrudImpl` triple per table, each re-deriving how to build safe SQL and each disagreeing on what a failure returns | [`Persistence/TableGateway.php`](../../src/main/php/d4np/utils/Persistence/TableGateway.php) | [ADR-0044](../adr/0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md) · item 10.4 |
 
 
 ## Rejected
 
-_No rejections recorded yet._
+_Recorded rather than silently dropped (`AGENTS.md` §8.3). Each was a live candidate for the
+`Persistence` group at items 10.3–10.4._
 
 | # | Pattern | Considered for | Rejected because | ADR / PR |
 |---|---------|----------------|------------------|----------|
-| — | —       | —              | —                | —        |
+| 1 | Active Record | The row shape returned by the gateway | It puts persistence on the DTO, and the `Dto` group's whole contract is that a DTO is immutable data with no collaborators. It would also invert the layering rule — `Dto` would need `Database` — which is the direction [ADR-0043](../adr/0043-two-named-edges-out-of-persistence-and-no-catch-at-all.md) keeps closed and proves closed. | [ADR-0044](../adr/0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md) · item 10.4 |
+| 2 | Unit of Work | Coordinating multi-statement writes | Change tracking and an identity map are ORM scope, rejected wholesale by RFC-0002 Alternative #1. Transaction scope — the part consumers actually need — is already `Transaction`/`Repository::withTransaction()` under [ADR-0016](../adr/0016-closure-scoped-transactions-with-savepoint-nesting.md)'s semantics. | [ADR-0044](../adr/0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md) · item 10.4 |
+| 3 | Data Mapper | Mapping rows to DTOs | The full pattern's value is mapping *independent* object and table models, which needs metadata, a registry and change tracking. This library maps a flat row to a readonly DTO by constructor name, which the shared hydrator already does ([ADR-0008](../adr/0008-dto-hydration-strictness-and-shared-hydrator.md)); adopting the name would promise a machinery that is deliberately absent. | [ADR-0044](../adr/0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md) · item 10.4 |
 
 ## Superseded
 
