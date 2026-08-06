@@ -54,3 +54,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0036](0036-refuse-the-downgrade-and-the-characters-parse-url-launders.md) | Refuse the scheme downgrade, and refuse the characters `parse_url()` launders | Accepted |
 | [0037](0037-disable-phps-escape-character-and-keep-the-formula-guard-opt-in.md) | Disable PHP's CSV escape character, and keep the formula guard opt-in | Accepted |
 | [0038](0038-one-lock-across-the-read-and-the-write-and-a-sequence-that-refuses-to-wrap.md) | One lock across the read and the write, and a sequence that refuses to wrap | Accepted |
+| [0039](0039-sql-text-and-its-parameters-become-one-value-not-two-arguments.md) | SQL text and its parameters become one value, not two arguments | Accepted |

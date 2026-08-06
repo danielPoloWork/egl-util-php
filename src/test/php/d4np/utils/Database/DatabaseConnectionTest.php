@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace D4np\Utils\Tests\Database;
 
 use D4np\Utils\Database\DatabaseConnection;
+use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Tests\Database\Fixture\PretendDriverPdo;
 use D4np\Utils\Tests\Database\Fixture\StubbornlyEmulatingPdo;
@@ -31,7 +32,7 @@ final class DatabaseConnectionTest extends TestCase
     private function connect(): DatabaseConnection
     {
         $connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $connection->execute('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)');
+        $connection->execute(new SqlStatement('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)'));
 
         return $connection;
     }
@@ -66,9 +67,9 @@ final class DatabaseConnectionTest extends TestCase
     public function testSelectReturnsAssociativeArraysOnly(): void
     {
         $connection = $this->connect();
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]));
 
-        $rows = $connection->select('SELECT name, age FROM users');
+        $rows = $connection->select(new SqlStatement('SELECT name, age FROM users'));
 
         // FETCH_BOTH would additionally carry 0 and 1; asserting the exact key set is the point.
         self::assertSame([['name' => 'Grace', 'age' => 45]], $rows);
@@ -81,7 +82,7 @@ final class DatabaseConnectionTest extends TestCase
     public function testThePinnedFetchModeAppliesToStatementsRunOnTheRawPdo(): void
     {
         $connection = $this->connect();
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]));
 
         // No fetch mode passed anywhere here: whatever comes back is the pinned default's doing.
         $statement = $connection->pdo()->query('SELECT name, age FROM users');
@@ -146,33 +147,33 @@ final class DatabaseConnectionTest extends TestCase
 
     public function testSelectOneReturnsNullRatherThanFalseWhenThereIsNoRow(): void
     {
-        self::assertNull($this->connect()->selectOne('SELECT * FROM users WHERE id = ?', [404]));
+        self::assertNull($this->connect()->selectOne(new SqlStatement('SELECT * FROM users WHERE id = ?', [404])));
     }
 
     public function testSelectOneReturnsTheFirstRow(): void
     {
         $connection = $this->connect();
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]);
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]));
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]));
 
-        self::assertSame(['id' => 1, 'name' => 'Ada', 'age' => 36], $connection->selectOne('SELECT * FROM users ORDER BY id'));
+        self::assertSame(['id' => 1, 'name' => 'Ada', 'age' => 36], $connection->selectOne(new SqlStatement('SELECT * FROM users ORDER BY id')));
     }
 
     public function testExecuteReportsAffectedRows(): void
     {
         $connection = $this->connect();
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]);
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]));
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]));
 
-        self::assertSame(2, $connection->execute('UPDATE users SET age = age + 1'));
+        self::assertSame(2, $connection->execute(new SqlStatement('UPDATE users SET age = age + 1')));
     }
 
     public function testNamedParametersBind(): void
     {
         $connection = $this->connect();
-        $connection->execute('INSERT INTO users (name, age) VALUES (:name, :age)', ['name' => 'Ada', 'age' => 36]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (:name, :age)', ['name' => 'Ada', 'age' => 36]));
 
-        self::assertSame([['name' => 'Ada']], $connection->select('SELECT name FROM users WHERE age = :age', ['age' => 36]));
+        self::assertSame([['name' => 'Ada']], $connection->select(new SqlStatement('SELECT name FROM users WHERE age = :age', ['age' => 36])));
     }
 
     /**
@@ -187,23 +188,23 @@ final class DatabaseConnectionTest extends TestCase
         $connection = $this->connect();
         $payload = "Robert'); DROP TABLE users;--";
 
-        $connection->execute('INSERT INTO users (name, age) VALUES (?, ?)', [$payload, 1]);
+        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', [$payload, 1]));
 
-        self::assertSame($payload, $connection->selectOne('SELECT name FROM users')['name'] ?? null);
-        self::assertSame([['n' => 1]], $connection->select('SELECT COUNT(*) AS n FROM users'));
+        self::assertSame($payload, $connection->selectOne(new SqlStatement('SELECT name FROM users'))['name'] ?? null);
+        self::assertSame([['n' => 1]], $connection->select(new SqlStatement('SELECT COUNT(*) AS n FROM users')));
     }
 
     public function testAFailingStatementRaisesTheLibraryException(): void
     {
         $this->expectException(DatabaseException::class);
 
-        $this->connect()->select('SELECT * FROM a_table_that_does_not_exist');
+        $this->connect()->select(new SqlStatement('SELECT * FROM a_table_that_does_not_exist'));
     }
 
     public function testTheFailureCarriesThePdoExceptionAsItsCause(): void
     {
         try {
-            $this->connect()->select('THIS IS NOT SQL');
+            $this->connect()->select(new SqlStatement('THIS IS NOT SQL'));
             self::fail('expected a DatabaseException');
         } catch (DatabaseException $e) {
             self::assertInstanceOf(\PDOException::class, $e->getPrevious());
@@ -216,7 +217,7 @@ final class DatabaseConnectionTest extends TestCase
     public function testTheFailureMessageDoesNotEchoTheStatement(): void
     {
         try {
-            $this->connect()->select('SELECT * FROM missing_table WHERE secret = 1');
+            $this->connect()->select(new SqlStatement('SELECT * FROM missing_table WHERE secret = 1'));
             self::fail('expected a DatabaseException');
         } catch (DatabaseException $e) {
             self::assertStringNotContainsString('secret', $e->getMessage());

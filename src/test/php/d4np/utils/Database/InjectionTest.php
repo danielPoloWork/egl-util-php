@@ -8,6 +8,7 @@ use D4np\Utils\Database\DatabaseConnection;
 use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\Sort;
+use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Database\Transaction;
 use D4np\Utils\Security\Sanitizer;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
@@ -55,9 +56,9 @@ final class InjectionTest extends TestCase
         $pdo->setAttribute(PDO::ATTR_STATEMENT_CLASS, [LoggedStatement::class, [$this->log]]);
 
         $this->connection = new DatabaseConnection($pdo);
-        $this->connection->execute('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)');
-        $this->connection->execute('CREATE TABLE secrets (token TEXT)');
-        $this->connection->execute("INSERT INTO secrets (token) VALUES ('do-not-leak')");
+        $this->connection->execute(new SqlStatement('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)'));
+        $this->connection->execute(new SqlStatement('CREATE TABLE secrets (token TEXT)'));
+        $this->connection->execute(new SqlStatement("INSERT INTO secrets (token) VALUES ('do-not-leak')"));
 
         // Only the payload traffic matters; drop the fixture's own setup from the log.
         $this->log->entries = [];
@@ -137,7 +138,7 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testConnectionExecuteBindsRatherThanInterpolates(string $payload): void
     {
-        $this->connection->execute('INSERT INTO users (name) VALUES (?)', [$payload]);
+        $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', [$payload]));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -145,7 +146,7 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testConnectionSelectBindsRatherThanInterpolates(string $payload): void
     {
-        $this->connection->select('SELECT * FROM users WHERE name = ?', [$payload]);
+        $this->connection->select(new SqlStatement('SELECT * FROM users WHERE name = ?', [$payload]));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -153,7 +154,7 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testConnectionSelectOneBindsRatherThanInterpolates(string $payload): void
     {
-        $this->connection->selectOne('SELECT * FROM users WHERE name = :name', ['name' => $payload]);
+        $this->connection->selectOne(new SqlStatement('SELECT * FROM users WHERE name = :name', ['name' => $payload]));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -184,7 +185,7 @@ final class InjectionTest extends TestCase
     public function testBindingHoldsInsideATransaction(string $payload): void
     {
         (new Transaction($this->connection))->run(function () use ($payload): void {
-            $this->connection->execute('INSERT INTO users (name) VALUES (?)', [$payload]);
+            $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', [$payload]));
         });
 
         $this->assertNeverInStatementText($payload);
@@ -198,14 +199,14 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testThePayloadRoundTripsAndTheSchemaSurvives(string $payload): void
     {
-        $this->connection->execute('INSERT INTO users (name) VALUES (?)', [$payload]);
+        $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', [$payload]));
 
-        $row = $this->connection->selectOne('SELECT name FROM users WHERE name = ?', [$payload]);
+        $row = $this->connection->selectOne(new SqlStatement('SELECT name FROM users WHERE name = ?', [$payload]));
 
         self::assertSame($payload, $row['name'] ?? null);
-        self::assertSame([['n' => 1]], $this->connection->select('SELECT COUNT(*) AS n FROM users'));
+        self::assertSame([['n' => 1]], $this->connection->select(new SqlStatement('SELECT COUNT(*) AS n FROM users')));
         // Exfiltration and destruction both leave traces here.
-        self::assertSame([['n' => 1]], $this->connection->select('SELECT COUNT(*) AS n FROM secrets'));
+        self::assertSame([['n' => 1]], $this->connection->select(new SqlStatement('SELECT COUNT(*) AS n FROM secrets')));
     }
 
     /**
@@ -216,8 +217,8 @@ final class InjectionTest extends TestCase
      */
     public function testATautologyMatchesNothingBecauseItIsAValue(): void
     {
-        $this->connection->execute('INSERT INTO users (name) VALUES (?)', ['Ada']);
-        $this->connection->execute('INSERT INTO users (name) VALUES (?)', ['Grace']);
+        $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', ['Ada']));
+        $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', ['Grace']));
 
         $rows = (new QueryBuilder($this->connection, 'users'))
             ->where('name', Operator::Equals, "' OR '1'='1")
@@ -240,8 +241,8 @@ final class InjectionTest extends TestCase
      */
     public function testLikeWildcardsAreNeutralisedWhileTheValueStillBinds(): void
     {
-        $this->connection->execute('INSERT INTO users (name) VALUES (?)', ['secret-document']);
-        $this->connection->execute('INSERT INTO users (name) VALUES (?)', ['public-note']);
+        $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', ['secret-document']));
+        $this->connection->execute(new SqlStatement('INSERT INTO users (name) VALUES (?)', ['public-note']));
 
         // Unescaped, a lone '%' still matches everything — it is legitimate pattern syntax, and
         // neutralising it unconditionally would break every prefix search in the library.

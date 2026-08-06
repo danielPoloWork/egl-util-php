@@ -48,6 +48,12 @@ use PDOStatement;
  * accepts an interpolated value, because the one that did would be the one that got used.
  * Identifiers are a different problem — they cannot be bound — and belong to `QueryBuilder`
  * (roadmap 4.2), which allowlists them.
+ *
+ * **Every query method takes a {@see SqlStatement}, not a bare `(string, array)` pair**
+ * (roadmap 10.1, ADR-0039). SQL text and its parameters are one value here, not two
+ * variables a caller could assemble incorrectly — the estate's 199 interpolation sites were
+ * exactly that assembly going wrong, 199 times, because nothing forced the two to travel
+ * together.
  */
 final class DatabaseConnection
 {
@@ -85,16 +91,14 @@ final class DatabaseConnection
     /**
      * Every row of a query, as associative arrays.
      *
-     * @param array<string|int, mixed> $parameters bound as parameters — never interpolated
-     *
      * @return list<array<string, mixed>>
      *
      * @throws DatabaseException
      */
-    public function select(string $sql, array $parameters = []): array
+    public function select(SqlStatement $statement): array
     {
         /** @var list<array<string, mixed>> */
-        return $this->run($sql, $parameters)->fetchAll(PDO::FETCH_ASSOC);
+        return $this->run($statement)->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -103,15 +107,13 @@ final class DatabaseConnection
      * `null` rather than PDO's `false`, so the empty case is expressible in the type system and a
      * caller cannot confuse "no row" with "a row whose first column was falsy".
      *
-     * @param array<string|int, mixed> $parameters bound as parameters — never interpolated
-     *
      * @return array<string, mixed>|null
      *
      * @throws DatabaseException
      */
-    public function selectOne(string $sql, array $parameters = []): ?array
+    public function selectOne(SqlStatement $statement): ?array
     {
-        $row = $this->run($sql, $parameters)->fetch(PDO::FETCH_ASSOC);
+        $row = $this->run($statement)->fetch(PDO::FETCH_ASSOC);
 
         /** @var array<string, mixed>|false $row */
         return $row === false ? null : $row;
@@ -120,29 +122,25 @@ final class DatabaseConnection
     /**
      * Run a statement that changes rows, and return how many it affected.
      *
-     * @param array<string|int, mixed> $parameters bound as parameters — never interpolated
-     *
      * @throws DatabaseException
      */
-    public function execute(string $sql, array $parameters = []): int
+    public function execute(SqlStatement $statement): int
     {
-        return $this->run($sql, $parameters)->rowCount();
+        return $this->run($statement)->rowCount();
     }
 
     /**
      * Prepare and execute, converting PDO's failure into this library's own (ADR-0004).
      *
-     * @param array<string|int, mixed> $parameters
-     *
      * @throws DatabaseException
      */
-    private function run(string $sql, array $parameters): PDOStatement
+    private function run(SqlStatement $statement): PDOStatement
     {
         try {
-            $statement = $this->pdo->prepare($sql);
-            $statement->execute($parameters === [] ? null : $parameters);
+            $prepared = $this->pdo->prepare($statement->sql);
+            $prepared->execute($statement->parameters === [] ? null : $statement->parameters);
 
-            return $statement;
+            return $prepared;
         } catch (PDOException $e) {
             // The SQL is deliberately not in the message. It is frequently logged, and a failing
             // statement's text is the most likely place for data a consumer would rather not see
