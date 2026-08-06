@@ -50,14 +50,11 @@ deptrac:
         - type: directory
           value: src/main/php/d4np/utils/Errors/.*
 
-    # RFC-0002's seventh group (roadmap Milestone 10). It arrives with a Support-only edge, like
-    # every group above it: `RowNormalizer` (item 10.2) consumes `Str` and the exception
-    # hierarchy and nothing else. The two *cross-group* edges RFC-0002 P-1 anticipates —
-    # `Persistence -> Database` and `Persistence -> Dto`, which `Repository` needs to execute a
-    # `SqlStatement` and to hydrate a DTO — are deliberately NOT granted here. They arrive with
-    # item 10.3, in the same PR as the ADR that argues for them and the planted violations that
-    # prove the grants are real. Granting them early would mean this file permitting an import
-    # that no code makes and no decision has justified yet.
+    # RFC-0002's seventh group (roadmap Milestone 10). It arrived at item 10.2 with a
+    # Support-only edge, like every group above it — `RowNormalizer` consumes `Str` and the
+    # exception hierarchy and nothing else. Item 10.3 added `Repository`, and with it the two
+    # cross-group edges RFC-0002 P-1 anticipated; see the ruleset below and ADR-0043 for what
+    # they are and what keeps them narrow.
     - name: Persistence
       collectors:
         - type: directory
@@ -138,10 +135,30 @@ deptrac:
       - Psr
     Http:
       - Support
-    # Support only, for now — see the layer's own comment above. Item 10.3 is where this list
-    # grows to Database and Dto, with its ADR.
+    # THE ONE EXCEPTION TO RFC-0001'S RULE, and the only one in this file (ADR-0043, item 10.3).
+    #
+    # Every other group above depends on Support and nothing else. `Persistence` reaches two
+    # sibling groups, because `Repository` exists to sit exactly between them: it takes a
+    # `SqlStatement` and a `DatabaseConnection` from `Database`, and returns a hydrated
+    # `DataTransferObject` from `Dto`. A group that could touch neither could not be written —
+    # RFC-0002 P-1 anticipated this and named the two alternatives (a gateway returning raw
+    # arrays; a caller-injected hydration closure), both of which push the same loop back into
+    # every consumer.
+    #
+    # Two properties keep this from being the thin end of a wedge, and both are asserted rather
+    # than asked for. The grants are NAMED: `Errors`, `Http`, `Container` and `Security` remain
+    # closed to `Persistence`, and a planted import of one is a violation (verified, ADR-0043).
+    # And the direction is one-way: `Database` and `Dto` do not gain `Persistence`, so the
+    # inversion — a lower group reaching up into this one — stays a build failure (also
+    # verified). What the ADR argues for is these two edges, not a general relaxation.
     Persistence:
       - Support
+      # Repository executes a SqlStatement through a DatabaseConnection, and delegates
+      # transaction scope to Transaction (ADR-0016's semantics rather than a second
+      # implementation of them).
+      - Database
+      # …and returns hydrated DTOs, through the Dto group's own strict hydration (ADR-0008).
+      - Dto
     Errors:
       - Support
       # `Logger` implements PSR-3 and `ExceptionHandler` accepts one (spec FR-17, FR-18).
