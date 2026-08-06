@@ -91,6 +91,82 @@ final class File
     }
 
     /**
+     * Replace `$path` atomically with whatever `$writer` streams, without buffering it.
+     *
+     * The same discipline as {@see self::write()} — sidecar lock, temporary file in the same
+     * directory, mode applied before the rename, ADR-0005 throughout — but the caller writes
+     * to an open handle instead of handing over a finished string. That is the difference
+     * between a memory cost proportional to the output and one proportional to a single row,
+     * which is what a streaming producer (spec NFR-12) needs.
+     *
+     * `$writer` receives the temporary file's handle. It must not close it; anything it
+     * throws propagates unchanged after the temporary file is removed, so a failed write
+     * leaves the target exactly as it was.
+     *
+     * @param callable(resource): void $writer
+     *
+     * @throws FileException if the directory is missing or unwritable, if the temporary file
+     *                        cannot be created in it, or if the flush or rename fails.
+     * @throws \Throwable    whatever `$writer` threw, unchanged, after the temporary file has
+     *                        been removed (the same propagation contract as
+     *                        {@see \D4np\Utils\Database\Transaction::run()})
+     */
+    public static function writeStream(string $path, callable $writer): void
+    {
+        $dir = \dirname($path);
+        if (!is_dir($dir)) {
+            throw new FileException(sprintf('Cannot write "%s": directory "%s" does not exist.', $path, $dir));
+        }
+        if (!is_writable($dir)) {
+            throw new FileException(sprintf('Cannot write "%s": directory "%s" is not writable.', $path, $dir));
+        }
+
+        $mode = self::currentModeOf($path);
+        $lock = self::acquireExclusiveLock($path);
+
+        try {
+            $tmp = self::createTempFileIn($dir);
+
+            try {
+                $handle = @fopen($tmp, 'wb');
+                if ($handle === false) {
+                    throw new FileException(sprintf('Cannot write "%s": failed to open the temporary file.', $path));
+                }
+
+                try {
+                    $writer($handle);
+
+                    // fflush() before the rename: buffered bytes still in userland when the
+                    // rename happens would make the "complete or previous" promise a lie.
+                    if (!fflush($handle)) {
+                        throw new FileException(sprintf('Cannot write "%s": flushing the temporary file failed.', $path));
+                    }
+                } finally {
+                    @fclose($handle);
+                }
+
+                if (!@chmod($tmp, $mode)) {
+                    throw new FileException(sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
+                }
+
+                if (!@rename($tmp, $path)) {
+                    throw new FileException(sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
+                }
+            } catch (\Throwable $e) {
+                // Catch Throwable, not FileException: the caller's writer may throw anything,
+                // and the temporary file must not survive either way.
+                if (is_file($tmp)) {
+                    @unlink($tmp);
+                }
+
+                throw $e;
+            }
+        } finally {
+            self::releaseLock($lock);
+        }
+    }
+
+    /**
      * Read `$path` in full, under a shared `flock()`.
      *
      * The shared lock is what makes this cooperate with a *third-party* writer that modifies

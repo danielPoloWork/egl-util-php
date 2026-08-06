@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r4** — 2026-08-06. See [Revision history](#revision-history).
+**Revision r5** — 2026-08-06. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -31,7 +31,7 @@ Provide EGL PHP projects (framework-based and native/legacy) with a modern utili
 - FR-17 Logger: PSR-3 file/console logger
 - FR-18 ExceptionHandler: fatal-error capture, JSON problem responses for API calls; never leaks traces in production mode (env-gated)
 - FR-19..21 Str: slug() (transliteration via ext-intl when present), uuid() (v4 from random_bytes), random() (CSPRNG alphanumeric tokens)
-- FR-22..23 File: write()/read() flock-guarded, atomic write via temp+rename; mime() via Fileinfo (never trusts extensions)
+- FR-22..23 File: write()/read() flock-guarded, atomic write via temp+rename; writeStream() streams to the temp file under the same discipline, for producers whose output must not be buffered (r5, spec NFR-12); mime() via Fileinfo (never trusts extensions)
 - FR-24 Env::get(): env reads with correct boolean coercion ('false' -> false)
 - FR-25 Json: encode()/decode() with JSON_THROW_ON_ERROR; library JsonException wraps and rethrows PHP's native \JsonException (RFC-0001 R-7)
 - FR-26 Exception hierarchy: UtilsException <- DatabaseException, HydrationException (<- UnknownKeyException, TypeMismatchException, MissingKeyException), HttpException, FileException, JsonException
@@ -39,13 +39,14 @@ Provide EGL PHP projects (framework-based and native/legacy) with a modern utili
 **r3 addendum (RFC-0002)** — normative detail in
 [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md); one error-model rule
 spans all of it: **no silent sentinel returns** — every new failure path throws a typed
-exception in the FR-26 hierarchy (new: InvalidUrlException, CsvException, SequenceExhaustedException,
+exception in the FR-26 hierarchy (new: InvalidUrlException, CsvException [added r5],
+SequenceExhaustedException,
 HttpClientException, RouteNotFoundException, MethodNotAllowedException, CryptoException,
 MailException).
 
 - FR-27 Url: parse/normalize/build value object; absolute URLs only; refuses C0/DEL control characters up front (parse_url() rewrites them to "_" rather than rejecting them — ADR-0036); refuses a scheme downgrade (https->http, wss->ws, ftps/sftp->ftp; an unknown target scheme is allowed through — recorded limit); query preserved byte-exact until edited, composed per RFC 3986, null values refused at any depth
-- FR-28 Csv + Delimiter enum: streaming write/read, typed failures (never boolean), atomic write via File; formula-guard opt-in (default off — input-mutilation lesson, spec §1)
-- FR-29 CsvSerializable: csvHeader()/csvRow() contract; reflective default documented via ClassMetadata
+- FR-28 Csv + Delimiter enum: streaming write/read (memory O(row)), typed failures (never boolean), atomic write via File::writeStream(); PHP's non-RFC-4180 backslash escape DISABLED on every call — the default corrupts any field ending in a backslash (ADR-0037); a single empty field is written as "" (fputcsv emits a bare newline, which is lost on read) and a zero-column row is refused; blank lines skipped on read, a quoted empty field is not; formula-guard opt-in (default off — input-mutilation lesson, spec §1), leaders = OWASP's `=` `+` `-` `@` plus tab and CR
+- FR-29 CsvSerializable: csvHeader()/csvRow() contract, with the pairing ENFORCED — Csv::write() takes the header from the first item and refuses any row whose width disagrees (ADR-0037)
 - FR-30 Lookup: immutable code→label map; label() throws on a missing key, labelOr()/tryLabel() tolerant
 - FR-31 Str additions: collapseWhitespace(), nullIfBlank(), transcode() (strict default, lossy opt-in), multibyte-safe padLeft()/padRight(), shortClassName(), pascalCase()
 - FR-32 FileSequence: rolling flock-guarded counter with an explicit cap (SequenceExhaustedException); never wraps silently
@@ -134,7 +135,7 @@ r3 (RFC-0002) additions:
 
 - D4np\Utils\Persistence\ — Repository (fetchAll/fetchOne/execute/withTransaction), TableGateway (select/insert/update/delete), RowNormalizer
 - D4np\Utils\Mail\ — EmailAddress, MailMessage, Mailer, NativeMailer
-- D4np\Utils\Database\ — + SqlStatement · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, Str additions (FR-31)
+- D4np\Utils\Database\ — + SqlStatement · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, File::writeStream(), Str additions (FR-31)
 
 
 ## 6. Verification & Test Strategy
@@ -161,6 +162,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r5 | 2026-08-06 | §2: FR-28/FR-29 stated to the precision item 9.4 implemented (PHP's backslash escape disabled, the single-empty-field and zero-column shapes, blank-line handling, the enforced header/row pairing, the guard's leader set); FR-22/23 gains `File::writeStream()`, without which a streaming CSV could not honour NFR-12; `CsvException` added to the exception enumeration. Additive; see [ADR-0037](../adr/0037-disable-phps-escape-character-and-keep-the-formula-guard-opt-in.md). |
 | r4 | 2026-08-06 | §2: FR-27 stated to the precision item 9.3 implemented (control-character refusal, absolute-only, the named downgrade pairs and their recorded limit, query preservation), and `InvalidUrlException` added to the r3 exception enumeration, which had not anticipated it. Additive; see [ADR-0036](../adr/0036-refuse-the-downgrade-and-the-characters-parse-url-launders.md). |
 | r3 | 2026-08-06 | §2–§6: the RFC-0002 surface — FR-27…FR-44, NFR-09…NFR-14, suites T-07…T-15, the Persistence/Mail groups and the two named layering edges. Additive; no existing requirement changed. Source: [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md) (approved 2026-08-05, PR #49); roadmap: M9–M12. |
 
