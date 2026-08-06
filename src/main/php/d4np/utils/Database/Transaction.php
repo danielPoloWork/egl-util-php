@@ -20,8 +20,8 @@ use Throwable;
  *
  * ```php
  * $total = (new Transaction($connection))->run(function (DatabaseConnection $db): int {
- *     $db->execute(new SqlStatement('UPDATE accounts SET balance = balance - ? WHERE id = ?', [100, 1]));
- *     $db->execute(new SqlStatement('UPDATE accounts SET balance = balance + ? WHERE id = ?', [100, 2]));
+ *     $db->execute(SqlStatement::literal('UPDATE accounts SET balance = balance - ? WHERE id = ?', [100, 1]));
+ *     $db->execute(SqlStatement::literal('UPDATE accounts SET balance = balance + ? WHERE id = ?', [100, 2]));
  *
  *     return 2;
  * });

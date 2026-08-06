@@ -63,9 +63,9 @@ final class SanitizerTest extends TestCase
     private function seeded(): DatabaseConnection
     {
         $connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $connection->execute(new SqlStatement('CREATE TABLE t (v TEXT)'));
+        $connection->execute(SqlStatement::literal('CREATE TABLE t (v TEXT)'));
         foreach (['100%', '100X', '1000', 'a_b', 'axb', 'plain'] as $value) {
-            $connection->execute(new SqlStatement('INSERT INTO t (v) VALUES (?)', [$value]));
+            $connection->execute(SqlStatement::literal('INSERT INTO t (v) VALUES (?)', [$value]));
         }
 
         return $connection;

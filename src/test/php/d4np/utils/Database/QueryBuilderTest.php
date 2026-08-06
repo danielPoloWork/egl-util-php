@@ -35,7 +35,7 @@ final class QueryBuilderTest extends TestCase
     private function connection(): DatabaseConnection
     {
         $connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $connection->execute(new SqlStatement('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)'));
+        $connection->execute(SqlStatement::literal('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)'));
 
         return $connection;
     }
@@ -298,9 +298,9 @@ final class QueryBuilderTest extends TestCase
     public function testEndToEndAgainstARealDriver(): void
     {
         $connection = $this->connection();
-        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]));
-        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]));
-        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]));
+        $connection->execute(SqlStatement::literal('INSERT INTO users (name, age) VALUES (?, ?)', ['Ada', 36]));
+        $connection->execute(SqlStatement::literal('INSERT INTO users (name, age) VALUES (?, ?)', ['Alan', 41]));
+        $connection->execute(SqlStatement::literal('INSERT INTO users (name, age) VALUES (?, ?)', ['Grace', 45]));
 
         $rows = (new QueryBuilder($connection, 'users'))
             ->select('name')
@@ -324,11 +324,11 @@ final class QueryBuilderTest extends TestCase
     {
         $connection = $this->connection();
         $payload = "'; DROP TABLE users; --";
-        $connection->execute(new SqlStatement('INSERT INTO users (name, age) VALUES (?, ?)', [$payload, 1]));
+        $connection->execute(SqlStatement::literal('INSERT INTO users (name, age) VALUES (?, ?)', [$payload, 1]));
 
         $row = (new QueryBuilder($connection, 'users'))->where('name', Operator::Equals, $payload)->first();
 
         self::assertSame($payload, $row['name'] ?? null);
-        self::assertSame([['n' => 1]], $connection->select(new SqlStatement('SELECT COUNT(*) AS n FROM users')));
+        self::assertSame([['n' => 1]], $connection->select(SqlStatement::literal('SELECT COUNT(*) AS n FROM users')));
     }
 }

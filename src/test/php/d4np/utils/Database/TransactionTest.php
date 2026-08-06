@@ -33,7 +33,7 @@ final class TransactionTest extends TestCase
     protected function setUp(): void
     {
         $this->connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $this->connection->execute(new SqlStatement('CREATE TABLE t (v TEXT)'));
+        $this->connection->execute(SqlStatement::literal('CREATE TABLE t (v TEXT)'));
     }
 
     private function transaction(): Transaction
@@ -52,13 +52,13 @@ final class TransactionTest extends TestCase
 
                 return $row['v'];
             },
-            $this->connection->select(new SqlStatement('SELECT v FROM t ORDER BY rowid')),
+            $this->connection->select(SqlStatement::literal('SELECT v FROM t ORDER BY rowid')),
         );
     }
 
     private function insert(string $value): void
     {
-        $this->connection->execute(new SqlStatement('INSERT INTO t (v) VALUES (?)', [$value]));
+        $this->connection->execute(SqlStatement::literal('INSERT INTO t (v) VALUES (?)', [$value]));
     }
 
     public function testWorkIsCommittedWhenTheClosureReturns(): void
@@ -298,7 +298,7 @@ final class TransactionTest extends TestCase
             }
         };
         $connection = new DatabaseConnection($pdo);
-        $connection->execute(new SqlStatement('CREATE TABLE t (v TEXT)'));
+        $connection->execute(SqlStatement::literal('CREATE TABLE t (v TEXT)'));
 
         $original = new LogicException('the reason the caller needs');
         $caught = null;

@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r7** — 2026-08-06. See [Revision history](#revision-history).
+**Revision r8** — 2026-08-06. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -50,7 +50,7 @@ MailException).
 - FR-30 Lookup: immutable code→label map; label() throws on a missing key, labelOr()/tryLabel() tolerant
 - FR-31 Str additions: collapseWhitespace(), nullIfBlank(), transcode() (strict default, lossy opt-in), multibyte-safe padLeft()/padRight(), shortClassName(), pascalCase()
 - FR-32 FileSequence: rolling counter with an explicit cap (SequenceExhaustedException); never wraps silently. The whole read-modify-write runs under ONE exclusive lock via File::update() — read()+write() as two separately locked calls loses an increment, which for a sequence is a duplicate identifier (ADR-0038). A corrupt state file is refused, not reset (resetting re-issues the whole window) and is left on disk as evidence; an absent or blank file is a legitimate fresh start. The window is a caller-supplied opaque string (no timezone decision inside the library); recorded limit: windows cannot be ordered, so ANY window change resets — callers must supply a monotonically advancing window. peek()/remaining() are advisory and unlocked.
-- FR-33 SqlStatement (Database): immutable SQL+params value — the only shape connection-side execution accepts; hand-written dialect SQL always travels with its binds
+- FR-33 SqlStatement (Database): immutable SQL+params value — the only shape connection-side execution accepts; hand-written dialect SQL always travels with its binds. Enforced by TYPE, not by convention (r8, ADR-0041): private constructor, three named entry points — literal() taking a `literal-string` (PHPStan max refuses interpolated or concatenated text, and still permits hand-written dialect SQL with placeholders), fromQueryBuilder() taking the builder object so no SQL text crosses as a bare argument, and composed() as the single named escape hatch for runtime-assembled text, with zero in-library uses so `grep composed(` is the review list
 - FR-34 Repository (Persistence): fetchAll/fetchOne/execute/withTransaction; rows normalized (FR-36) then hydrated via the shared Hydrator; every failure throws DatabaseException
 - FR-35 TableGateway (Persistence): Table Data Gateway over QueryBuilder — identifiers allowlisted, values bound, by construction
 - FR-36 RowNormalizer (Persistence): strict/lossy charset transcode + trim + empty→null as one explicit, testable policy object
@@ -135,7 +135,7 @@ r3 (RFC-0002) additions:
 
 - D4np\Utils\Persistence\ — Repository (fetchAll/fetchOne/execute/withTransaction), TableGateway (select/insert/update/delete), RowNormalizer
 - D4np\Utils\Mail\ — EmailAddress, MailMessage, Mailer, NativeMailer
-- D4np\Utils\Database\ — + SqlStatement (r7: the only shape `DatabaseConnection`'s query methods accept, ADR-0039) · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, SequenceExhaustedException, File::writeStream(), File::update(), Str additions (FR-31)
+- D4np\Utils\Database\ — + SqlStatement::literal()/fromQueryBuilder()/composed() (r7: the only shape `DatabaseConnection`'s query methods accept, ADR-0039; r8: private constructor, text constrained by `literal-string`, ADR-0041) · D4np\Utils\Http\ — + HttpClient, Router, ApiEnvelope · D4np\Utils\Security\ — + Crypto, SecretKey · D4np\Utils\Errors\ — + Level, LevelFilteredLogger, MultiLogger, LoggerFactory · D4np\Utils\Support\ — + Url, Csv, Delimiter, CsvSerializable, Lookup, FileSequence, SequenceExhaustedException, File::writeStream(), File::update(), Str additions (FR-31)
 
 
 ## 6. Verification & Test Strategy
@@ -162,6 +162,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r8 | 2026-08-06 | §2/§5: FR-33's guarantee moves from convention to **type** (item 10.7) — `SqlStatement`'s constructor becomes private behind `literal()` (a `literal-string`, enforced by the PHPStan max level CI already runs), `fromQueryBuilder()` and `composed()`. Verified by planting four interpolation mistakes (all rejected) against four legitimate shapes including hand-written dialect SQL (all accepted). A second pre-1.0 break to the same class, migrated in the same PR. See [ADR-0041](../adr/0041-constrain-sql-text-by-type-and-name-the-one-escape-hatch.md), which amends ADR-0039. |
 | r7 | 2026-08-06 | §2/§5: FR-33 realized as the only shape `DatabaseConnection::select()`/`selectOne()`/`execute()` accept — the `(string, array)` pair is retired in favor of one `SqlStatement` argument (item 10.1, opens Milestone 10). A pre-1.0 breaking change to the `Database` group's public signature, permitted and migrated in the same PR. See [ADR-0039](../adr/0039-sql-text-and-its-parameters-become-one-value-not-two-arguments.md). |
 | r6 | 2026-08-06 | §2/§6: FR-32 stated to the precision item 9.5 implemented (one lock across the read-modify-write, corrupt state refused rather than reset, the caller-supplied window and its recorded ordering limit); FR-22/23 gains `File::update()`, without which a safe counter cannot be built from this library's primitives; §6 gains suite **T-14** (multi-process concurrency: each number issued exactly once, cap holds). Additive; see [ADR-0038](../adr/0038-one-lock-across-the-read-and-the-write-and-a-sequence-that-refuses-to-wrap.md). |
 | r5 | 2026-08-06 | §2: FR-28/FR-29 stated to the precision item 9.4 implemented (PHP's backslash escape disabled, the single-empty-field and zero-column shapes, blank-line handling, the enforced header/row pairing, the guard's leader set); FR-22/23 gains `File::writeStream()`, without which a streaming CSV could not honour NFR-12; `CsvException` added to the exception enumeration. Additive; see [ADR-0037](../adr/0037-disable-phps-escape-character-and-keep-the-formula-guard-opt-in.md). |
