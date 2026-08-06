@@ -49,12 +49,22 @@ machine being a Ryzen 7 5800X nobody here runs on, and *why* a same-runner compa
 (not this developer's box) is the trustworthy read. Item 9.6 applies that standing
 decision to two more subjects; it does not make a new one.
 
-## What actually verifies this item
+## What actually verified it, and what that verification is worth qualifying
 
 The CI benchmark job, on `ubuntu-24.04`, gated by `tools/assert_bench_env.php` (PHP 8.3,
-OPcache and JIT off) — the same authority every other NFR in this project answers to. This
-journal entry exists so that whoever reads the PR sees the 250× number and does not read it
-as an unexamined regression; it is this machine's number, not the library's.
+OPcache and JIT off) — the same authority every other NFR in this project answers to. It
+reported `benchSequenceNext` at **182.981 µs** and `benchWriteTenThousandByTen` at
+**20.213 ms**, both under budget. The 250× local number was indeed this machine, not the
+library.
+
+One number is worth not just checking off. NFR-10's budget clears by **~9%** — the
+thinnest margin of any gated NFR here, against NFR-01's 2.6×, NFR-03's 3.4×, NFR-05's 2.4×,
+and this item's own NFR-12 at 7.4×. ADR-0030 measured 40% peak-to-peak noise on identical
+code across `master` runs, which dwarfs a 9% margin. This PR's single run passing is not
+evidence the margin is real; the regression gate (base-vs-HEAD, same runner) is what would
+catch drift going forward, and it correctly reported both subjects as *new* — nothing to
+compare against yet. Recorded here so a future flaky-looking failure on this subject is
+read as "the margin was always this thin" rather than investigated as a fresh regression.
 
 ## Lesson
 

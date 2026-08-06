@@ -710,7 +710,14 @@ surface (RFC-0002 FR-27…FR-32).
       (`--php-disable-ini` there, extension-load warnings corrupting phpbench's own capture
       here); repeating the workaround was rejected for the same reason ADR-0030 rejected it.
       The budgets are therefore verified by CI's Linux runner, not locally — the same
-      division of labor as every other absolute NFR in this project.*
+      division of labor as every other absolute NFR in this project. **CI's own numbers**
+      (this PR's `benchmark` job, `ubuntu-24.04`): `benchSequenceNext` **182.981 µs**
+      against ≤ 200 µs — **passes, but with the thinnest headroom of any gated NFR in this
+      project** (~9%, against NFR-01's 2.6×, NFR-03's 3.4×, NFR-05's 2.4×); named rather
+      than left implicit, since ADR-0030's 40%-peak-to-peak cross-runner noise finding is
+      larger than this margin, and a future PR narrowing it further is worth watching for,
+      not assuming away. `benchWriteTenThousandByTen` **20.213 ms** against ≤ 150 ms —
+      **7.4× headroom**, comfortable.*
 
 ---
 
