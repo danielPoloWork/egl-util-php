@@ -120,6 +120,7 @@ commitment to apply any particular pattern.
 | Active Record | An object that carries both data and its persistence logic. |
 | Identity Map | Ensure each loaded object is loaded only once. |
 | Data Access Object (DAO) | Abstract and encapsulate access to a data source. |
+| Table Data Gateway | One object gateways one table, handling all of its rows. |
 | Outbox | Publish events atomically with a database write. |
 | Event Sourcing | Persist state as an append-only sequence of events. |
 | CQRS (data side) | Separate read and write data models/stores. |

@@ -12,6 +12,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Persistence\TableGateway`** (spec r11 **FR-35**, RFC-0002; roadmap item **10.4**;
+  **ADR-0044**; patterns catalogue: *Table Data Gateway*, the catalogue's first entry) — one
+  object per table: `find()`, `all()`, `findBy()`, `findOneBy()`, `insert()`, `update()`,
+  `updateBy()`, `delete()`, `deleteBy()`, plus a `protected query()` seam for subclasses that add
+  the reads one table actually needs. It extends `Repository`, so hydration, opt-in normalization,
+  transactions and the no-catch property come with it. Three behaviours are deliberate and
+  documented: **empty criteria are refused** on every filtered operation (`all()` is the named
+  whole-table read — an empty array is what an unvalidated request filter collapses to), reads
+  **project the DTO instead of `SELECT *`** so strict hydration stays satisfiable on a table with
+  columns the DTO does not want, and the table name is **allowlisted at construction** as well as
+  in every statement.
+- **`D4np\Utils\Database\MutationBuilder`** and **`SqlStatement::fromMutation()`** (spec r11
+  **FR-33b**) — `INSERT`/`UPDATE`/`DELETE` composition with the allowlist the read builder
+  applies: values bound, column names refused rather than escaped, `null` criteria rendered as
+  `IS NULL`, and **unqualified writes refused** (an `UPDATE` or `DELETE` with empty criteria
+  applies to every row in the table). This exists because **`QueryBuilder` is `SELECT`-only** —
+  FR-35's "compose exclusively through `QueryBuilder`" was not implementable, and the spec is
+  corrected in the same PR. `SqlStatement` gains a fourth named door for it; `composed()` keeps
+  its zero in-library uses, so `grep composed(` still means "a human checked this one".
+- **`D4np\Utils\Database\Identifier`** — the FR-07 allowlist and per-driver quoting, extracted
+  from `QueryBuilder`'s private methods so both builders enforce one rule. A copied allowlist is
+  one edit away from two that disagree, and the weaker one decides; a test asserts the pattern
+  appears exactly once in the production tree. **No behaviour change** to `QueryBuilder`, whose
+  public API is untouched.
+
 - **`D4np\Utils\Persistence\Repository`** (spec r10 **FR-34**, RFC-0002; roadmap item **10.3**;
   **ADR-0043**) — the abstract data-access base: `fetchAll()`/`fetchOne()` hydrate rows into a
   DTO, `execute()` returns the affected-row count, `withTransaction()` delegates to `Transaction`

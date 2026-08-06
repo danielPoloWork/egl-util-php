@@ -223,7 +223,7 @@ final class QueryBuilderTest extends TestCase
         $connection = new DatabaseConnection($pdo);
         $pdo->driverLookups = 0; // discount DatabaseConnection's own attribute pinning
 
-        (new QueryBuilder($connection, 'users'))
+        $sql = (new QueryBuilder($connection, 'users'))
             ->select('id', 'name', 'email', 'age', 'status')
             ->where('status', Operator::Equals, 'active')
             ->where('age', Operator::GreaterThan, 18)
@@ -234,6 +234,11 @@ final class QueryBuilderTest extends TestCase
             ->limit(10)
             ->offset(0)
             ->toSql();
+
+        // The result is kept and asserted rather than discarded because item 10.4 made `toSql()`
+        // pure — the table is quoted in the constructor now, so nothing in it can have an effect,
+        // and PHPStan says so. Keeping the call as a bare statement would be flagged, correctly.
+        self::assertStringStartsWith('SELECT', $sql);
 
         // Twelve identifiers are quoted in that chain; the driver is asked about exactly once.
         self::assertSame(1, $pdo->driverLookups);
@@ -254,7 +259,7 @@ final class QueryBuilderTest extends TestCase
         $connection = new DatabaseConnection($pdo);
         $log->entries = []; // drop the constructor's own attribute-pinning traffic, if any
 
-        (new QueryBuilder($connection, 'users'))
+        $sql = (new QueryBuilder($connection, 'users'))
             ->select('id', 'name', 'email', 'age', 'status')
             ->where('status', Operator::Equals, 'active')
             ->where('age', Operator::GreaterThan, 18)
@@ -266,6 +271,7 @@ final class QueryBuilderTest extends TestCase
             ->offset(0)
             ->toSql();
 
+        self::assertStringStartsWith('SELECT', $sql);
         self::assertSame([], $log->entries, 'building a query executed a statement against the driver');
     }
 

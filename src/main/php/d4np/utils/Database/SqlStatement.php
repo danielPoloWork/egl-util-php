@@ -18,12 +18,13 @@ namespace D4np\Utils\Database;
  * while accepting hand-written SQL with placeholders, which is exactly what FR-33 exists to
  * allow.
  *
- * There are three ways in, and which one a call site uses is the review signal:
+ * There are four ways in, and which one a call site uses is the review signal:
  *
  * | constructor | what it promises | who checks |
  * |---|---|---|
  * | {@see self::literal()} | the text is a compile-time literal | **PHPStan** |
  * | {@see self::fromQueryBuilder()} | the text came from {@see QueryBuilder} | that class's allowlist (ADR-0015) |
+ * | {@see self::fromMutation()} | the text came from {@see MutationBuilder} | the same allowlist, via {@see Identifier} (ADR-0044) |
  * | {@see self::composed()} | the caller asserts the assembled text holds no untrusted value | **a human, at review** |
  *
  * `composed()` has **zero uses inside this library**, deliberately — that is what makes
@@ -80,6 +81,25 @@ final class SqlStatement
      * method.
      */
     public static function fromQueryBuilder(QueryBuilder $builder): self
+    {
+        return new self($builder->toSql(), $builder->bindings());
+    }
+
+    /**
+     * The statement a {@see MutationBuilder} represents.
+     *
+     * The write-side twin of {@see self::fromQueryBuilder()}, and it exists for the same reason:
+     * the library's own composed SQL should not have to knock on the escape hatch. Added at item
+     * 10.4 (ADR-0044) when {@see \D4np\Utils\Persistence\TableGateway} needed `INSERT`, `UPDATE`
+     * and `DELETE` — verbs `QueryBuilder` does not have — and takes the builder rather than its
+     * text for the same reason: no SQL crosses this boundary as a bare argument, so
+     * {@see self::composed()} keeps its zero in-library usage count and `grep composed(` keeps
+     * meaning "a human checked this one".
+     *
+     * The safety here is `MutationBuilder`'s property, asserted by its own suite, not this
+     * method's: identifiers pass {@see Identifier}'s allowlist and every value is bound.
+     */
+    public static function fromMutation(MutationBuilder $builder): self
     {
         return new self($builder->toSql(), $builder->bindings());
     }

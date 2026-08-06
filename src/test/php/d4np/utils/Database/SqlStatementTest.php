@@ -105,11 +105,15 @@ final class SqlStatementTest extends TestCase
 
     /**
      * The named constructors are the complete public surface, and the list is pinned so that
-     * adding a fourth one is a deliberate act with a test to update rather than a quiet
+     * adding another one is a deliberate act with a test to update rather than a quiet
      * widening. `composed()` is the only one taking unconstrained text, which is what makes
      * `grep composed(` the review list ADR-0041 relies on.
+     *
+     * `fromMutation()` joined the list at item 10.4 (ADR-0044) — this test going red is exactly
+     * how that addition was made deliberate, and the property it defends is unchanged: every
+     * entry point but `composed()` has a checker that is not a human.
      */
-    public function testTheOnlyWaysInAreTheThreeNamedConstructors(): void
+    public function testTheOnlyWaysInAreTheNamedConstructors(): void
     {
         $entryPoints = array_values(array_map(
             static fn (ReflectionMethod $m): string => $m->getName(),
@@ -121,7 +125,7 @@ final class SqlStatementTest extends TestCase
 
         sort($entryPoints);
 
-        self::assertSame(['composed', 'fromQueryBuilder', 'literal'], $entryPoints);
+        self::assertSame(['composed', 'fromMutation', 'fromQueryBuilder', 'literal'], $entryPoints);
     }
 
     // ---- fromQueryBuilder ----------------------------------------------------------------------
