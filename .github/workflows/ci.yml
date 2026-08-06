@@ -226,7 +226,7 @@ jobs:
         run: |
           mkdir -p build/logs
           php "$RUNNER_TEMP/mutation-tool/vendor/bin/infection" \
-            --min-msi=95 --no-progress --no-interaction -j2
+            --min-msi=70 --no-progress --no-interaction -j2
       - name: Keep the mutation report
         if: steps.cfg.outputs.present == 'true' && always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0

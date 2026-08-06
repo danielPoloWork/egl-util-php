@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — What one value type actually closes](docs/journal/2026/08/2026-08-06-sql-statement.md).
+  [2026-08-06 — A gate that waited ten milestones, and a review that found it](docs/journal/2026/08/2026-08-06-mutation-gate.md).
 
 ## Model & effort routing (advisory)
 
@@ -789,7 +789,25 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       (there, the job set up pcov and ran PHPUnit with no `--coverage` flag). Found by the
       item-10.1 review, which had listed the job among PR #57's passing checks — true of the
       job, false of the requirement (severity:high — a green gate that measures nothing) —
-      route: standard / high · **ADR-0040**
+      route: standard / high · **ADR-0040**. *Three more obstacles surfaced by **running** the
+      step rather than reading it. **Infection cannot be a dependency of this package**: every
+      release from 0.29.10 requires PHP ^8.2/^8.3 against the 8.1 floor, and the
+      8.1-compatible ones conflict with versions already locked here (`json-schema` 6.10 vs
+      `^5.2`, `cpu-core-counter` 1.3 vs `^0.4`, `xdebug-handler` 3.0 vs `^1.3`) — installed
+      into a throwaway project, ADR-0031's answer for the BC checker, so the 8.1 cell and
+      `--prefer-lowest` stay untouched. **`--only-covered` is not an Infection option** (the
+      generated step passed it; uncovered code is excluded by default now) so the step would
+      have failed on argument parsing regardless. And Infection **could not locate PHPUnit**
+      across two vendor directories, so `phpUnit.customPath` is stated rather than left to its
+      finder. **Measured: MSI 79%** — 443 killed, 117 escaped, mutation code coverage 100% —
+      so NFR-07's ≥70% is **met with 9 points of headroom**, and the floor **stays at the
+      spec's 70**: raising it to today's number would be this item inventing a requirement.
+      **Gate proved able to fail** (L-0008): floor temporarily raised to 95 against the same
+      79% measurement → CI red, reverted in the next commit, both kept in this PR's history.
+      Honest limits: 11 mutants produce syntax errors and are excluded from the ratio; the
+      escaped set is now a CI artifact with a per-mutator breakdown but is **not** chased here;
+      and the MSI cannot be measured on the maintainer's machine (no coverage driver — the
+      same limit as the suite's 9 skips and item 9.6's benchmark caveat).*
 
 ---
 
