@@ -763,6 +763,33 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       route: frontier-reasoning / extra
 - [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
       ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
+- [ ] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
+      `SqlStatement::__construct()`'s `$sql` as `@param literal-string`, so PHPStan at max
+      level — a gate this project already runs — *refuses* a value interpolated or
+      concatenated into statement text. **Filed by the item-10.1 review, which found the
+      option had never been considered**: ADR-0039's Alternatives weighed a *runtime*
+      assertion (rightly rejected — it cannot tell "nothing to bind" from "forgot to bind")
+      and wrote *"a type-level guarantee catches what a string never announces"* while
+      shipping the version that has no type-level guarantee. Verified empirically against
+      this repository's own `phpstan.neon` before filing: an interpolated `"… {$v} …"` and a
+      `'…' . $v` concatenation are both **rejected**, while hand-written literal SQL with
+      placeholders — precisely what FR-33 exists to allow — passes. Needs two companions,
+      because `QueryBuilder::toSql()` returns `string` and is correctly flagged: a
+      `SqlStatement::fromQueryBuilder(QueryBuilder $b)` named constructor that takes the
+      builder rather than a string (adding **no** new string-accepting door), plus one
+      conspicuously-named escape hatch for genuinely composed SQL (`IN (?,?,?)` built with
+      `implode()` is not a `literal-string` and is a legitimate pattern). **Should land
+      before 10.3/10.4** — `Repository` and `TableGateway` are the callers the guarantee
+      exists for. Supersedes or amends ADR-0039 (security; adr) — size: S ·
+      route: frontier-reasoning / extra
+- [x] 10.8 Make NFR-07's mutation gate actually run. `infection.json5` never existed, so the
+      `mutation` CI job's config guard reported `present=false` and the job passed in ~7
+      seconds having executed nothing — **spec NFR-07's "≥ 70% MSI on Security/Database/Dto"
+      has been unenforced since M1**, which is item 2.7's coverage-gate shape a second time
+      (there, the job set up pcov and ran PHPUnit with no `--coverage` flag). Found by the
+      item-10.1 review, which had listed the job among PR #57's passing checks — true of the
+      job, false of the requirement (severity:high — a green gate that measures nothing) —
+      route: standard / high · **ADR-0040**
 
 ---
 

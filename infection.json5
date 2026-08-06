@@ -1,0 +1,45 @@
+// Mutation-testing configuration — spec NFR-07's ">= 70% mutation score on
+// Security/Database/Dto namespaces" (roadmap item 10.8, ADR-0040).
+//
+// No `$schema` key: the usual value points into `vendor/infection/infection/`, and Infection
+// is deliberately NOT a dependency of this package — its PHP floor is above this library's
+// (see ADR-0040). The binary comes from a throwaway project, so a vendor-relative schema
+// reference here would dangle.
+{
+    // Exactly the three namespaces NFR-07 names, not the whole tree. The requirement is
+    // scoped on purpose: these hold the security-relevant and data-mapping logic where a
+    // surviving mutant means a test that asserts less than it appears to. Widening this
+    // would change what the 70% figure means without any decision saying so.
+    source: {
+        directories: [
+            "src/main/php/d4np/utils/Database",
+            "src/main/php/d4np/utils/Dto",
+            "src/main/php/d4np/utils/Security"
+        ]
+    },
+    // Kept as a CI artifact so a surviving mutant can be read rather than guessed at from a
+    // percentage. `perMutator` gives the per-mutator breakdown that says *which* kind of
+    // assertion is missing, which a single MSI number cannot.
+    logs: {
+        text: "build/logs/infection.txt",
+        perMutator: "build/logs/infection-per-mutator.md"
+    },
+    // Stated rather than discovered. Infection's own finder asks `composer config bin-dir`
+// and then falls back to `getcwd() . '/vendor/bin'`, manipulating `PATH` to reach it — and
+    // because the binary here is deliberately installed OUTSIDE this package (ADR-0040),
+    // that heuristic is being asked to bridge two vendor directories. It failed to on the
+    // maintainer's Windows machine. An explicit path removes the guesswork on every
+    // platform instead of relying on a search that happens to succeed on one.
+    phpUnit: {
+        customPath: "vendor/bin/phpunit"
+    },
+    tmpDir: ".infection.cache",
+    mutators: {
+        "@default": true
+    },
+    // Per-mutant, not for the whole run. The default is 10s; the suite's slowest units here
+    // are Argon2id hashes (NFR-05 budgets them at 50-200ms each, and `Hash` lives under one
+    // of the three namespaces), so a mutant landing in that path needs headroom before it is
+    // reported as a timeout rather than as escaped or killed.
+    timeout: 30
+}

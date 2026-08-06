@@ -43,6 +43,7 @@ htmlcov/
 /.phpstan.cache/
 .php-cs-fixer.cache
 .deptrac.cache
+/.infection.cache/
 
 # IDE / editor
 /.idea/

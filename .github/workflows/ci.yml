@@ -171,12 +171,34 @@ jobs:
         run: composer install --no-interaction --prefer-dist
       - if: steps.cfg.outputs.present == 'true'
         run: vendor/bin/deptrac analyse
+  # ---------------------------------------------------------------------------
+  # Mutation score (roadmap 10.8, ADR-0040). Spec NFR-07 requires >= 70% MSI on the
+  # Security/Database/Dto namespaces, and until item 10.8 nothing measured it: `infection.json5`
+  # did not exist, so the config guard below reported `present=false` and this job passed in
+  # seconds having run nothing — item 2.7's coverage-gate shape, a second time.
+  #
+  # Two further defects in the original step surfaced only by running it:
+  #   - `vendor/bin/infection` never existed. Infection is NOT and cannot be a dependency of
+  #     this package: every release from 0.29.10 on requires PHP ^8.2/^8.3 against this
+  #     library's 8.1 floor, and the older 8.1-compatible releases conflict with versions this
+  #     project already locks (justinrainbow/json-schema, fidry/cpu-core-counter,
+  #     composer/xdebug-handler). Installed into a throwaway project instead, exactly as
+  #     ADR-0031 does for the BC checker, so the 8.1 matrix cell and `--prefer-lowest` stay
+  #     untouched.
+  #   - `--only-covered` is not an Infection option (verified against 0.34.1's own `run`
+  #     usage line). Uncovered code is excluded by default now; the inverse flag is
+  #     `--with-uncovered`. The original line would have failed on argument parsing.
+  #
+  # The interpreter is 8.3 with pcov, matching the coverage job: mutation testing measures
+  # test-suite strength, not runtime compatibility, so it does not need the 8.1 floor.
+  # ---------------------------------------------------------------------------
   mutation:
     # Same step-level guard as `layering`: hashFiles() cannot gate a job-level `if`.
     name: quality / infection mutation score
     runs-on: ubuntu-24.04
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check for infection.json5 (job self-enables when it lands)
@@ -187,8 +209,32 @@ jobs:
         with: { php-version: '8.3', coverage: pcov }
       - if: steps.cfg.outputs.present == 'true'
         run: composer install --no-interaction --prefer-dist
-      - if: steps.cfg.outputs.present == 'true'
-        run: vendor/bin/infection --min-msi=70 --only-covered
+      - name: Install Infection outside this package's dependency graph
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/mutation-tool"
+          # Constrained rather than floating, for ADR-0031's reason: a tool that changes its
+          # own findings between runs makes a quality gate unreviewable. `--no-plugins`
+          # because infection/extension-installer would otherwise need an allow-plugins
+          # prompt, and no Infection extensions are installed for it to register.
+          composer require --working-dir="$RUNNER_TEMP/mutation-tool" \
+            --no-interaction --no-plugins "infection/infection:^0.34"
+      - name: Mutation score against NFR-07's 70% floor
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          php "$RUNNER_TEMP/mutation-tool/vendor/bin/infection" \
+            --min-msi=70 --no-progress --no-interaction -j2
+      - name: Keep the mutation report
+        if: steps.cfg.outputs.present == 'true' && always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: mutation-report
+          path: build/logs/infection*
+          if-no-files-found: warn
+          retention-days: 30
 
   # ---------------------------------------------------------------------------
   # Coverage floor (roadmap 2.7, ADR-0007). AGENTS.md §10 and spec NFR-07 both require >= 90%
