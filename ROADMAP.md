@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — A lookup that refuses to lie](docs/journal/2026/08/2026-08-06-lookup.md).
+  [2026-08-06 — The parser that launders](docs/journal/2026/08/2026-08-06-url.md).
 
 ## Model & effort routing (advisory)
 
@@ -608,9 +608,32 @@ surface (RFC-0002 FR-27…FR-32).
       distinct catch. `array_key_exists()`, not `??`/`isset()`, is the presence check
       throughout: a code deliberately mapped to `''` must read as present, which `??` would
       silently treat as absent — pinned by its own test.*
-- [ ] 9.3 `Url` value object: parse/normalize/build, query composition, **scheme-downgrade
+- [x] 9.3 `Url` value object: parse/normalize/build, query composition, **scheme-downgrade
       refusal on rebuild** (RFC-0002 FR-27) (security) — size: S ·
-      route: frontier-reasoning / extra · ADR (URL scheme policy)
+      route: frontier-reasoning / extra *(run at standard tier; mismatch recorded)* ·
+      **ADR-0036**, **spec r4**. ***The probe changed the item.*** *`parse_url()` does not
+      reject control characters — it **launders** them, rewriting each to `_`, so
+      `https://example.com\n/evil` parses successfully with the host `example.com_`. Code
+      that validates the parsed components and then forwards the original string is checking
+      a value the caller never sent, and CR/LF is exactly the payload that matters once a URL
+      reaches a request line. Refused up front instead, in `parse()` and in every wither, so
+      **input and parsed value are the same string**. `FILTER_VALIDATE_URL` would have caught
+      that one case and was rejected on its own probe: it also rejects valid IDN hosts. Two
+      more probe findings shaped the class: `parse_url('not a url')` **succeeds**
+      (`['path' => …]`), so absoluteness is checked separately; and `http_build_query()`
+      **drops null values silently**, so they are refused — **PHPStan found that guard
+      incomplete**, since the acceptable value shape is recursive and cannot be typed
+      honestly, which made the runtime walk the whole enforcement; it now descends and names
+      the offender's dotted path. The downgrade refusal is the second line of defence and the
+      weaker one — the object **carries** its scheme through every recomposition, making the
+      estate's actual defect (rebuilding with a hardcoded `http://`) structurally unreachable.
+      Recorded limit: an **unknown** target scheme is allowed through, with a test pinning it.
+      An untouched query is preserved **byte-exact** — re-encoding one nobody edited would
+      invalidate any signature over it. 82 tests; **suite proved non-vacuous with 11 planted
+      defects**, all caught. The pre-existing `ExceptionHierarchyTest` registry caught
+      `InvalidUrlException` joining the family — the completeness guard doing its job — and
+      spec r3's exception enumeration, which had not anticipated the type, is amended to r4
+      rather than left to drift.*
 - [ ] 9.4 `Csv` streaming write/read + `Delimiter` enum + `CsvSerializable`; typed failures
       (never boolean), atomic write via `File`; formula-guard **opt-in, default off**, both
       flag states tested (RFC-0002 FR-28/FR-29; T-08) (security) — size: M ·

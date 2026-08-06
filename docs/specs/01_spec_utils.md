@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r3** — 2026-08-06. See [Revision history](#revision-history).
+**Revision r4** — 2026-08-06. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -39,11 +39,11 @@ Provide EGL PHP projects (framework-based and native/legacy) with a modern utili
 **r3 addendum (RFC-0002)** — normative detail in
 [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md); one error-model rule
 spans all of it: **no silent sentinel returns** — every new failure path throws a typed
-exception in the FR-26 hierarchy (new: CsvException, SequenceExhaustedException,
+exception in the FR-26 hierarchy (new: InvalidUrlException, CsvException, SequenceExhaustedException,
 HttpClientException, RouteNotFoundException, MethodNotAllowedException, CryptoException,
 MailException).
 
-- FR-27 Url: parse/normalize/build value object; refuses scheme downgrade on rebuild; query composition without hand-concatenation
+- FR-27 Url: parse/normalize/build value object; absolute URLs only; refuses C0/DEL control characters up front (parse_url() rewrites them to "_" rather than rejecting them — ADR-0036); refuses a scheme downgrade (https->http, wss->ws, ftps/sftp->ftp; an unknown target scheme is allowed through — recorded limit); query preserved byte-exact until edited, composed per RFC 3986, null values refused at any depth
 - FR-28 Csv + Delimiter enum: streaming write/read, typed failures (never boolean), atomic write via File; formula-guard opt-in (default off — input-mutilation lesson, spec §1)
 - FR-29 CsvSerializable: csvHeader()/csvRow() contract; reflective default documented via ClassMetadata
 - FR-30 Lookup: immutable code→label map; label() throws on a missing key, labelOr()/tryLabel() tolerant
@@ -161,6 +161,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r4 | 2026-08-06 | §2: FR-27 stated to the precision item 9.3 implemented (control-character refusal, absolute-only, the named downgrade pairs and their recorded limit, query preservation), and `InvalidUrlException` added to the r3 exception enumeration, which had not anticipated it. Additive; see [ADR-0036](../adr/0036-refuse-the-downgrade-and-the-characters-parse-url-launders.md). |
 | r3 | 2026-08-06 | §2–§6: the RFC-0002 surface — FR-27…FR-44, NFR-09…NFR-14, suites T-07…T-15, the Persistence/Mail groups and the two named layering edges. Additive; no existing requirement changed. Source: [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md) (approved 2026-08-05, PR #49); roadmap: M9–M12. |
 
 ### r2 rationale — why T-03 asserts a mechanism instead of measuring time
