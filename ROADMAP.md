@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — What one value type actually closes](docs/journal/2026/08/2026-08-06-sql-statement.md).
+  [2026-08-06 — A gate that waited ten milestones, and a review that found it](docs/journal/2026/08/2026-08-06-mutation-gate.md).
 
 ## Model & effort routing (advisory)
 
@@ -763,6 +763,51 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       route: frontier-reasoning / extra
 - [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
       ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
+- [ ] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
+      `SqlStatement::__construct()`'s `$sql` as `@param literal-string`, so PHPStan at max
+      level — a gate this project already runs — *refuses* a value interpolated or
+      concatenated into statement text. **Filed by the item-10.1 review, which found the
+      option had never been considered**: ADR-0039's Alternatives weighed a *runtime*
+      assertion (rightly rejected — it cannot tell "nothing to bind" from "forgot to bind")
+      and wrote *"a type-level guarantee catches what a string never announces"* while
+      shipping the version that has no type-level guarantee. Verified empirically against
+      this repository's own `phpstan.neon` before filing: an interpolated `"… {$v} …"` and a
+      `'…' . $v` concatenation are both **rejected**, while hand-written literal SQL with
+      placeholders — precisely what FR-33 exists to allow — passes. Needs two companions,
+      because `QueryBuilder::toSql()` returns `string` and is correctly flagged: a
+      `SqlStatement::fromQueryBuilder(QueryBuilder $b)` named constructor that takes the
+      builder rather than a string (adding **no** new string-accepting door), plus one
+      conspicuously-named escape hatch for genuinely composed SQL (`IN (?,?,?)` built with
+      `implode()` is not a `literal-string` and is a legitimate pattern). **Should land
+      before 10.3/10.4** — `Repository` and `TableGateway` are the callers the guarantee
+      exists for. Supersedes or amends ADR-0039 (security; adr) — size: S ·
+      route: frontier-reasoning / extra
+- [x] 10.8 Make NFR-07's mutation gate actually run. `infection.json5` never existed, so the
+      `mutation` CI job's config guard reported `present=false` and the job passed in ~7
+      seconds having executed nothing — **spec NFR-07's "≥ 70% MSI on Security/Database/Dto"
+      has been unenforced since M1**, which is item 2.7's coverage-gate shape a second time
+      (there, the job set up pcov and ran PHPUnit with no `--coverage` flag). Found by the
+      item-10.1 review, which had listed the job among PR #57's passing checks — true of the
+      job, false of the requirement (severity:high — a green gate that measures nothing) —
+      route: standard / high · **ADR-0040**. *Three more obstacles surfaced by **running** the
+      step rather than reading it. **Infection cannot be a dependency of this package**: every
+      release from 0.29.10 requires PHP ^8.2/^8.3 against the 8.1 floor, and the
+      8.1-compatible ones conflict with versions already locked here (`json-schema` 6.10 vs
+      `^5.2`, `cpu-core-counter` 1.3 vs `^0.4`, `xdebug-handler` 3.0 vs `^1.3`) — installed
+      into a throwaway project, ADR-0031's answer for the BC checker, so the 8.1 cell and
+      `--prefer-lowest` stay untouched. **`--only-covered` is not an Infection option** (the
+      generated step passed it; uncovered code is excluded by default now) so the step would
+      have failed on argument parsing regardless. And Infection **could not locate PHPUnit**
+      across two vendor directories, so `phpUnit.customPath` is stated rather than left to its
+      finder. **Measured: MSI 79%** — 443 killed, 117 escaped, mutation code coverage 100% —
+      so NFR-07's ≥70% is **met with 9 points of headroom**, and the floor **stays at the
+      spec's 70**: raising it to today's number would be this item inventing a requirement.
+      **Gate proved able to fail** (L-0008): floor temporarily raised to 95 against the same
+      79% measurement → CI red, reverted in the next commit, both kept in this PR's history.
+      Honest limits: 11 mutants produce syntax errors and are excluded from the ratio; the
+      escaped set is now a CI artifact with a per-mutator breakdown but is **not** chased here;
+      and the MSI cannot be measured on the maintainer's machine (no coverage driver — the
+      same limit as the suite's 9 skips and item 9.6's benchmark caveat).*
 
 ---
 

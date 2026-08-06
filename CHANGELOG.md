@@ -10,6 +10,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **NFR-07's mutation gate now actually runs** (roadmap item **10.8**; **ADR-0040**).
+  `infection.json5` never existed, so the `mutation` CI job's self-enabling config guard
+  reported `present=false` and the job **passed in ~7 seconds having executed nothing** — the
+  spec's *"≥ 70% MSI on Security/Database/Dto"* had been unenforced since M1. This is item
+  2.7's coverage-gate shape a second time (there, pcov was installed and PHPUnit ran with no
+  `--coverage` flag), and it says something about the self-enabling-guard pattern: nothing
+  ever asked whether the file it waits for had arrived. Three further defects surfaced only by
+  running the step — Infection cannot be a dependency of this package at all (its PHP floor is
+  above this library's, and the older releases conflict with versions already locked), so it is
+  installed into a throwaway project per ADR-0031; `--only-covered` is not an Infection option,
+  so the step would have failed on argument parsing regardless; and Infection could not locate
+  PHPUnit across two vendor directories, so the path is now stated explicitly. **Measured: MSI
+  79%** (443 mutants killed, 117 escaped, mutation code coverage 100%) — the requirement is met
+  with 9 points of headroom, and the floor stays at the spec's 70 rather than being raised to
+  today's number. Proved able to fail before being trusted: 95% floor → red, reverted.
+
 ### Added
 
 - **`D4np\Utils\Database\SqlStatement`** (spec r7 **FR-33**, RFC-0002; roadmap item **10.1**,
