@@ -10,6 +10,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **`SqlStatement`'s constructor is now private, behind three named entry points** (spec r8
+  **FR-33**; roadmap item **10.7**; **ADR-0041**, amending **ADR-0039**):
+  `SqlStatement::literal()` for text written out in the source, `::fromQueryBuilder()` for a
+  built query, `::composed()` for text assembled at runtime. `new SqlStatement(...)` no longer
+  exists — a **second pre-1.0 break to this class in two PRs**, and the honest reading is that
+  one PR should have shipped both.
+  The point is that FR-33's guarantee is now **mechanical**: `literal()` takes a
+  `literal-string`, so the PHPStan max level this project already runs on every PR **refuses**
+  interpolated (`"… {$value} …"`), concatenated (`'…' . $value`), `sprintf()`-ed and
+  `implode()`-ed statement text — verified by planting all four, and by confirming four
+  legitimate shapes still pass, including the hand-written dialect SQL with a positional
+  predicate that FR-33 exists to allow. ADR-0039 had rejected a *runtime* assertion while
+  writing that a type-level guarantee was what this needed, and never considered the static
+  one; item 10.7 is that omission closed. `composed()` is the single escape hatch — deliberately
+  not named `unsafe*()`, since values still bind through real prepares — and has **zero uses
+  inside this library**, which is what makes `grep composed(` the review list.
+
 ### Fixed
 
 - **NFR-07's mutation gate now actually runs** (roadmap item **10.8**; **ADR-0040**).

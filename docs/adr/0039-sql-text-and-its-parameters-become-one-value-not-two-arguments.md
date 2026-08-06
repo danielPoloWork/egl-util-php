@@ -1,6 +1,16 @@
 # ADR-0039: SQL text and its parameters become one value, not two arguments
 
-- **Status:** Accepted
+- **Status:** Accepted — **amended by
+  [ADR-0041](0041-constrain-sql-text-by-type-and-name-the-one-escape-hatch.md)** (item 10.7).
+  This decision stands; two things in it did not. Its Alternatives section rejected a *runtime*
+  assertion while writing *"a type-level guarantee catches what a string never announces"*, and
+  never considered the static one — PHPStan's `literal-string`, which this repository's own
+  `max` level enforces and which ADR-0041 verified rejects interpolation while still permitting
+  the hand-written dialect SQL FR-33 exists for. And the claim below that the constructor is
+  *"exactly one place"* where text and parameters could be mispaired is a half-truth:
+  `new SqlStatement(...)` is written at every call site, so the count of risky sites never
+  dropped, only their greppability improved. Annotated rather than silently edited, per the
+  precedent ADR-0020 set for ADR-0018.
 - **Date:** 2026-08-06
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 10.1 (opens Milestone 10) · spec r3 FR-33 (RFC-0002) ·

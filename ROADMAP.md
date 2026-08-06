@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — A gate that waited ten milestones, and a review that found it](docs/journal/2026/08/2026-08-06-mutation-gate.md).
+  [2026-08-06 — The guarantee the previous item wrote about and did not build](docs/journal/2026/08/2026-08-06-literal-string.md).
 
 ## Model & effort routing (advisory)
 
@@ -763,7 +763,7 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       route: frontier-reasoning / extra
 - [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
       ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
-- [ ] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
+- [x] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
       `SqlStatement::__construct()`'s `$sql` as `@param literal-string`, so PHPStan at max
       level — a gate this project already runs — *refuses* a value interpolated or
       concatenated into statement text. **Filed by the item-10.1 review, which found the
@@ -780,8 +780,26 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       conspicuously-named escape hatch for genuinely composed SQL (`IN (?,?,?)` built with
       `implode()` is not a `literal-string` and is a legitimate pattern). **Should land
       before 10.3/10.4** — `Repository` and `TableGateway` are the callers the guarantee
-      exists for. Supersedes or amends ADR-0039 (security; adr) — size: S ·
-      route: frontier-reasoning / extra
+      exists for. Supersedes or amends ADR-0039 (security; adr) —
+      route: frontier-reasoning / extra · **ADR-0041** (amends ADR-0039), **spec r8**. *Shipped
+      the filed plan with one design change forced by this project's own rules: an annotated
+      **public** constructor could not be reached by the escape hatch without an analyser
+      suppression, which is forbidden here — so the **constructor is private** and the class
+      exposes exactly three named entry points (`literal()`, `fromQueryBuilder()`,
+      `composed()`), needing **no suppression of any kind**. `composed()` has **zero in-library
+      uses** by construction — that is why `fromQueryBuilder()` takes the builder *object*
+      rather than its `toSql()` string, so `grep composed(` stays a list of places a human had
+      to think. **Proved non-vacuous, 4 planted / 4 caught**: interpolation, concatenation,
+      `sprintf()` and `implode()` into `literal()` are all rejected by PHPStan max — while four
+      legitimate shapes still pass, including the one that mattered most before committing,
+      **hand-written dialect SQL with a positional substring predicate**, which is FR-33's
+      whole reason to exist. Tested as a **mechanism** (ADR-0027's pattern): the annotation's
+      presence, the constructor's privacy, and the exact public static surface are asserted
+      from the source, because no runtime test can exercise a static property. **Second pre-1.0
+      break to this class in two PRs** (51 call sites moved) — named in ADR-0041 as the process
+      finding it is: one PR should have shipped both, and did not because ADR-0039 never weighed
+      the static alternative. Also found by running it: PHPStan parses an ignore-comment tag
+      **inside prose** and fails on it, so the class docblock cannot name one verbatim.*
 - [x] 10.8 Make NFR-07's mutation gate actually run. `infection.json5` never existed, so the
       `mutation` CI job's config guard reported `present=false` and the job passed in ~7
       seconds having executed nothing — **spec NFR-07's "≥ 70% MSI on Security/Database/Dto"

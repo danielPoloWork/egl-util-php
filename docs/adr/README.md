@@ -56,3 +56,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0038](0038-one-lock-across-the-read-and-the-write-and-a-sequence-that-refuses-to-wrap.md) | One lock across the read and the write, and a sequence that refuses to wrap | Accepted |
 | [0039](0039-sql-text-and-its-parameters-become-one-value-not-two-arguments.md) | SQL text and its parameters become one value, not two arguments | Accepted |
 | [0040](0040-install-the-mutation-tester-outside-the-graph-and-keep-nfr07s-own-number.md) | Install the mutation tester outside the dependency graph, and keep NFR-07's own number | Accepted |
+| [0041](0041-constrain-sql-text-by-type-and-name-the-one-escape-hatch.md) | Constrain SQL text by type, and name the one escape hatch (amends 0039) | Accepted |
