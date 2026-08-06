@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The parser that launders](docs/journal/2026/08/2026-08-06-url.md).
+  [2026-08-06 — The escape character that eats a row](docs/journal/2026/08/2026-08-06-csv.md).
 
 ## Model & effort routing (advisory)
 
@@ -634,10 +634,34 @@ surface (RFC-0002 FR-27…FR-32).
       `InvalidUrlException` joining the family — the completeness guard doing its job — and
       spec r3's exception enumeration, which had not anticipated the type, is amended to r4
       rather than left to drift.*
-- [ ] 9.4 `Csv` streaming write/read + `Delimiter` enum + `CsvSerializable`; typed failures
+- [x] 9.4 `Csv` streaming write/read + `Delimiter` enum + `CsvSerializable`; typed failures
       (never boolean), atomic write via `File`; formula-guard **opt-in, default off**, both
       flag states tested (RFC-0002 FR-28/FR-29; T-08) (security) — size: M ·
-      route: frontier-reasoning / extra · ADR (formula-guard default)
+      route: frontier-reasoning / extra *(run at standard tier; mismatch recorded)* ·
+      **ADR-0037**, **spec r5**. ***The probe found data corruption in the obvious
+      implementation.*** *PHP's CSV functions default to a backslash `$escape` that RFC 4180
+      does not define, and it does not merely format differently: a field ending in a
+      backslash escapes the closing quote, so `['ends with \', 'next']` comes back as **one**
+      field having swallowed the delimiter and the newline. Every call now passes
+      `escape: ''`; the native corruption is pinned by its own test beside the fix, so the
+      workaround cannot later read as arbitrary (PHP 8.4 deprecates the default for the same
+      reason). **Two more shapes `fputcsv()` cannot express**, both silent losses: a single
+      empty field emits a bare newline that reads back as nothing, so `""` is written
+      explicitly; and a zero-column row — which has no CSV representation at all — is refused
+      rather than written as a line that disappears. Blank lines are skipped on read, a
+      quoted empty field is not, and the distinction is asserted. **The formula guard stays
+      off by default**: it changes the exported value, so a guarded file no longer
+      round-trips — asserted as a test, because that cost is the reason the default is off
+      (spec §1). `CsvSerializable`'s pairing, which the estate's interface could only request
+      in prose, is enforced: header from the first item, every row checked against its width.
+      NFR-12's `memory O(row)` needed a streaming atomic write, so **`File` gains
+      `writeStream()`** rather than `Csv` reimplementing ADR-0005's discipline in a second
+      place — it adds `fflush()` before the rename, without which buffered bytes would make
+      the "complete or previous" promise a lie. 92 tests; **suite proved non-vacuous with 12
+      planted defects**, all caught. PHPStan also refused a `@throws` it could not trace
+      through the writer callback, which was fixed the honest way — `writeStream()` now
+      documents `@throws Throwable`, the propagation contract `Transaction::run()` already
+      had.*
 - [ ] 9.5 `FileSequence`: rolling lock-guarded counter with an explicit cap policy
       (`SequenceExhaustedException`, never a silent wrap) + T-14 multi-process concurrency
       suite (RFC-0002 FR-32; T-14) (severity:medium — concurrency/atomicity) — size: S ·

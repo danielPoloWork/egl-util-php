@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Support\Csv`, `Delimiter`, `CsvSerializable`, `CsvException`** and
+  **`File::writeStream()`** (spec r5 **FR-28/FR-29**, RFC-0002; roadmap item **9.4**;
+  **ADR-0037**) — streaming CSV whose memory cost is one row, written through the atomic
+  replacement of ADR-0005. **PHP's default backslash escape is disabled on every call**:
+  measured, it is not a formatting preference but data corruption — a field ending in a
+  backslash escapes the closing quote, so two fields go in and one comes back having
+  swallowed the delimiter and the newline. Two more shapes PHP cannot express are handled:
+  a single empty field is written as `""` (`fputcsv()` emits a bare newline, which is read
+  back as nothing and loses the row) and a zero-column row is refused. Blank lines are
+  skipped on read; a quoted empty field is not. `CsvSerializable`'s header/row pairing is
+  **enforced** rather than requested in prose. The **formula guard is opt-in, default off** —
+  it alters exported data, so it is a decision about where the file is going, and both
+  states are tested against the OWASP corpus.
+
 - **`D4np\Utils\Support\Url`** and **`InvalidUrlException`** (spec r4 **FR-27**, RFC-0002;
   roadmap item **9.3**; **ADR-0036**) — an immutable absolute-URL value: parse, inspect,
   recompose, compose queries. Three refusals, each a defect from the intake:
