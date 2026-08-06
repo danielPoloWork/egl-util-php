@@ -908,6 +908,23 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       escaped set is now a CI artifact with a per-mutator breakdown but is **not** chased here;
       and the MSI cannot be measured on the maintainer's machine (no coverage driver — the
       same limit as the suite's 9 skips and item 9.6's benchmark caveat).*
+- [ ] 10.9 Decide what the >10% regression gate should do about **I/O-bound and memory-hard
+      subjects**, which it currently cannot measure to that precision. Filed from evidence
+      produced by item 10.5, a **test-only** PR whose diff touches no file under `src/main`
+      (verified, not assumed): the gate failed with
+      `FileSequenceBench::benchSequenceNext 75.503 → 105.779 µs (+40.10%)` and
+      `HashBench::benchVerifyArgon2id 113465.370 → 129072.012 µs (+13.75%)`, and **the same
+      commit passed on re-run** (run 31114681269). Both subjects stayed far inside their
+      absolute budgets; only the relative comparison fired. This is not the stored-baseline
+      problem ADR-0030 already solved — base and HEAD were measured on the same runner, as that
+      ADR requires — so it is a second, narrower finding: **a same-runner A/B is still not
+      precise enough for a subject dominated by filesystem locking or by memory-hard hashing**,
+      where the shared runner's noise is in the same order as the budget. Options to weigh (none
+      chosen here): a per-subject threshold, best-of-N for the two classes, excluding them from
+      the relative gate while keeping their absolute ceilings, or accepting re-runs as the
+      documented protocol. Whichever is picked, **a gate that cries wolf on a docs-and-tests PR
+      teaches people to re-run until green**, which is the failure mode worth spending an item on
+      — route: standard / medium (adr)
 
 ---
 

@@ -56,6 +56,24 @@ The restore step worked this time. Item 10.4's campaign silently restored nothin
 files were untracked; the fix, applied here from the start, is to `git add` before planting. Same
 lesson, one PR later, and cheap to apply because it was written down.
 
+## The benchmark gate failed on a PR with no production code in it
+
+CI came back red on `benchmark / reproducible perf`:
+`benchSequenceNext 75.503 → 105.779 µs (+40.10%)` and
+`benchVerifyArgon2id 113465 → 129072 µs (+13.75%)`, both against a 10% budget.
+
+This PR's diff touches **no file under `src/main`** — checked with
+`git diff origin/master...HEAD --name-only | grep src/main`, which returns nothing, rather than
+assumed from "it's a test PR". Neither `FileSequence` nor `Hash` has a line in it. The same commit
+then passed on re-run.
+
+So it is noise — but noise worth a number, because ADR-0030 already solved the *stored baseline*
+version of this problem and this failure happened **inside** its same-runner A/B design. The two
+subjects that fired are the two whose cost is not CPU work: filesystem locking and memory-hard
+hashing, where a shared runner's variance lands in the same order as the budget. Filed as item
+**10.9** with both measurements and the run id, because the dangerous outcome is not a red build —
+it is a team that learns to re-run until green.
+
 ## No ADR, deliberately
 
 The decision T-13 rests on — that the PDO boundary is a sufficient place to prove binding, because
