@@ -50,6 +50,19 @@ deptrac:
         - type: directory
           value: src/main/php/d4np/utils/Errors/.*
 
+    # RFC-0002's seventh group (roadmap Milestone 10). It arrives with a Support-only edge, like
+    # every group above it: `RowNormalizer` (item 10.2) consumes `Str` and the exception
+    # hierarchy and nothing else. The two *cross-group* edges RFC-0002 P-1 anticipates —
+    # `Persistence -> Database` and `Persistence -> Dto`, which `Repository` needs to execute a
+    # `SqlStatement` and to hydrate a DTO — are deliberately NOT granted here. They arrive with
+    # item 10.3, in the same PR as the ADR that argues for them and the planted violations that
+    # prove the grants are real. Granting them early would mean this file permitting an import
+    # that no code makes and no decision has justified yet.
+    - name: Persistence
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Persistence/.*
+
     # The layer every group is allowed to depend on, and which may depend on none of them.
     - name: Support
       collectors:
@@ -124,6 +137,10 @@ deptrac:
       # Hash logs its bcrypt-fallback WARNING through PSR-3 (spec FR-11).
       - Psr
     Http:
+      - Support
+    # Support only, for now — see the layer's own comment above. Item 10.3 is where this list
+    # grows to Database and Dto, with its ADR.
+    Persistence:
       - Support
     Errors:
       - Support

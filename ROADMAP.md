@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The guarantee the previous item wrote about and did not build](docs/journal/2026/08/2026-08-06-literal-string.md).
+  [2026-08-06 — Seventeen copies, and the question none of them had to answer](docs/journal/2026/08/2026-08-06-row-normalizer.md).
 
 ## Model & effort routing (advisory)
 
@@ -743,10 +743,28 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       to a public signature, permitted under SemVer §4 and `tools/bc_gate.py`. No new
       deptrac edge — `SqlStatement` stays in `Database`, where `Persistence` (10.2–10.4)
       will consume it as one of its own two named edges.*
-- [ ] 10.2 `Persistence\RowNormalizer` policy object (strict/lossy transcode, trim,
+- [x] 10.2 `Persistence\RowNormalizer` policy object (strict/lossy transcode, trim,
       empty→`null`) + T-15 policy table + the `Persistence` deptrac layer (edge to Support
-      only at this point) (RFC-0002 FR-36; T-15) (severity:medium) — size: S ·
-      route: standard / medium
+      only at this point) (RFC-0002 FR-36; T-15) (severity:medium) —
+      route: standard / medium · **ADR-0042**, **spec r9**. *The seventeen copies of this
+      pipeline collapse to one object, and "explicit" (FR-36's word) forced a question the
+      estate never had to answer: **which steps happen when the caller says nothing?** Three of
+      the four change data, so they are **opt-in**, and only `trim` defaults on — it is the one
+      step whose *absence* surprises people, since trailing spaces from a fixed-width `CHAR`
+      are storage, not content. The closest call was defaulting everything off: maximally
+      honest, and useless enough to invite every consumer to re-derive the same one-line
+      config. **The estate's ordering was a latent bug inherited by nobody**: it trimmed
+      *before* transcoding, harmless for its single-byte source and destructive for any
+      multibyte one, so the order here is fixed — transcode, then trim/collapse, then
+      blank→`null` last (a `CHAR(20)` of spaces is blank *after* trimming). Strict by default:
+      an unconvertible value raises `DatabaseException` **naming the column**, the reverse of
+      the estate's silent `//IGNORE`. T-15 is a 26-row policy table pinning the two cases a
+      hand-rolled version gets wrong — **`'0'` is not blank** (`empty()` disagrees, and a flag
+      column is where that lands) and non-string values pass by identity, so a BLOB resource is
+      never fed to `iconv()`. The `Persistence` layer arrives **Support-only** and is
+      **proved closed**: a planted `Persistence → Database` type dependency is rejected
+      (`RowNormalizer must not depend on SqlStatement`) — exactly the edge item 10.3 must argue
+      for, rather than one granted early for code that does not exist yet.*
 - [ ] 10.3 `Persistence\Repository` base gateway (`fetchAll`/`fetchOne`/`execute`/
       `withTransaction`; rows normalized then hydrated via the shared Hydrator; every failure
       throws — no sentinel returns) + the two named cross-group edges
