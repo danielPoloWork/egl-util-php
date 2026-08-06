@@ -51,40 +51,58 @@ final class File
      */
     public static function write(string $path, string $contents): void
     {
-        $dir = \dirname($path);
-        if (!is_dir($dir)) {
-            throw new FileException(sprintf('Cannot write "%s": directory "%s" does not exist.', $path, $dir));
-        }
-        if (!is_writable($dir)) {
-            throw new FileException(sprintf('Cannot write "%s": directory "%s" is not writable.', $path, $dir));
-        }
-
+        $dir = self::writableDirectoryOf($path);
         $mode = self::currentModeOf($path);
         $lock = self::acquireExclusiveLock($path);
 
         try {
-            $tmp = self::createTempFileIn($dir);
+            self::replaceAtomically($path, $dir, $contents, $mode);
+        } finally {
+            self::releaseLock($lock);
+        }
+    }
 
-            try {
-                self::putAll($tmp, $contents, $path);
+    /**
+     * Read `$path`, hand its contents to `$mutator`, and write back what it returns —
+     * **all under one exclusive lock**.
+     *
+     * The lock spanning both halves is the entire point, and the reason this cannot be
+     * assembled from {@see self::read()} plus {@see self::write()}: between two separately
+     * locked calls, two processes both read `5`, both compute `6`, and one increment is
+     * lost. A counter built that way issues duplicate identifiers under exactly the load
+     * that makes duplicates expensive.
+     *
+     * `$mutator` receives the current contents, or `''` when the file does not exist yet, and
+     * returns the new contents. It is called **before** anything is written, so a mutator
+     * that throws — refusing an increment past a cap, say — leaves the file untouched and its
+     * exception propagates unchanged.
+     *
+     * @param callable(string): string $mutator
+     *
+     * @throws FileException if the directory is missing or unwritable, if the current
+     *                        contents cannot be read, or if the replacement fails.
+     * @throws \Throwable    whatever `$mutator` threw, unchanged, with the file unmodified
+     */
+    public static function update(string $path, callable $mutator): void
+    {
+        $dir = self::writableDirectoryOf($path);
+        $mode = self::currentModeOf($path);
+        $lock = self::acquireExclusiveLock($path);
 
-                // chmod BEFORE the rename: tempnam() creates 0600, and a reader must never see
-                // the target briefly carrying the temp file's restrictive mode.
-                if (!@chmod($tmp, $mode)) {
-                    throw new FileException(sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
+        try {
+            $current = '';
+            if (is_file($path)) {
+                $read = @file_get_contents($path);
+                if ($read === false) {
+                    throw new FileException(sprintf('Cannot update "%s": reading the current contents failed.', $path));
                 }
-
-                if (!@rename($tmp, $path)) {
-                    throw new FileException(sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
-                }
-            } catch (FileException $e) {
-                // The temp file is this method's litter, not the caller's problem.
-                if (is_file($tmp)) {
-                    @unlink($tmp);
-                }
-
-                throw $e;
+                $current = $read;
             }
+
+            // Computed before the write, so a throwing mutator cannot leave a partial state.
+            $updated = $mutator($current);
+
+            self::replaceAtomically($path, $dir, $updated, $mode);
         } finally {
             self::releaseLock($lock);
         }
@@ -113,14 +131,7 @@ final class File
      */
     public static function writeStream(string $path, callable $writer): void
     {
-        $dir = \dirname($path);
-        if (!is_dir($dir)) {
-            throw new FileException(sprintf('Cannot write "%s": directory "%s" does not exist.', $path, $dir));
-        }
-        if (!is_writable($dir)) {
-            throw new FileException(sprintf('Cannot write "%s": directory "%s" is not writable.', $path, $dir));
-        }
-
+        $dir = self::writableDirectoryOf($path);
         $mode = self::currentModeOf($path);
         $lock = self::acquireExclusiveLock($path);
 
@@ -232,6 +243,57 @@ final class File
             return $mime;
         } finally {
             finfo_close($finfo);
+        }
+    }
+
+    /**
+     * The directory `$path` lives in, having confirmed it exists and is writable.
+     *
+     * @throws FileException
+     */
+    private static function writableDirectoryOf(string $path): string
+    {
+        $dir = \dirname($path);
+        if (!is_dir($dir)) {
+            throw new FileException(sprintf('Cannot write "%s": directory "%s" does not exist.', $path, $dir));
+        }
+        if (!is_writable($dir)) {
+            throw new FileException(sprintf('Cannot write "%s": directory "%s" is not writable.', $path, $dir));
+        }
+
+        return $dir;
+    }
+
+    /**
+     * Put `$contents` in place of `$path` atomically. **The caller must already hold the
+     * exclusive lock** — this is the shared body of {@see self::write()} and
+     * {@see self::update()}, not an entry point.
+     *
+     * @throws FileException
+     */
+    private static function replaceAtomically(string $path, string $dir, string $contents, int $mode): void
+    {
+        $tmp = self::createTempFileIn($dir);
+
+        try {
+            self::putAll($tmp, $contents, $path);
+
+            // chmod BEFORE the rename: tempnam() creates 0600, and a reader must never see
+            // the target briefly carrying the temp file's restrictive mode.
+            if (!@chmod($tmp, $mode)) {
+                throw new FileException(sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
+            }
+
+            if (!@rename($tmp, $path)) {
+                throw new FileException(sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
+            }
+        } catch (FileException $e) {
+            // The temp file is this method's litter, not the caller's problem.
+            if (is_file($tmp)) {
+                @unlink($tmp);
+            }
+
+            throw $e;
         }
     }
 
