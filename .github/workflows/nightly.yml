@@ -71,6 +71,15 @@ jobs:
           python3 tools/bench_ratio_gate.py build/logs/nightly.xml \
             --numerator benchHydrateWarm --denominator benchManualConstruction --max-ratio 3
 
+      # Item 10.6 wired this ratio into ci.yml but not here, so NFR-09 was the one ratio budget
+      # with no nightly watch. Added at item 10.10 alongside its revision (ADR-0046), since a
+      # nightly re-resolve of dependencies is exactly how a ratio drifts without any commit.
+      - name: NFR-09 ratio — gateway fetch+normalize+hydrate vs hand-written PDO
+        run: |
+          python3 tools/bench_ratio_gate.py build/logs/nightly.xml \
+            --numerator benchGatewayFetchNormalizeHydrate \
+            --denominator benchHandWrittenPdoLoop --max-ratio 2.5
+
       - name: Keep the report as the night's record
         if: always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0

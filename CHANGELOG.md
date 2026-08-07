@@ -10,6 +10,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **NFR-09's budget revised, ≤ 1.5× → ≤ 2.5×**, and its row shape written into the requirement
+  (spec **r13**; roadmap item **10.10**; **ADR-0046**; maintainer's decision). The original figure
+  contradicted NFR-01 on the same axis: NFR-09's scope *contains* hydration, yet 1.5× demanded
+  hydration at ≤ 1.91× manual construction while NFR-01 permits 3× and the measured, already
+  optimized figure is 2.40× (item 7.1, ADR-0013). Measured five times on CI at 1.71–1.85×. The
+  new ceiling is derived — above the 1.78× implied by NFR-01's own permission, 35% above the
+  observed maximum, and below 3× because shared fetch cost dilutes a containing scope toward 1.0.
+  Drift in these subjects is still caught by the >10% same-runner regression gate (ADR-0030),
+  which does not exclude them. NFR-09's ratio also now runs in `nightly.yml`, which item 10.6 had
+  missed.
+
 ### Added
 
 - **`tools/bench_regression_gate.py` gains `--exclude Benchmark::subject`** (spec NFR-06; roadmap

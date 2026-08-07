@@ -358,7 +358,7 @@ jobs:
         if: steps.cfg.outputs.present == 'true'
         shell: bash
         run: |
-          python3 tools/bench_ratio_gate.py build/logs/head.xml             --numerator benchGatewayFetchNormalizeHydrate --denominator benchHandWrittenPdoLoop --max-ratio 1.5
+          python3 tools/bench_ratio_gate.py build/logs/head.xml             --numerator benchGatewayFetchNormalizeHydrate --denominator benchHandWrittenPdoLoop --max-ratio 2.5
       - name: Resolve the base commit to compare against
         if: steps.cfg.outputs.present == 'true'
         id: base

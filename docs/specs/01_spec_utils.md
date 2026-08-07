@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r12** — 2026-08-06. See [Revision history](#revision-history).
+**Revision r13** — 2026-08-07. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -81,7 +81,7 @@ MailException).
 
 **r3 addendum (RFC-0002)** — advisory until first measured under the NFR-06/ADR-0030 harness:
 
-- NFR-09 Repository/TableGateway: fetch + normalize + hydrate 100 rows <= 1.5x a hand-written PDO loop doing the same work
+- NFR-09 Repository/TableGateway: fetch + normalize + hydrate 100 rows of a 4-column row DTO <= 2.5x a hand-written PDO loop doing the same work. **Revised from 1.5x at r13 (item 10.10, ADR-0046): the original figure was unsatisfiable without violating NFR-01.** It demanded hydration cost <= 1.91x manual construction, where NFR-01 permits 3x and the measured, already-optimized figure is 2.40x (item 7.1, ADR-0013). The row width is now part of the requirement because the ratio depends on it — a narrower row amortizes the hydrator's fixed per-call dispatch over less work, so a 4-column row sits at a harder point of the curve than NFR-01's own 10-property subject
 - NFR-10 FileSequence::next() <= 200 us on local disk, lock included
 - NFR-11 Router dispatch <= 5 us against a 50-route table; ApiEnvelope construction <= 2 us
 - NFR-12 Csv: 10 000 x 10 write <= 150 ms, memory O(row) (streaming, never a full-table buffer)
@@ -178,6 +178,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 |-----|------|--------|
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
+| r13 | 2026-08-07 | §3: **NFR-09's budget revised, 1.5x → 2.5x**, and its row shape made explicit (item 10.10, maintainer's decision between this and re-opening hydration optimization). The original figure contradicted NFR-01 on the same axis: NFR-09's scope *contains* hydration, yet 1.5x demanded hydration at <= **1.91x** manual construction while NFR-01 permits **3x** and item 7.1 measured **2.40x** after item 3.7 spent a `standard/high` effort reaching it. Measured five times on CI at **1.71–1.85x**. Derivation, alternatives (2.0x rejected as reproducing the thin-margin mistake item 9.6 named; 3.0x rejected as only reachable if fetch were free) and the accepted cost are in [ADR-0046](../adr/0046-nfr09s-budget-contradicted-nfr01-on-the-same-axis.md). |
 | r12 | 2026-08-06 | §6: **T-13 stated as delivered** (item 10.5) — the suite has an identifier leg the one-line description did not mention, asserting that a hostile column name is refused **before anything is prepared**, and consequence assertions the boundary check cannot make (round-trip through hydration, a tautology that matches nothing, and `SET`-before-`WHERE` parameter order). No requirement changed; the spec now describes what exists. No new ADR: the boundary decision is [ADR-0017](../adr/0017-prove-binding-at-the-pdo-boundary-and-defer-t02s-like-leg.md)'s and this applies it. |
 | r11 | 2026-08-06 | §2/§5: **FR-35 corrected** — its "composed exclusively through QueryBuilder" (carried from RFC-0002) was not implementable, because `QueryBuilder` builds `SELECT` and only `SELECT`. Reads keep it; writes get **FR-33b** `MutationBuilder`, and the FR-07 allowlist is extracted into a shared `Identifier` so one rule serves both. Adds `SqlStatement::fromMutation()` as a fourth named door, leaving `composed()` at zero in-library uses. FR-35's normative behaviours recorded: empty criteria refused, the DTO projected rather than `SELECT *`, the table allowlisted at construction. Honest limit recorded in the ADR: on SQLite a DTO/table mismatch is caught by strict hydration rather than the driver, and is invisible against an empty table. See [ADR-0044](../adr/0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md). |
 | r10 | 2026-08-06 | §2/§3: FR-34 stated to the precision item 10.3 implemented (no catch anywhere — the requirement met by omission and asserted against the source; strict hydration kept with a protected seam; opt-in normalization, settling ADR-0042's deferral; a row count rather than a boolean). §3's dependency rule gains its **first two named cross-group edges**, `Persistence→Database` and `Persistence→Dto` — granted, not a general relaxation, and proved in three directions (both grants live, a non-granted edge refused, the inversion refused). See [ADR-0043](../adr/0043-two-named-edges-out-of-persistence-and-no-catch-at-all.md). |

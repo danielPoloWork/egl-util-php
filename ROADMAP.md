@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — A gate that cried wolf about noise it could name](docs/journal/2026/08/2026-08-07-regression-gate-exclusions.md).
+  [2026-08-07 — Two budgets that could not both be met](docs/journal/2026/08/2026-08-07-nfr09-budget-revision.md).
 
 ## Model & effort routing (advisory)
 
@@ -978,7 +978,7 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       a synthetic fixture reproducing item 10.5's exact numbers now reports `skipped` and exits
       0 with `--exclude`, still exits 1 without it, and an `--exclude` naming a subject absent
       from the report fails loudly rather than silently meaning nothing.*
-- [ ] 10.10 Decide what to do about NFR-09's `bench_ratio_gate` step being **red on `master`**:
+- [x] 10.10 Decide what to do about NFR-09's `bench_ratio_gate` step being **red on `master`**:
       `TableGateway::all()` measures **1.85×** a hand-written PDO loop (item 10.6) against the
       spec's ≤ 1.5× budget, and one safe, real optimization (caching the gateway's base
       `QueryBuilder` per instance, landed in the same PR) moved it from 1.82× to 1.85× — noise,
@@ -995,7 +995,38 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       **(b)** a further hydration investigation beyond item 3.7's — which would mean re-opening
       a `standard/high` decision from a `fast/medium` item, the same over-reach item 10.9
       already named as the wrong move. Filed rather than either decided here — route: standard
-      / medium (adr)
+      / medium (adr) · **ADR-0046**, **spec r13**. ***The maintainer chose path (a), revise the
+      budget: 1.5× → 2.5×.*** *The 1.5× figure **contradicted NFR-01 on the same axis** — NFR-09's
+      scope strictly contains hydration, yet 1.5× demanded hydration at **≤ 1.91×** manual
+      construction while NFR-01 permits **3×** and item 7.1 measured **2.40×** after item 3.7
+      spent a `standard/high` effort reaching it. Five CI runs measured **1.71/1.81/1.81/1.82/
+      1.85×** — ratio spread 8.2% while the absolute times spread ~36%, confirming ADR-0011's
+      reason for using a ratio at all. **2.5× is derived, not rounded:** above the 1.78×
+      structural ceiling implied by NFR-01's own permitted 3×, 35% above the observed maximum
+      (≈4× the ratio's own spread), and below NFR-01's 3× because shared fetch cost dilutes a
+      containing scope toward 1.0. **Two corrections to item 10.6 along the way.** Its profile
+      attributed the whole gap to hydration; re-measured with each stage in an **isolated
+      process**, hydration is **72%** and `RowNormalizer`'s per-value dispatch is a real **27%**
+      (+55.8 µs/100 rows) — the earlier single-process profile read `gateway->all()` at 884 µs
+      when measured last after ~10 000 prior iterations, against 416 µs isolated, a GC/ordering
+      artifact and **the fourth benchmark-scope error on record** here (ADR-0020, ADR-0028,
+      ADR-0030, now this). And ADR-0014's pinned real prepares — item 10.6's named asymmetry —
+      cost **0.4 µs**, essentially nothing; the fairness reasoning stood, the cost attribution
+      did not. Checked before accepting the miss as structural: `GatewayRow` **does** compile to
+      ADR-0013's fast path. **Row width is now in the NFR** because it changes the answer: 4
+      columns hydrate at 3.17× where 10 properties manage 2.98× — less work to amortize the
+      hydrator's fixed dispatch over. Also fixes an item 10.6 omission: NFR-09's ratio now runs
+      in `nightly.yml` too, where a dependency re-resolve can move it with no commit. Residual
+      `RowNormalizer` cost filed as item 10.11.*
+- [ ] 10.11 Reduce `RowNormalizer`'s per-row dispatch cost, newly attributed at item 10.10:
+      **+55.8 µs per 100 rows** against an inline trim loop — 27% of NFR-09's total gateway
+      overhead, and the only part of it that is not hydration. The cost is a policy object's
+      price (ADR-0042: one `normalize()` call per row, then a per-value branch through
+      `normalizeValue()`), paid even on the default policy where the only active step is `trim`.
+      Options to weigh: a fast path when the configured policy is trim-only, hoisting the
+      per-value branch decisions out of the loop into the constructor, or accepting it as the
+      documented price of explicitness. **Not a correctness question** — the policy semantics
+      (ADR-0042's ordering and defaults) must not change — route: fast / medium (step:optimize)
 
 ---
 

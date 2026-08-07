@@ -14,8 +14,19 @@ use PDO;
 use PhpBench\Attributes as Bench;
 
 /**
- * NFR-09: `Repository`/`TableGateway` fetch + normalize + hydrate 100 rows ≤ 1.5× a hand-written
- * PDO loop doing the same work.
+ * NFR-09: `Repository`/`TableGateway` fetch + normalize + hydrate 100 rows of a **4-column row
+ * DTO** ≤ 2.5× a hand-written PDO loop doing the same work.
+ *
+ * **The row width is part of the requirement** (spec r13, ADR-0046), not incidental to this
+ * fixture: a narrower row gives the hydrator's fixed per-call dispatch less work to amortize
+ * over, so it is a *harder* ratio than a wide one. Measured on one machine, `GatewayRow`
+ * (4 columns) hydrates at 3.17× its own manual construction where `TenScalarPropsDto`
+ * (10 properties) manages 2.98×. Changing {@see GatewayRow}'s shape therefore changes what this
+ * benchmark is measuring against the budget — which is why the shape is now written into the NFR.
+ *
+ * The budget was **1.5× until item 10.10**, and was unsatisfiable: it demanded hydration cost
+ * ≤ 1.91× manual construction while NFR-01 permits 3× and item 7.1 measured 2.40×. ADR-0046 has
+ * the derivation.
  *
  * **Same shape as NFR-01's ratio half** (roadmap 3.5), for the same reason: PHPBench's own
  * `@Assert` compares a subject against a previous *tagged* run, never against a sibling subject
