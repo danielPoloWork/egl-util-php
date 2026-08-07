@@ -62,3 +62,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0044](0044-the-write-builder-querybuilder-never-had-and-one-allowlist-for-both.md) | The write builder `QueryBuilder` never had, and one allowlist for both | Accepted |
 | [0045](0045-exclude-io-bound-and-memory-hard-subjects-from-the-relative-gate.md) | Exclude I/O-bound and memory-hard subjects from the relative regression gate | Accepted |
 | [0046](0046-nfr09s-budget-contradicted-nfr01-on-the-same-axis.md) | NFR-09's budget contradicted NFR-01 on the same axis | Accepted |
+| [0047](0047-hoist-the-policy-decision-and-keep-one-fast-path.md) | Hoist the policy decision out of the loop, and keep exactly one fast path (amends 0042) | Accepted |

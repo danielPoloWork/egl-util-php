@@ -1,6 +1,10 @@
 # ADR-0042: Trim is the only default, and the transcode runs first
 
-- **Status:** Accepted
+- **Status:** Accepted — **amended by [ADR-0047](0047-hoist-the-policy-decision-and-keep-one-fast-path.md)** (2026-08-07, item 10.11): the
+  default policy is now executed through a hoisted trim-only fast path. **Nothing decided here
+  changes** — the four switches, their defaults, the step ordering and the strict-failure stance
+  are untouched, and the two execution paths are held to identical output by T-15's differential
+  matrix. Annotated rather than edited, per ADR-0041's precedent.
 - **Date:** 2026-08-06
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 10.2 · spec r3 **FR-36**, suite **T-15** (RFC-0002) ·

@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — Two budgets that could not both be met](docs/journal/2026/08/2026-08-07-nfr09-budget-revision.md).
+  [2026-08-07 — The simple design won, and the namespace cost more than the method call](docs/journal/2026/08/2026-08-07-rownormalizer-fast-path.md).
 
 ## Model & effort routing (advisory)
 
@@ -1018,7 +1018,7 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       hydrator's fixed dispatch over. Also fixes an item 10.6 omission: NFR-09's ratio now runs
       in `nightly.yml` too, where a dependency re-resolve can move it with no commit. Residual
       `RowNormalizer` cost filed as item 10.11.*
-- [ ] 10.11 Reduce `RowNormalizer`'s per-row dispatch cost, newly attributed at item 10.10:
+- [x] 10.11 Reduce `RowNormalizer`'s per-row dispatch cost, newly attributed at item 10.10:
       **+55.8 µs per 100 rows** against an inline trim loop — 27% of NFR-09's total gateway
       overhead, and the only part of it that is not hydration. The cost is a policy object's
       price (ADR-0042: one `normalize()` call per row, then a per-value branch through
@@ -1026,7 +1026,47 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       Options to weigh: a fast path when the configured policy is trim-only, hoisting the
       per-value branch decisions out of the loop into the constructor, or accepting it as the
       documented price of explicitness. **Not a correctness question** — the policy semantics
-      (ADR-0042's ordering and defaults) must not change — route: fast / medium (step:optimize)
+      (ADR-0042's ordering and defaults) must not change — route: fast / medium (step:optimize) ·
+      **ADR-0047**, **benchmark record**. ***M10's last planned item — but the milestone stays open
+      by one decision, because this item filed 10.12 below.*** *The cost was **dispatch, not
+      work**: 281 ns per string value (186 of the 400 values in a 100-row batch) to re-derive, per
+      value, four decisions that are properties of the immutable policy. Hoisted into the
+      constructor as one `trimOnly` flag with a single guarded fast path: **95.2 → 65.2 µs, the
+      overhead +52.3 → +22.3 µs, 58% removed** (development machine).* ***CI corrected the premise:***
+      *on the reference-class runner the remaining overhead is **+2.760 µs** (22.423 vs the inline
+      floor's 19.663) and **NFR-09's ratio did not move — 1.73×, `master`'s own figure**, since
+      ~2.8 µs of 141.75 sits inside the 1.71–1.85× noise band ADR-0046 recorded. **Item 10.10's "27%
+      of NFR-09's overhead" was a Windows figure**: on CI this component is **4.6%** of the gateway
+      overhead. The saving on CI hardware is **unmeasured** — the subject is new, so the same-runner
+      harness had nothing to compare against. Kept rather than reverted, on a smaller and honestly
+      stated benefit: strictly less work per value for one boolean and one guarded loop.* **All four designs were measured before choosing,
+      and both rewrite-shaped candidates were slower than the simple one** *— a precomputed closure
+      70.4 µs (a closure call is still a call), the general pipeline inlined behind locals 74.5 µs.
+      The more readable one-loop ternary lost by 7.4 µs, recorded so the trade can be revisited
+      knowingly.* **Two tests, and their division of labour is proved rather than argued:** *a
+      differential matrix (corpus × all 16 policy combinations vs an oracle outside the class)
+      catches a condition that fires too widely, while planting `trimOnly = false` — the
+      optimization silently ceasing to exist — leaves that matrix* **green** *and fails only the
+      reflection truth-table assertion (ADR-0027's rule). 5 planted defects, 5 caught; 2424 tests
+      (+24).* **New finding, filed as item 10.12 rather than fixed here:** *the same code measures
+      51.5 µs in the global namespace and 65.2 µs inside one —* **13.6 µs is PHP's namespace
+      fallback** *on 372 unqualified internal calls (~36 ns each), isolated with a two-class probe,
+      in exactly the OPcache-off configuration NFR-06 pins. Not applied to one file, because a lone
+      `\trim()` reads as a style slip and the next tidy-up gives the 13.6 µs back with every test
+      green.*
+- [ ] 10.12 Decide the repo-wide policy on **unqualified internal function calls**, measured at
+      item 10.11: inside a namespace, PHP resolves `trim()` by trying the namespaced name first and
+      the global second, worth **13.6 µs per 100 rows / ~36 ns per call** in `RowNormalizer`'s hot
+      loop under NFR-06's OPcache-off benchmark environment (isolated with a two-class probe, not
+      inferred). Every file in this repository calls internal functions unqualified, and
+      `native_function_invocation` is absent from `.php-cs-fixer.dist.php`. The decision is whether
+      to enable that rule repo-wide (risky-rule class, touches every file, and `@PSR12:risky` is
+      already on) or to record the cost as accepted; a per-file prefix is explicitly **not** an
+      option — it cannot be held. **Measure on CI before deciding, not locally**: item 10.11's own
+      CI run showed the dev box overstating this class of per-call cost by ~8× (a component the local
+      decomposition put at 27% of NFR-09's overhead is 4.6% there), so the 13.6 µs figure is an upper
+      bound from the wrong machine; consumers running OPcache see less of it again —
+      route: standard / medium (adr, step:optimize)
 
 ---
 
@@ -1095,9 +1135,9 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
 | §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | 🚧 |
 | §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | 🚧 |
-| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 11.5, 12.5 | 🚧 |
+| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5, 12.5 | 🚧 |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | 🚧 |
 | §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3 | 🚧 |
-| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 11.2, 11.4, 12.2–12.3 | 🚧 |
+| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.3 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
-| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 11.1–11.2, 12.1, 12.4 | 🚧 |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 12.1, 12.4 | 🚧 |
