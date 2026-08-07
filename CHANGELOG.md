@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`RowNormalizer` is faster on the default policy** (roadmap item **10.11**; **ADR-0047**;
+  [benchmark record](docs/benchmarks/2026/08/nfr09-rownormalizer-trim-only-fast-path.md)). The
+  policy decision is now computed once in the constructor instead of per value, and the default
+  policy — trim, and nothing else, which is what `TableGateway` and `Repository` configure unless a
+  consumer says otherwise — runs through one guarded fast path. Measured: **95.2 → 65.2 µs per 100
+  four-column rows**, the overhead over an inline trim loop **+52.3 → +22.3 µs (58% removed)**;
+  NFR-09's gateway ratio improves accordingly. **No behaviour changes**: ADR-0042's four switches,
+  their defaults, the step ordering and the strict-failure stance are untouched, and the two
+  execution paths are held to identical output by T-15's differential matrix across all sixteen
+  policy combinations.
+
 - **NFR-09's budget revised, ≤ 1.5× → ≤ 2.5×**, and its row shape written into the requirement
   (spec **r13**; roadmap item **10.10**; **ADR-0046**; maintainer's decision). The original figure
   contradicted NFR-01 on the same axis: NFR-09's scope *contains* hydration, yet 1.5× demanded

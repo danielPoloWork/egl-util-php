@@ -6,6 +6,7 @@ namespace D4np\Utils\Tests\Persistence;
 
 use D4np\Utils\Persistence\RowNormalizer;
 use D4np\Utils\Support\DatabaseException;
+use D4np\Utils\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
@@ -244,5 +245,204 @@ final class RowNormalizerTest extends TestCase
         } finally {
             fclose($handle);
         }
+    }
+
+    // ---- the trim-only fast path (item 10.11, ADR-0047) --------------------------------------
+
+    /**
+     * Every value the corpus below carries, through **every** policy combination, compared
+     * against {@see self::oracle()} — an implementation of ADR-0042's ordering written outside
+     * the class.
+     *
+     * This is the fast path's safety net, and it is aimed at the actual risk. The shortcut
+     * itself is a `trim()` call that cannot be wrong; what *can* be wrong is the condition
+     * choosing it, and a condition that fires one combination too widely is invisible to any
+     * test that only exercises the default policy. So the matrix asserts the whole truth
+     * table behaviourally: if `$trimOnly` ever fires where the general pipeline would have
+     * produced something else, exactly one of these combinations disagrees with the oracle.
+     *
+     * @param array<string, mixed> $row
+     */
+    #[DataProvider('policyCombinations')]
+    public function testEveryPolicyCombinationAgreesWithAnIndependentOracle(
+        array $row,
+        ?string $fromEncoding,
+        bool $trim,
+        bool $collapseWhitespace,
+        bool $blankToNull,
+    ): void {
+        $normalizer = new RowNormalizer(
+            fromEncoding: $fromEncoding,
+            trim: $trim,
+            collapseWhitespace: $collapseWhitespace,
+            blankToNull: $blankToNull,
+        );
+
+        $expected = [];
+
+        foreach ($row as $column => $value) {
+            $expected[$column] = self::oracle($value, $fromEncoding, $trim, $collapseWhitespace, $blankToNull);
+        }
+
+        self::assertSame($expected, $normalizer->normalize($row));
+    }
+
+    /**
+     * The same matrix with an encoding declared, so the half of the truth table where the fast
+     * path must **never** fire is covered too. Gated on `iconv` like every other transcoding
+     * test here.
+     *
+     * @param array<string, mixed> $row
+     */
+    #[DataProvider('transcodingPolicyCombinations')]
+    #[RequiresPhpExtension('iconv')]
+    public function testEveryTranscodingCombinationAgreesWithAnIndependentOracle(
+        array $row,
+        ?string $fromEncoding,
+        bool $trim,
+        bool $collapseWhitespace,
+        bool $blankToNull,
+    ): void {
+        $this->testEveryPolicyCombinationAgreesWithAnIndependentOracle(
+            $row,
+            $fromEncoding,
+            $trim,
+            $collapseWhitespace,
+            $blankToNull,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, ?string, bool, bool, bool}>
+     */
+    public static function policyCombinations(): iterable
+    {
+        yield from self::combinationsFor(null);
+    }
+
+    /**
+     * `ISO-8859-15` → `UTF-8` deliberately: every byte is valid in the source encoding, so
+     * transcoding can never throw here and the matrix stays about the *composition* of steps
+     * rather than about failure handling (which
+     * {@see self::testAnUnconvertibleValueIsRefusedAndNamesItsColumn()} owns).
+     *
+     * @return iterable<string, array{array<string, mixed>, ?string, bool, bool, bool}>
+     */
+    public static function transcodingPolicyCombinations(): iterable
+    {
+        yield from self::combinationsFor('ISO-8859-15');
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, ?string, bool, bool, bool}>
+     */
+    private static function combinationsFor(?string $fromEncoding): iterable
+    {
+        $corpus = [
+            'padded' => '  Ada  ',
+            'clean' => 'Ada',
+            'empty' => '',
+            'whitespace only' => '   ',
+            'tabs and newlines' => "\t Ada \n",
+            'zero string' => '0',
+            'padded zero' => '  0  ',
+            'internal runs' => 'two  spaces  inside',
+            'padded internal runs' => '  two  spaces  ',
+            'multibyte' => 'Grace Hopper',
+            'int' => 42,
+            'null' => null,
+            'float' => 3.14,
+            'bool' => true,
+        ];
+
+        foreach ([true, false] as $trim) {
+            foreach ([true, false] as $collapseWhitespace) {
+                foreach ([true, false] as $blankToNull) {
+                    $label = sprintf(
+                        'from=%s trim=%s collapse=%s blankToNull=%s',
+                        $fromEncoding ?? 'null',
+                        $trim ? 'y' : 'n',
+                        $collapseWhitespace ? 'y' : 'n',
+                        $blankToNull ? 'y' : 'n',
+                    );
+
+                    yield $label => [$corpus, $fromEncoding, $trim, $collapseWhitespace, $blankToNull];
+                }
+            }
+        }
+    }
+
+    /**
+     * ADR-0042's pipeline, restated independently of the class under test: transcode first,
+     * then collapse *or* trim, then blank-to-`null` last.
+     */
+    private static function oracle(
+        mixed $value,
+        ?string $fromEncoding,
+        bool $trim,
+        bool $collapseWhitespace,
+        bool $blankToNull,
+    ): mixed {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        if ($fromEncoding !== null) {
+            $value = Str::transcode($value, $fromEncoding, 'UTF-8', false);
+        }
+
+        if ($collapseWhitespace) {
+            $value = Str::collapseWhitespace($value);
+        } elseif ($trim) {
+            $value = trim($value);
+        }
+
+        return $blankToNull ? Str::nullIfBlank($value) : $value;
+    }
+
+    /**
+     * The fast path asserted as a **mechanism**, per ADR-0027's rule for a property no
+     * behaviour can observe.
+     *
+     * The two paths are output-identical by construction — which is exactly why nothing above
+     * would notice if the condition were replaced by `false` and the optimization silently
+     * stopped happening. That failure class has a history in this project (a mutation gate
+     * that ran on nothing, item 10.8; a coverage gate with no driver, item 2.7), so the
+     * condition's truth table is pinned directly rather than inferred from a green suite.
+     */
+    #[DataProvider('fastPathTruthTable')]
+    public function testTheFastPathFiresExactlyForTheTrimOnlyPolicy(
+        bool $expected,
+        RowNormalizer $normalizer,
+    ): void {
+        $property = new \ReflectionProperty(RowNormalizer::class, 'trimOnly');
+
+        self::assertSame($expected, $property->getValue($normalizer));
+    }
+
+    /**
+     * @return iterable<string, array{bool, RowNormalizer}>
+     */
+    public static function fastPathTruthTable(): iterable
+    {
+        yield 'the default policy takes it' => [true, new RowNormalizer()];
+        yield 'trim spelled out takes it' => [true, new RowNormalizer(trim: true)];
+        yield 'an encoding excludes it' => [false, new RowNormalizer(fromEncoding: 'ISO-8859-15')];
+        yield 'trimming off excludes it' => [false, new RowNormalizer(trim: false)];
+        yield 'collapsing excludes it' => [false, new RowNormalizer(collapseWhitespace: true)];
+        yield 'blank-to-null excludes it' => [false, new RowNormalizer(blankToNull: true)];
+        yield 'collapsing with trim on still excludes it' => [
+            false,
+            new RowNormalizer(trim: true, collapseWhitespace: true),
+        ];
+        yield 'every switch on excludes it' => [
+            false,
+            new RowNormalizer(
+                fromEncoding: 'ISO-8859-15',
+                trim: true,
+                collapseWhitespace: true,
+                blankToNull: true,
+            ),
+        ];
     }
 }
