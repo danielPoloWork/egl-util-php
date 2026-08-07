@@ -12,7 +12,9 @@ use D4np\Utils\Support\HttpException;
 use D4np\Utils\Support\HydrationException;
 use D4np\Utils\Support\InvalidUrlException;
 use D4np\Utils\Support\JsonException;
+use D4np\Utils\Support\MethodNotAllowedException;
 use D4np\Utils\Support\MissingKeyException;
+use D4np\Utils\Support\RouteNotFoundException;
 use D4np\Utils\Support\SequenceExhaustedException;
 use D4np\Utils\Support\TypeMismatchException;
 use D4np\Utils\Support\UnknownKeyException;
@@ -97,7 +99,9 @@ final class ExceptionHierarchyTest extends TestCase
                 HydrationException::class,
                 InvalidUrlException::class,
                 JsonException::class,
+                MethodNotAllowedException::class,
                 MissingKeyException::class,
+                RouteNotFoundException::class,
                 SequenceExhaustedException::class,
                 TypeMismatchException::class,
                 UnknownKeyException::class,
@@ -174,7 +178,9 @@ final class ExceptionHierarchyTest extends TestCase
             HttpClientException::class,
             InvalidUrlException::class,
             JsonException::class,
+            MethodNotAllowedException::class,
             MissingKeyException::class,
+            RouteNotFoundException::class,
             SequenceExhaustedException::class,
             TypeMismatchException::class,
             UnknownKeyException::class,

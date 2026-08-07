@@ -76,6 +76,7 @@ commitment to apply any particular pattern.
 | Hexagonal (Ports & Adapters) | Isolate the domain behind ports with swappable adapters. |
 | Clean / Onion | Dependencies point inward toward the domain. |
 | MVC / MVP / MVVM | Separate presentation from model and mediation logic. |
+| Front Controller | One entry point receives every request and dispatches it. |
 | Microkernel / Plugin | A minimal core extended by plugins. |
 | Event-Driven Architecture | Components react to and emit events. |
 | CQRS | Separate the write model from the read model. |

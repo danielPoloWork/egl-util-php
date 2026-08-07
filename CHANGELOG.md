@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Http\Router`** — a minimal front-controller router (spec r3 FR-38, RFC-0002;
+  roadmap item **11.2**; **ADR-0050**), with `MatchedRoute` and two new failures,
+  `Support\RouteNotFoundException` (404) and `Support\MethodNotAllowedException` (405). **The two
+  misses are distinct types**, and the 405 carries the allowed methods plus `allowHeader()`,
+  because RFC 9110 §15.5.6 makes `Allow` mandatory on such a response — a router that cannot tell
+  the cases apart leaves the application unable to send it. `{param}` captures exactly one path
+  segment and is percent-decoded **after** matching, so an encoded separator cannot forge a
+  segment boundary; literal route text is quoted, so a `.` in a path is a `.`. Duplicate
+  registrations, relative paths and repeated placeholder names are refused rather than resolved by
+  include order. Stated non-goals: no middleware pipeline, no route caching, no attribute
+  discovery, no implicit `HEAD`→`GET`. The front controller it plugs into is written out in
+  [`docs/patterns/endpoint-kernel.md`](docs/patterns/endpoint-kernel.md).
+
 - **`D4np\Utils\Http\HttpClient`** — an outbound HTTP client over PHP's stream wrapper, no
   `ext-curl` (spec **r14** FR-37, RFC-0002; roadmap item **11.1**; **ADR-0049**). It ships with
   `HttpResponse`, a `Transport` seam and its native `StreamTransport`, plus

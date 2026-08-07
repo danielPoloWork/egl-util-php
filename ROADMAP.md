@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — The default that is not ours to trust](docs/journal/2026/08/2026-08-07-http-client.md).
+  [2026-08-07 — Two answers where the estate had one](docs/journal/2026/08/2026-08-07-router.md).
 
 ## Model & effort routing (advisory)
 
@@ -1126,11 +1126,34 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       (+44).* **Process finding:** *the first CRLF plant silently failed to match the file and the
       suite went green — a fake plant is indistinguishable from a passing campaign, so the plant is
       now confirmed present before the result is believed.*
-- [ ] 11.2 `Router`: method+path matcher with `{param}` extraction, **404-vs-405 with
+- [x] 11.2 `Router`: method+path matcher with `{param}` extraction, **404-vs-405 with
       `Allow`**, callable handlers; stated non-goals (no middleware, no cache, no attribute
       discovery) + T-11 matrix + Front Controller catalogue adoption + the endpoint-kernel
       pattern doc (RFC-0002 FR-38; T-11) (adr — pattern adoption) — size: M ·
-      route: frontier-reasoning / extra · ADR
+      route: frontier-reasoning / extra *(run at standard tier, Opus 5; mismatch recorded)* ·
+      **ADR-0050**, **patterns catalogue entry #2**. *The 37 folders become one table.*
+      **Classifying the miss is the requirement, not a nicety:** *RFC 9110 §15.5.6 makes `Allow`
+      MUST on a 405, so a router that cannot tell "nobody registered this path" from "somebody
+      did, for another method" leaves the application unable to send a header it is required to
+      send. `RouteNotFoundException` and `MethodNotAllowedException` are therefore distinct types
+      — possible only because ADR-0049 unsealed `HttpException` one item earlier — and the 405
+      carries the sorted method list plus `allowHeader()`.* **Security details that are not
+      incidental:** *a placeholder is `[^/]+` and never `.+` (or `{id}` swallows separators and
+      routes `/orders/42/lines/7` to the wrong handler), and percent-decoding happens* **after**
+      *the match — decoding first would let `%2F` forge a segment boundary. Literal route text is
+      `preg_quote`d, so `/files/report.txt` is a path and not a pattern. Duplicate registration,
+      a relative path and a repeated placeholder name are all* **refused** *rather than resolved
+      by include order.* **Front Controller was missing from the taxonomy** *— item 10.4's finding
+      repeated, so `design-patterns.md` gains the row alongside the catalogue entry — and the
+      ~20-line kernel it names is written out in
+      [`docs/patterns/endpoint-kernel.md`](docs/patterns/endpoint-kernel.md), because the value of
+      the pattern is the file that stops being copied 37 times. Non-goals recorded with reasons
+      (no middleware/PSR-15, no route cache, no attribute scan, no implicit HEAD→GET); the
+      middleware rejection joins the catalogue's Rejected table. T-11: 29 cases, misses given as
+      much weight as hits; 5 planted defects, 5 caught.* **Process finding, second time this
+      session:** *a `sed` plant silently failed to match and my guard did not catch it because it
+      checked that the* **replacement** *was present — and `$value` already occurred elsewhere.
+      The check has to be that the* **original is gone**.
 - [ ] 11.3 `ApiEnvelope`: readonly envelope value, fixed JSON shape (`status`, `code`,
       `messages`, `data`), outcome constructors (ok/created/updated/deleted/empty/invalid/
       notFound/failed/caught); message strings caller-supplied, `Result`-mapping stays a
