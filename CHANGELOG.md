@@ -55,6 +55,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A followed redirect now reports the last hop, not the first** (roadmap item **11.4**;
+  **ADR-0052**, correcting **ADR-0049**; spec **r15**). Found by T-07, the first suite to drive
+  `HttpClient` against a real origin: PHP's stream wrapper puts *every* hop of a followed redirect
+  into the same metadata array, and the transport read the first status line out of it. A
+  successful fetch therefore reported `302` while carrying the target's body — `isSuccessful()`
+  was `false` for a request that had succeeded — a chain ending in `404` reported `302` and hid
+  the failure, and the hops' headers were merged under one name, so `header('Set-Cookie')` and
+  `header('Location')` answered from the response that had been left behind. `HttpResponse` now
+  describes one exchange: the final status, its own headers, its body. **Only requests made with
+  `followRedirects: true` can observe a difference**; the default path (redirects off) produces a
+  single status line and is unchanged.
+
 - **`Support\HttpException` is no longer `final`** (roadmap item **11.1**; **ADR-0049**, amending
   **ADR-0004**). The HTTP group grew a second failure kind — `HttpClientException`, a transport
   failure rather than a caller's shape error — and both must stay catchable as `HttpException`,

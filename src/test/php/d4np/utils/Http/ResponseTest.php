@@ -8,7 +8,6 @@ use D4np\Utils\Http\Response;
 use D4np\Utils\Support\HttpException;
 use D4np\Utils\Support\JsonException;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,7 +16,6 @@ use PHPUnit\Framework\TestCase;
  * The load-bearing cases are header handling: case-insensitive names that must not become
  * duplicates, and the CR/LF refusal that stops response splitting.
  */
-#[Group('T-07')]
 final class ResponseTest extends TestCase
 {
     public function testCreateCarriesStatusAndBody(): void

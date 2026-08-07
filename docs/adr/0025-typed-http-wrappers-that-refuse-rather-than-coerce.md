@@ -121,6 +121,13 @@ raises rather than silently putting `false` in the body (RFC-0001 R-7).
 ## Consequences
 
 - 72 tests across the two classes; `--group T-07` runs them as a unit. Total 1109.
+  > **Annotation (2026-08-07, item 11.4 / [ADR-0052](0052-a-followed-redirect-reports-the-last-hop-not-the-first.md)):**
+  > the `T-07` group tag was **removed from both classes**. It was chosen here when the spec
+  > defined only T-01…T-05, so the name was free; spec r3 (RFC-0002) later defined **T-07** as the
+  > `HttpClient` live suite, and the collision made `--group T-07` return three unrelated classes
+  > — no longer the countable unit item 2.6 established. The tests are unchanged and remain
+  > selectable by class or path. The sentence above is left as written because it was true when it
+  > was written.
 - **Verified non-vacuous**, and one probe had to be redone: flattening arrays (6 failures), a cast
   instead of `FILTER_VALIDATE_INT` (6), case-sensitive header storage (8), and removing the CR/LF
   check (4). That last probe **initially reported a pass** because the string replacement had not
