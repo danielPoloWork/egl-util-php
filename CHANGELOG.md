@@ -10,7 +10,28 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **`D4np\Utils\Http\HttpClient`** — an outbound HTTP client over PHP's stream wrapper, no
+  `ext-curl` (spec **r14** FR-37, RFC-0002; roadmap item **11.1**; **ADR-0049**). It ships with
+  `HttpResponse`, a `Transport` seam and its native `StreamTransport`, plus
+  `Support\HttpClientException`. **TLS options are stated explicitly in every request context
+  rather than inherited**: a fresh stream context carries no `ssl` options, so
+  `stream_context_set_default()` in any host bootstrap would otherwise decide whether this
+  client verifies certificates. Every request carries a per-phase timeout **and** a wall-clock
+  ceiling on the whole exchange — PHP's single `timeout` covers connect and each read but
+  re-arms per phase, so it cannot bound a request on its own — and neither limit can be omitted.
+  Redirects are off by default, only `http`/`https` are sent to, and CR/LF/NUL in an outbound
+  header value is refused. Any status the origin produced is returned as an `HttpResponse`;
+  `HttpClientException` is reserved for a request that produces no response at all.
+
 ### Changed
+
+- **`Support\HttpException` is no longer `final`** (roadmap item **11.1**; **ADR-0049**, amending
+  **ADR-0004**). The HTTP group grew a second failure kind — `HttpClientException`, a transport
+  failure rather than a caller's shape error — and both must stay catchable as `HttpException`,
+  the shape `HydrationException` already had. Existing `catch (HttpException)` clauses are
+  unaffected; the class simply gained a subclass.
 
 - **Internal function calls are prefixed with `\` throughout the library** (roadmap item **10.12**;
   **ADR-0048**; [benchmark record](docs/benchmarks/2026/08/native-function-invocation-repo-wide.md)),

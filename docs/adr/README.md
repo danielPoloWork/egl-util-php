@@ -64,3 +64,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0046](0046-nfr09s-budget-contradicted-nfr01-on-the-same-axis.md) | NFR-09's budget contradicted NFR-01 on the same axis | Accepted |
 | [0047](0047-hoist-the-policy-decision-and-keep-one-fast-path.md) | Hoist the policy decision out of the loop, and keep exactly one fast path (amends 0042) | Accepted |
 | [0048](0048-prefix-internal-calls-by-rule-because-a-hot-loop-cannot-be-tuned-by-hand.md) | Prefix internal calls by rule, because a hot loop cannot be tuned by hand | Accepted |
+| [0049](0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md) | State the transport policy explicitly, and bound the whole request (amends 0004) | Accepted |
