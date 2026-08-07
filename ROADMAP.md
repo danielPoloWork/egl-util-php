@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — The simple design won, and the namespace cost more than the method call](docs/journal/2026/08/2026-08-07-rownormalizer-fast-path.md).
+  [2026-08-07 — The control group is what made the number believable](docs/journal/2026/08/2026-08-07-native-function-invocation.md).
 
 ## Model & effort routing (advisory)
 
@@ -1054,7 +1054,7 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       in exactly the OPcache-off configuration NFR-06 pins. Not applied to one file, because a lone
       `\trim()` reads as a style slip and the next tidy-up gives the 13.6 µs back with every test
       green.*
-- [ ] 10.12 Decide the repo-wide policy on **unqualified internal function calls**, measured at
+- [x] 10.12 Decide the repo-wide policy on **unqualified internal function calls**, measured at
       item 10.11: inside a namespace, PHP resolves `trim()` by trying the namespaced name first and
       the global second, worth **13.6 µs per 100 rows / ~36 ns per call** in `RowNormalizer`'s hot
       loop under NFR-06's OPcache-off benchmark environment (isolated with a two-class probe, not
@@ -1066,7 +1066,30 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       CI run showed the dev box overstating this class of per-call cost by ~8× (a component the local
       decomposition put at 27% of NFR-09's overhead is 4.6% there), so the 13.6 µs figure is an upper
       bound from the wrong machine; consumers running OPcache see less of it again —
-      route: standard / medium (adr, step:optimize)
+      route: frontier-reasoning / extra (adr, step:optimize) *(route corrected when the item was
+      taken: it was filed `standard / medium`, but `os/routing` resolves `label:adr` to
+      frontier-reasoning/extra — an item whose deliverable IS a decision is decision-heavy by
+      definition, item 1.10's exact correction. Run at standard tier (Opus 5); mismatch recorded.)*
+      · **ADR-0048**, **benchmark record**. ***Closes Milestone 10.*** *Enabled
+      `native_function_invocation` (`@all`, `scope: namespaced`, `strict`) — 95 files, 795
+      insertions — after CI's same-runner A/B priced it.* **The measurement carried its own
+      control:** *`src/bench` is outside the CS-Fixer finder, so three subjects are unprefixed on
+      both sides and set the noise band at −1.55%…+2.98% — **wider than most of the wins**, so the
+      1.8–3.3% deltas on Container/QueryBuilder/Hydration cannot be claimed individually. Two
+      results clear it:* **`RowNormalizer::normalize()` −24.02%** *(22.798 → 17.322 µs) and the
+      gateway path* **−3.98%**; *NFR-09 1.73× → 1.66×. So the benefit is **concentrated, not
+      spread** — the rule pays in tight per-item loops and is inert in the ~93 `sprintf()` sites
+      formatting exception messages that dominate the diff. Enabled anyway, because those loops are
+      exactly the ones nobody remembers to hand-tune (ADR-0047's finding).* **Local overstated it
+      again:** *13.6 µs predicted, 5.48 µs measured — direction right, magnitude 2.5× high.* **One
+      test was coupled to spelling and broke:** *ADR-0026's seam assertion searched the source for
+      the literal `return session_start();`; prefixing makes it `\session_start()` — same call, five
+      red data sets, no behaviour changed. Fixed by normalising the separator, with the general rule
+      recorded: a mechanism assertion must pin the mechanism and nothing else.* **Two open questions
+      handed to the maintainer, not settled here** *(ADR-0040): NFR-09's ratio improved partly by
+      asymmetry (library prefixed, its `src/bench` comparator not), and `RowNormalizerBench`'s class
+      is now faster than its own floor for the same reason — either add `src/bench` to the finder or
+      state in the spec that these compare against typical consumer code.*
 
 ---
 
