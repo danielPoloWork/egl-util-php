@@ -31,6 +31,22 @@ A subject present at HEAD but absent from the baseline is reported as **new** an
 a benchmark added by the very change under test has nothing it could have regressed against. A
 subject that has *disappeared* is likewise reported, because a benchmark deleted quietly is how a
 regression stops being visible.
+
+**`--exclude` (roadmap item 10.9, ADR-0045).** Measured, not assumed: item 10.5's own CI run — a
+test-only PR touching no file under `src/main` — failed this gate at
+`FileSequenceBench::benchSequenceNext +40.10%` and `HashBench::benchVerifyArgon2id +13.75%`, and
+the identical commit passed on re-run. Not ADR-0030's stored-baseline problem (base and HEAD were
+measured on the same runner, as that ADR requires) — a narrower one: a same-runner A/B is still
+not precise enough for a subject dominated by filesystem locking or by memory-hard hashing, where
+the runner's own noise floor sits in the same order as the 10% budget. `--exclude NAME`
+(repeatable, `Benchmark::subject` form) drops a named subject from the **pass/fail** decision
+without dropping it from the **report** — it prints with a `skipped` marker rather than a
+percentage, so an exclusion is a visible, auditable fact and never a silent one. The excluded
+subject stays fully covered by its own **absolute** budget in `bench_budget_gate.py`, which is
+what NFR-10 and NFR-05 actually specify (a ceiling, or a range); the relative check on top of that
+was demanding 10%-precision these two subjects' underlying mechanism cannot supply on a shared
+runner. ADR-0045 names the exact criterion for which subjects qualify, so this stays a rule, not
+a per-name carve-out.
 """
 
 import argparse
@@ -103,7 +119,17 @@ def main(argv=None):
         help="fail if any subject is slower than its baseline by more than this percentage "
         "(default 10, per spec NFR-06)",
     )
+    ap.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        metavar="Benchmark::subject",
+        help="report this subject but never fail on it (repeatable) — for a subject whose "
+        "absolute budget in bench_budget_gate.py is the real spec requirement and whose "
+        "same-runner variance exceeds --max-regression on its own (ADR-0045)",
+    )
     args = ap.parse_args(argv)
+    excluded = set(args.exclude)
 
     try:
         base = mode_times(args.baseline)
@@ -112,9 +138,19 @@ def main(argv=None):
         print(f"bench-regression gate: FAIL\n\n  {exc}")
         return 1
 
+    unknown_excludes = sorted(excluded - set(head))
+    if unknown_excludes:
+        print(
+            "bench-regression gate: FAIL\n\n  --exclude named a subject absent from "
+            f"{args.current}: {', '.join(unknown_excludes)}. An exclusion for a subject that "
+            "does not exist silently stops meaning anything the day the subject is renamed."
+        )
+        return 1
+
     rows = []
     regressions = []
     new_subjects = []
+    skipped = []
 
     for name in sorted(head):
         if name not in base:
@@ -132,7 +168,9 @@ def main(argv=None):
 
         delta = (after - before) / before * 100.0
         rows.append((name, before, after, delta))
-        if delta > args.max_regression:
+        if name in excluded:
+            skipped.append((name, before, after, delta))
+        elif delta > args.max_regression:
             regressions.append((name, before, after, delta))
 
     disappeared = sorted(set(base) - set(head))
@@ -142,6 +180,8 @@ def main(argv=None):
     for name, before, after, delta in rows:
         if before is None:
             print(f"{name.ljust(width)}  {'—':>10}  {after:>10.3f}  {'new':>9}")
+        elif name in excluded:
+            print(f"{name.ljust(width)}  {before:>10.3f}  {after:>10.3f}  {'skipped':>9}")
         else:
             print(f"{name.ljust(width)}  {before:>10.3f}  {after:>10.3f}  {delta:>+8.2f}%")
 
@@ -151,6 +191,12 @@ def main(argv=None):
         print(
             f"\nbench-regression gate: NOTICE — \"{name}\" was measured in the baseline and is "
             "gone at HEAD. A deleted benchmark is how a regression stops being visible."
+        )
+    for name, before, after, delta in skipped:
+        print(
+            f"\nbench-regression gate: NOTICE — \"{name}\" is excluded from pass/fail "
+            f"(ADR-0045); measured {delta:+.2f}% here. Its absolute budget in "
+            "bench_budget_gate.py is what actually gates it."
         )
 
     if regressions:

@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/bench_regression_gate.py` gains `--exclude Benchmark::subject`** (spec NFR-06; roadmap
+  item **10.9**; **ADR-0045**): a repeatable flag that removes a named subject from the gate's
+  pass/fail decision while keeping it in the printed report (marked `skipped`, never silently
+  dropped). Wired in `ci.yml` for exactly three subjects — `FileSequenceBench::benchSequenceNext`,
+  `HashBench::benchMakeArgon2id`, `HashBench::benchVerifyArgon2id` — whose dominant cost (real
+  filesystem locking, or Argon2id's deliberate memory-hardness) made a same-runner A/B fire on
+  noise: item 10.5's test-only PR measured `+40.10%` and `+13.75%` on these two and passed
+  cleanly on re-run of the identical commit. Both stay fully covered by their own absolute budget
+  in `bench_budget_gate.py`, which is what NFR-10 and NFR-05 actually specify.
+
 - **phpbench benchmark for NFR-09** (spec §3, RFC-0002; roadmap item **10.6**): `GatewayBench`
   under `src/bench/php/d4np/utils/`, wired into the `bench_ratio_gate.py` cross-subject
   comparison ADR-0011 established (`benchGatewayFetchNormalizeHydrate` /

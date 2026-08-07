@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — Measuring the overhead a gateway is honest about](docs/journal/2026/08/2026-08-06-gateway-bench.md).
+  [2026-08-07 — A gate that cried wolf about noise it could name](docs/journal/2026/08/2026-08-07-regression-gate-exclusions.md).
 
 ## Model & effort routing (advisory)
 
@@ -949,7 +949,7 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       escaped set is now a CI artifact with a per-mutator breakdown but is **not** chased here;
       and the MSI cannot be measured on the maintainer's machine (no coverage driver — the
       same limit as the suite's 9 skips and item 9.6's benchmark caveat).*
-- [ ] 10.9 Decide what the >10% regression gate should do about **I/O-bound and memory-hard
+- [x] 10.9 Decide what the >10% regression gate should do about **I/O-bound and memory-hard
       subjects**, which it currently cannot measure to that precision. Filed from evidence
       produced by item 10.5, a **test-only** PR whose diff touches no file under `src/main`
       (verified, not assumed): the gate failed with
@@ -960,12 +960,24 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       problem ADR-0030 already solved — base and HEAD were measured on the same runner, as that
       ADR requires — so it is a second, narrower finding: **a same-runner A/B is still not
       precise enough for a subject dominated by filesystem locking or by memory-hard hashing**,
-      where the shared runner's noise is in the same order as the budget. Options to weigh (none
-      chosen here): a per-subject threshold, best-of-N for the two classes, excluding them from
-      the relative gate while keeping their absolute ceilings, or accepting re-runs as the
-      documented protocol. Whichever is picked, **a gate that cries wolf on a docs-and-tests PR
-      teaches people to re-run until green**, which is the failure mode worth spending an item on
-      — route: standard / medium (adr)
+      where the shared runner's noise is in the same order as the budget — route: standard /
+      medium (adr) · **ADR-0045**. *Decided: **exclude, keep the absolute budget as the real
+      gate**, over a wider per-subject threshold (arbitrary, still not principled), best-of-N
+      (multiplies every PR's benchmark cost to fix two subjects), or accepting re-runs (the
+      item's own framing already rejected this: "a gate that cries wolf ... teaches people to
+      re-run until green"). `bench_regression_gate.py` gains a repeatable `--exclude
+      Benchmark::subject` — the subject still prints in the report, marked `skipped` rather than
+      silently dropped (the same absence-is-failure discipline this tool already holds to for
+      missing reports). Excludes exactly three: `FileSequenceBench::benchSequenceNext`,
+      `HashBench::benchMakeArgon2id`, `HashBench::benchVerifyArgon2id` — `benchMakeBcrypt` stays
+      in the relative gate, since bcrypt's cost is pure CPU time with no memory contention and
+      it has not shown this failure mode; being slow and being noisy-relative-to-itself are
+      different properties, and the ADR states the criterion (real I/O with locking, or a
+      deliberately memory-hard primitive) so this is a rule, not three names bolted on.
+      Verified directly (this tool has no pytest suite, matching every other `tools/*.py` gate):
+      a synthetic fixture reproducing item 10.5's exact numbers now reports `skipped` and exits
+      0 with `--exclude`, still exits 1 without it, and an `--exclude` naming a subject absent
+      from the report fails loudly rather than silently meaning nothing.*
 - [ ] 10.10 Decide what to do about NFR-09's `bench_ratio_gate` step being **red on `master`**:
       `TableGateway::all()` measures **1.85×** a hand-written PDO loop (item 10.6) against the
       spec's ≤ 1.5× budget, and one safe, real optimization (caching the gateway's base
