@@ -34,7 +34,7 @@ final class DevServer
 
     public function __construct(private readonly string $documentRoot)
     {
-        $this->logFile = sys_get_temp_dir() . '/d4np-t03-' . bin2hex(random_bytes(6)) . '.log';
+        $this->logFile = \sys_get_temp_dir() . '/d4np-t03-' . \bin2hex(\random_bytes(6)) . '.log';
     }
 
     /**
@@ -50,7 +50,7 @@ final class DevServer
         $this->host = "127.0.0.1:{$port}";
         $null = DIRECTORY_SEPARATOR === '\\' ? 'nul' : '/dev/null';
 
-        $process = @proc_open(
+        $process = @\proc_open(
             [PHP_BINARY, '-S', $this->host, '-t', $this->documentRoot],
             [
                 0 => ['file', $null, 'r'],
@@ -60,50 +60,50 @@ final class DevServer
             $pipes,
         );
 
-        if (!is_resource($process)) {
+        if (!\is_resource($process)) {
             return 'proc_open() could not spawn ' . PHP_BINARY;
         }
 
         $this->process = $process;
 
         for ($i = 0; $i < self::READY_ATTEMPTS; $i++) {
-            $socket = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
+            $socket = @\fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
             if ($socket !== false) {
-                fclose($socket);
+                \fclose($socket);
 
                 return '';
             }
 
-            $status = proc_get_status($process);
+            $status = \proc_get_status($process);
             if ($status['running'] === false) {
-                return sprintf(
+                return \sprintf(
                     'the server exited with code %d: %s',
                     $status['exitcode'],
-                    trim($this->log()) ?: '(no output)',
+                    \trim($this->log()) ?: '(no output)',
                 );
             }
 
-            usleep(self::READY_INTERVAL_US);
+            \usleep(self::READY_INTERVAL_US);
         }
 
-        return sprintf(
+        return \sprintf(
             'the server did not answer on %s within %.1fs: %s',
             $this->host,
             self::READY_ATTEMPTS * self::READY_INTERVAL_US / 1e6,
-            trim($this->log()) ?: '(no output)',
+            \trim($this->log()) ?: '(no output)',
         );
     }
 
     public function stop(): void
     {
-        if (is_resource($this->process)) {
-            proc_terminate($this->process);
-            proc_close($this->process);
+        if (\is_resource($this->process)) {
+            \proc_terminate($this->process);
+            \proc_close($this->process);
             $this->process = null;
         }
 
-        if (is_file($this->logFile)) {
-            @unlink($this->logFile);
+        if (\is_file($this->logFile)) {
+            @\unlink($this->logFile);
         }
     }
 
@@ -118,7 +118,7 @@ final class DevServer
      */
     public function log(): string
     {
-        return (string) @file_get_contents($this->logFile);
+        return (string) @\file_get_contents($this->logFile);
     }
 
     /**
@@ -130,15 +130,15 @@ final class DevServer
      */
     private static function claimFreePort(): int
     {
-        $socket = @stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+        $socket = @\stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
         if ($socket === false) {
             return 0;
         }
 
-        $name = (string) stream_socket_get_name($socket, false);
-        fclose($socket);
+        $name = (string) \stream_socket_get_name($socket, false);
+        \fclose($socket);
 
-        $port = (int) substr($name, (int) strrpos($name, ':') + 1);
+        $port = (int) \substr($name, (int) \strrpos($name, ':') + 1);
 
         return $port > 0 ? $port : 0;
     }

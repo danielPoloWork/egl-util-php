@@ -29,5 +29,12 @@ return (new Config())
         // error. The two tools disagree by default; this is where the disagreement is settled,
         // rather than by suppressing whichever one complains second.
         'no_superfluous_phpdoc_tags' => ['allow_mixed' => true],
+        // MEASUREMENT VARIANT A (item 10.12) — the upper bound: every internal function,
+        // prefixed only where a namespace makes the fallback lookup possible.
+        'native_function_invocation' => [
+            'include' => ['@all'],
+            'scope' => 'namespaced',
+            'strict' => true,
+        ],
     ])
     ->setFinder($finder);

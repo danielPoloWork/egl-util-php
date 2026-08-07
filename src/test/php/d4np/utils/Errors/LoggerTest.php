@@ -20,13 +20,13 @@ final class LoggerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->path = sys_get_temp_dir() . '/d4np-logger-' . bin2hex(random_bytes(6)) . '.log';
+        $this->path = \sys_get_temp_dir() . '/d4np-logger-' . \bin2hex(\random_bytes(6)) . '.log';
     }
 
     protected function tearDown(): void
     {
-        if (is_file($this->path)) {
-            unlink($this->path);
+        if (\is_file($this->path)) {
+            \unlink($this->path);
         }
     }
 
@@ -35,9 +35,9 @@ final class LoggerTest extends TestCase
      */
     private function lines(): array
     {
-        $contents = is_file($this->path) ? (string) file_get_contents($this->path) : '';
+        $contents = \is_file($this->path) ? (string) \file_get_contents($this->path) : '';
 
-        return $contents === '' ? [] : explode("\n", rtrim($contents, "\n"));
+        return $contents === '' ? [] : \explode("\n", \rtrim($contents, "\n"));
     }
 
     // ---- PSR-3 conformance ------------------------------------------------------------------------
@@ -118,13 +118,13 @@ final class LoggerTest extends TestCase
      */
     public function testWritingToAStreamDestinationActuallyWrites(): void
     {
-        ob_start();
+        \ob_start();
 
         try {
             (new Logger('php://output'))->info('to the console');
-            $captured = (string) ob_get_clean();
+            $captured = (string) \ob_get_clean();
         } catch (\Throwable $e) {
-            ob_end_clean();
+            \ob_end_clean();
 
             throw $e;
         }
@@ -249,7 +249,7 @@ final class LoggerTest extends TestCase
         $this->expectException(UtilsException::class);
         $this->expectExceptionMessageMatches('/cannot be written to/');
 
-        new Logger(sys_get_temp_dir() . '/d4np-no-such-directory-xyz/app.log');
+        new Logger(\sys_get_temp_dir() . '/d4np-no-such-directory-xyz/app.log');
     }
 
     /**
@@ -262,20 +262,20 @@ final class LoggerTest extends TestCase
         $logger = new Logger($this->path);
         $logger->info('fine');
 
-        unlink($this->path);
-        mkdir($this->path);
+        \unlink($this->path);
+        \mkdir($this->path);
 
         try {
             $logger->error('this cannot be written');
             $this->addToAssertionCount(1);
         } finally {
-            rmdir($this->path);
+            \rmdir($this->path);
         }
     }
 
     public function testAnExistingFileIsAcceptedAndNotTruncated(): void
     {
-        file_put_contents($this->path, "pre-existing\n");
+        \file_put_contents($this->path, "pre-existing\n");
 
         (new Logger($this->path))->info('added');
 

@@ -34,7 +34,7 @@ final class NativeSessionApiTest extends TestCase
      */
     public function testStatusReportsPhpsOwnSessionStatus(): void
     {
-        self::assertSame(session_status(), (new NativeSessionApi())->status());
+        self::assertSame(\session_status(), (new NativeSessionApi())->status());
     }
 
     /**
@@ -61,14 +61,23 @@ final class NativeSessionApiTest extends TestCase
     public function testEachMethodDelegatesToItsSessionFunction(string $method, string $call): void
     {
         $reflected = new \ReflectionMethod(NativeSessionApi::class, $method);
-        $source = (string) file_get_contents((string) $reflected->getFileName());
-        $body = implode("\n", array_slice(
-            explode("\n", $source),
+        $source = (string) \file_get_contents((string) $reflected->getFileName());
+        $body = \implode("\n", \array_slice(
+            \explode("\n", $source),
             $reflected->getStartLine() - 1,
             $reflected->getEndLine() - $reflected->getStartLine() + 1,
         ));
 
-        self::assertStringContainsString("return {$call};", $body);
+        // The mechanism is *which function is called*, not how it is spelled. An unqualified
+        // `session_start()` and a namespace-escaped `\session_start()` are the same call to PHP,
+        // and the formatter is entitled to choose between them (item 10.12 made it do exactly
+        // that, and turned this assertion red on five data sets without changing any behaviour).
+        // Normalising the leading separator away keeps the assertion pointed at the delegation
+        // and stops it from also pinning a formatting decision it has no stake in.
+        self::assertStringContainsString(
+            "return {$call};",
+            \str_replace('return \\', 'return ', $body),
+        );
     }
 
     public function testItIsTheSeamsContract(): void

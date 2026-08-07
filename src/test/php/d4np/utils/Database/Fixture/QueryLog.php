@@ -33,7 +33,7 @@ final class QueryLog
      */
     public function statements(): array
     {
-        return array_values(array_unique(array_map(
+        return \array_values(\array_unique(\array_map(
             static fn (array $entry): string => $entry['sql'],
             $this->entries,
         )));

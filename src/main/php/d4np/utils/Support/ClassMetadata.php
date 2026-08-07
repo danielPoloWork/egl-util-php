@@ -58,7 +58,7 @@ final class ClassMetadata
      */
     public function parameterNames(): array
     {
-        return array_map(
+        return \array_map(
             static fn (ParameterMetadata $parameter): string => $parameter->name,
             $this->parameters,
         );

@@ -17,26 +17,26 @@ final class NativeSessionApi implements SessionApi
 {
     public function status(): int
     {
-        return session_status();
+        return \session_status();
     }
 
     public function setCookieParams(array $params): bool
     {
-        return session_set_cookie_params($params);
+        return \session_set_cookie_params($params);
     }
 
     public function start(): bool
     {
-        return session_start();
+        return \session_start();
     }
 
     public function regenerateId(): bool
     {
-        return session_regenerate_id(true);
+        return \session_regenerate_id(true);
     }
 
     public function destroy(): bool
     {
-        return session_destroy();
+        return \session_destroy();
     }
 }

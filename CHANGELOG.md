@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Internal function calls are prefixed with `\` throughout the library** (roadmap item **10.12**;
+  **ADR-0048**; [benchmark record](docs/benchmarks/2026/08/native-function-invocation-repo-wide.md)),
+  enforced by PHP-CS-Fixer's `native_function_invocation` (`@all`, `scope: namespaced`, `strict`)
+  rather than by hand. Inside a namespace PHP resolves `trim()` by trying the namespaced name before
+  the global one, and NFR-06 pins the benchmark interpreter with OPcache off, where that second
+  lookup is not optimized away. Measured by CI's same-runner A/B: **`RowNormalizer::normalize()`
+  −24.02%**, reproduced at **−20.81%** on a second run — roughly an order of magnitude clear of the
+  benchmark subjects the rule cannot touch, which moved −2.57% … +0.45% across the two runs and are
+  what makes the claim checkable. Smaller deltas elsewhere lean consistently negative but sit inside
+  that band and are not claimed; **NFR-09's ratio did not move** (1.66× then 1.73×, against
+  `master`'s 1.73×). **No
+  behaviour changes**: `\trim()` and `trim()` are the same call to PHP, and no function in this
+  package shadows an internal one.
+
 - **`RowNormalizer` is faster on the default policy** (roadmap item **10.11**; **ADR-0047**;
   [benchmark record](docs/benchmarks/2026/08/nfr09-rownormalizer-trim-only-fast-path.md)). The
   policy decision is now computed once in the constructor instead of per value, and the default

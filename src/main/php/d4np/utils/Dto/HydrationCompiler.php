@@ -150,7 +150,7 @@ final class HydrationCompiler
         // payload that is both wrong in both ways must report the same one it reports today.
         $allowed = [];
         foreach ($metadata->parameters as $parameter) {
-            $allowed[] = var_export($parameter->name, true) . ' => true';
+            $allowed[] = \var_export($parameter->name, true) . ' => true';
         }
 
         // `array_diff_key` answers "is any key undeclared?" in one C call, where the equivalent
@@ -163,13 +163,13 @@ final class HydrationCompiler
         // the hydration goes on to report the missing key. Today's interpreter reports the unknown
         // key, because it rejects undeclared keys before it looks at parameters. `array_diff_key`
         // keeps that order without the loop.
-        $body[] = sprintf(
+        $body[] = \sprintf(
             'if (!$lenient) { static $allowed = [%s]; $extra = array_diff_key($data, $allowed); '
             . 'if ($extra !== []) { $name = (string) array_key_first($extra); throw \\%s::forKey('
             . '$prefix === \'\' ? $name : $prefix . \'.\' . $name, %s); } }',
-            implode(', ', $allowed),
+            \implode(', ', $allowed),
             UnknownKeyException::class,
-            var_export($class, true),
+            \var_export($class, true),
         );
 
         $arguments = [];
@@ -179,11 +179,11 @@ final class HydrationCompiler
             $body[] = $this->parameterSource($parameter, $variable, $class);
         }
 
-        return sprintf(
+        return \sprintf(
             'return static function (array $data, string $prefix, bool $lenient) { %s return new \\%s(%s); };',
-            implode(' ', $body),
+            \implode(' ', $body),
             $class,
-            implode(', ', $arguments),
+            \implode(', ', $arguments),
         );
     }
 
@@ -192,27 +192,27 @@ final class HydrationCompiler
      */
     private function parameterSource(ParameterMetadata $parameter, string $variable, string $class): string
     {
-        $name = var_export($parameter->name, true);
-        $path = sprintf('($prefix === \'\' ? %s : $prefix . \'.\' . %s)', $name, $name);
+        $name = \var_export($parameter->name, true);
+        $path = \sprintf('($prefix === \'\' ? %s : $prefix . \'.\' . %s)', $name, $name);
 
         /** @var string $type */
         $type = $parameter->type;
-        $check = str_replace('%s', $variable, self::CHECKS[$type]);
-        $declared = var_export($parameter->declaredType ?? $type, true);
+        $check = \str_replace('%s', $variable, self::CHECKS[$type]);
+        $declared = \var_export($parameter->declaredType ?? $type, true);
 
         // Absence, per RFC-0001 R-4. Eligibility already excluded defaults, so there are only two
         // cases left: nullable becomes an explicit null (PHP treats nullable-without-default as
         // required, so it must be passed), and anything else is a missing key.
         $absent = $parameter->allowsNull
-            ? sprintf('%s = null;', $variable)
-            : sprintf('throw \\%s::forKey(%s, %s);', MissingKeyException::class, $path, var_export($class, true));
+            ? \sprintf('%s = null;', $variable)
+            : \sprintf('throw \\%s::forKey(%s, %s);', MissingKeyException::class, $path, \var_export($class, true));
 
         // A nullable parameter accepts an explicit null in the payload as well as an absent key.
         $guard = $parameter->allowsNull
-            ? sprintf('%s !== null && !%s', $variable, $check)
-            : sprintf('!%s', $check);
+            ? \sprintf('%s !== null && !%s', $variable, $check)
+            : \sprintf('!%s', $check);
 
-        return sprintf(
+        return \sprintf(
             'if (!array_key_exists(%s, $data)) { %s } else { %s = $data[%s]; if (%s) { '
             . 'throw \\%s::at(%s, %s, get_debug_type(%s)); } }',
             $name,

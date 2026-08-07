@@ -25,7 +25,7 @@ final class GreeterProvider extends ServiceProvider
                 // through, and it is the behaviour a consumer will see.
                 $suffix = $c->get('greeting.suffix');
 
-                return $c->get(Greeter::class)->greet() . (is_string($suffix) ? $suffix : '');
+                return $c->get(Greeter::class)->greet() . (\is_string($suffix) ? $suffix : '');
             });
     }
 }

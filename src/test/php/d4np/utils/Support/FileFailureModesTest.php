@@ -28,9 +28,9 @@ final class FileFailureModesTest extends TestCase
 
     protected function setUp(): void
     {
-        $base = sys_get_temp_dir() . '/egl-utils-failtest-' . bin2hex(random_bytes(8));
-        if (!mkdir($base) && !is_dir($base)) {
-            self::fail(sprintf('could not create the test directory "%s"', $base));
+        $base = \sys_get_temp_dir() . '/egl-utils-failtest-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($base) && !\is_dir($base)) {
+            self::fail(\sprintf('could not create the test directory "%s"', $base));
         }
         $this->dir = $base;
     }
@@ -39,15 +39,15 @@ final class FileFailureModesTest extends TestCase
     {
         // Restore write permission before cleanup: a test that made the directory read-only
         // would otherwise leave an undeletable tree behind.
-        @chmod($this->dir, 0777);
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            @chmod($entry, 0666);
-            if (is_file($entry)) {
-                @unlink($entry);
+        @\chmod($this->dir, 0777);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            @\chmod($entry, 0666);
+            if (\is_file($entry)) {
+                @\unlink($entry);
             }
         }
-        if (is_dir($this->dir)) {
-            @rmdir($this->dir);
+        if (\is_dir($this->dir)) {
+            @\rmdir($this->dir);
         }
     }
 
@@ -63,15 +63,15 @@ final class FileFailureModesTest extends TestCase
             self::markTestSkipped('POSIX permission bits are not enforced on Windows');
         }
 
-        clearstatcache(true, $probe);
-        if (is_writable($probe)) {
+        \clearstatcache(true, $probe);
+        if (\is_writable($probe)) {
             self::markTestSkipped('permissions are not enforced for this process (running as root?)');
         }
     }
 
     public function testWritingIntoAnUnwritableDirectoryFailsLoudly(): void
     {
-        chmod($this->dir, 0555);
+        \chmod($this->dir, 0555);
         $this->requireEnforceablePermissions($this->dir);
 
         $this->expectException(FileException::class);
@@ -87,8 +87,8 @@ final class FileFailureModesTest extends TestCase
         // proceeding unserialised.
         $target = $this->path('locked.txt');
         $lock = $target . '.lock';
-        touch($lock);
-        chmod($lock, 0000);
+        \touch($lock);
+        \chmod($lock, 0000);
         $this->requireEnforceablePermissions($lock);
 
         $this->expectException(FileException::class);
@@ -107,9 +107,9 @@ final class FileFailureModesTest extends TestCase
     public function testAFailedRenameThrowsAndLeavesNoTemporaryFileBehind(): void
     {
         $target = $this->path('target');
-        mkdir($target);
+        \mkdir($target);
         // A non-empty directory cannot be replaced by rename() on any supported platform.
-        file_put_contents($target . '/occupant', 'x');
+        \file_put_contents($target . '/occupant', 'x');
 
         try {
             File::write($target, 'content');
@@ -118,27 +118,27 @@ final class FileFailureModesTest extends TestCase
             self::assertStringContainsString('rename', $e->getMessage());
         }
 
-        $leftovers = array_values(array_filter(
-            glob($this->dir . '/*') ?: [],
-            static fn (string $entry): bool => str_contains(basename($entry), '.egl-utils-'),
+        $leftovers = \array_values(\array_filter(
+            \glob($this->dir . '/*') ?: [],
+            static fn (string $entry): bool => \str_contains(\basename($entry), '.egl-utils-'),
         ));
         self::assertSame([], $leftovers, 'a failed write must clean up its own temporary file');
 
-        unlink($target . '/occupant');
-        rmdir($target);
+        \unlink($target . '/occupant');
+        \rmdir($target);
     }
 
     public function testReadingAnUnreadableFileFailsLoudly(): void
     {
         $path = $this->path('unreadable.txt');
-        file_put_contents($path, 'secret');
-        chmod($path, 0000);
+        \file_put_contents($path, 'secret');
+        \chmod($path, 0000);
 
         if (DIRECTORY_SEPARATOR === '\\') {
             self::markTestSkipped('POSIX permission bits are not enforced on Windows');
         }
-        clearstatcache(true, $path);
-        if (is_readable($path)) {
+        \clearstatcache(true, $path);
+        if (\is_readable($path)) {
             self::markTestSkipped('permissions are not enforced for this process (running as root?)');
         }
 
@@ -151,14 +151,14 @@ final class FileFailureModesTest extends TestCase
     public function testMimeDetectionOnAnUnreadableFileFailsLoudly(): void
     {
         $path = $this->path('unreadable.bin');
-        file_put_contents($path, 'GIF89a');
-        chmod($path, 0000);
+        \file_put_contents($path, 'GIF89a');
+        \chmod($path, 0000);
 
         if (DIRECTORY_SEPARATOR === '\\') {
             self::markTestSkipped('POSIX permission bits are not enforced on Windows');
         }
-        clearstatcache(true, $path);
-        if (is_readable($path)) {
+        \clearstatcache(true, $path);
+        if (\is_readable($path)) {
             self::markTestSkipped('permissions are not enforced for this process (running as root?)');
         }
 
@@ -202,7 +202,7 @@ final class FileFailureModesTest extends TestCase
         // dirname() of "<file>/child.txt" is a regular file, so is_dir() is false — the first
         // guard in write(), reached here through a realistic mistake rather than a contrived one.
         $file = $this->path('a-file.txt');
-        file_put_contents($file, 'x');
+        \file_put_contents($file, 'x');
 
         $this->expectException(FileException::class);
         $this->expectExceptionMessage('does not exist');

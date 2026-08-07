@@ -93,7 +93,7 @@ final class Response
     public static function redirect(string $location, int $status = 302): self
     {
         if ($status < 300 || $status > 399) {
-            throw new HttpException(sprintf(
+            throw new HttpException(\sprintf(
                 'A redirect needs a 3xx status, got %d. Sending a Location header with a non-3xx '
                 . 'status produces a response most clients will not follow and some will render.',
                 $status,
@@ -134,7 +134,7 @@ final class Response
      */
     public function header(string $name, ?string $default = null): ?string
     {
-        return $this->headers[strtolower($name)][1] ?? $default;
+        return $this->headers[\strtolower($name)][1] ?? $default;
     }
 
     /**
@@ -145,7 +145,7 @@ final class Response
         self::assertLegalHeader($name, $value);
 
         $headers = $this->headers;
-        $headers[strtolower($name)] = [$name, $value];
+        $headers[\strtolower($name)] = [$name, $value];
 
         return new self($this->status, $headers, $this->body);
     }
@@ -153,7 +153,7 @@ final class Response
     public function withoutHeader(string $name): self
     {
         $headers = $this->headers;
-        unset($headers[strtolower($name)]);
+        unset($headers[\strtolower($name)]);
 
         return new self($this->status, $headers, $this->body);
     }
@@ -182,8 +182,8 @@ final class Response
      */
     public function send(): void
     {
-        if (headers_sent($file, $line)) {
-            throw new HttpException(sprintf(
+        if (\headers_sent($file, $line)) {
+            throw new HttpException(\sprintf(
                 'Cannot send the response: output already started at %s:%d. Whatever was emitted '
                 . 'there has already committed the status and headers, so this response cannot '
                 . 'set them.',
@@ -192,10 +192,10 @@ final class Response
             ));
         }
 
-        http_response_code($this->status);
+        \http_response_code($this->status);
 
         foreach ($this->headers as [$name, $value]) {
-            header($name . ': ' . $value, true);
+            \header($name . ': ' . $value, true);
         }
 
         echo $this->body;
@@ -209,7 +209,7 @@ final class Response
         // The range HTTP defines. A three-digit code outside it is not "unusual", it is not a
         // status code, and passing it through would produce a response no client can classify.
         if ($status < 100 || $status > 599) {
-            throw new HttpException(sprintf('%d is not a valid HTTP status code (100-599).', $status));
+            throw new HttpException(\sprintf('%d is not a valid HTTP status code (100-599).', $status));
         }
 
         return $status;
@@ -231,15 +231,15 @@ final class Response
      */
     private static function assertLegalHeader(string $name, string $value): void
     {
-        if ($name === '' || preg_match('/^[!#$%&\'*+\-.^_`|~0-9A-Za-z]+$/', $name) !== 1) {
-            throw new HttpException(sprintf(
+        if ($name === '' || \preg_match('/^[!#$%&\'*+\-.^_`|~0-9A-Za-z]+$/', $name) !== 1) {
+            throw new HttpException(\sprintf(
                 'Illegal header name %s. RFC 9110 allows only token characters in a field name.',
-                var_export($name, true),
+                \var_export($name, true),
             ));
         }
 
-        if (preg_match('/[\r\n\0]/', $value) === 1) {
-            throw new HttpException(sprintf(
+        if (\preg_match('/[\r\n\0]/', $value) === 1) {
+            throw new HttpException(\sprintf(
                 'Header %s contains a carriage return, line feed or null byte. That would end the '
                 . 'header line early and let the remainder be read as further headers or as the '
                 . 'body — a response-splitting vector, refused rather than stripped so the caller '

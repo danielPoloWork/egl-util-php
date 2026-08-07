@@ -49,8 +49,8 @@ final class Lookup
      */
     public function label(string $code): string
     {
-        if (!array_key_exists($code, $this->entries)) {
-            throw new OutOfBoundsException(sprintf('No label for code "%s".', $code));
+        if (!\array_key_exists($code, $this->entries)) {
+            throw new OutOfBoundsException(\sprintf('No label for code "%s".', $code));
         }
 
         return $this->entries[$code];
@@ -77,7 +77,7 @@ final class Lookup
      */
     public function has(string $code): bool
     {
-        return array_key_exists($code, $this->entries);
+        return \array_key_exists($code, $this->entries);
     }
 
     /**
@@ -87,7 +87,7 @@ final class Lookup
      */
     public function codes(): array
     {
-        return array_keys($this->entries);
+        return \array_keys($this->entries);
     }
 
     /**

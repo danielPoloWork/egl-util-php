@@ -81,7 +81,7 @@ final class Sanitizer
     {
         // The escape character must be escaped first. Doing it after would also escape the escape
         // characters this method just introduced, doubling them into literals.
-        return str_replace(
+        return \str_replace(
             [$escape, '%', '_'],
             [$escape . $escape, $escape . '%', $escape . '_'],
             $value,
@@ -153,7 +153,7 @@ final class Sanitizer
             return self::$htmlSanitizer;
         }
 
-        if (!class_exists(HtmlSanitizer::class)) {
+        if (!\class_exists(HtmlSanitizer::class)) {
             throw new UtilsException(
                 'Sanitizer::richText() needs symfony/html-sanitizer, which is an optional '
                 . 'dependency of this library and is not installed. Run '

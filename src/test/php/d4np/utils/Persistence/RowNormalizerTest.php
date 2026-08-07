@@ -160,7 +160,7 @@ final class RowNormalizerTest extends TestCase
     {
         $row = ['z' => ' 1 ', 'a' => ' 2 ', 'm' => ' 3 '];
 
-        self::assertSame(['z', 'a', 'm'], array_keys((new RowNormalizer())->normalize($row)));
+        self::assertSame(['z', 'a', 'm'], \array_keys((new RowNormalizer())->normalize($row)));
     }
 
     public function testARowIsNotMutatedInPlace(): void
@@ -233,7 +233,7 @@ final class RowNormalizerTest extends TestCase
     public function testNonStringValuesAreNotTranscoded(): void
     {
         // A resource would be destroyed by iconv(); ints and floats are meaningless to it.
-        $handle = fopen('php://memory', 'rb');
+        $handle = \fopen('php://memory', 'rb');
         self::assertNotFalse($handle);
 
         try {
@@ -243,7 +243,7 @@ final class RowNormalizerTest extends TestCase
             self::assertSame($handle, $normalized['blob']);
             self::assertSame(1, $normalized['id']);
         } finally {
-            fclose($handle);
+            \fclose($handle);
         }
     }
 
@@ -358,7 +358,7 @@ final class RowNormalizerTest extends TestCase
         foreach ([true, false] as $trim) {
             foreach ([true, false] as $collapseWhitespace) {
                 foreach ([true, false] as $blankToNull) {
-                    $label = sprintf(
+                    $label = \sprintf(
                         'from=%s trim=%s collapse=%s blankToNull=%s',
                         $fromEncoding ?? 'null',
                         $trim ? 'y' : 'n',
@@ -383,7 +383,7 @@ final class RowNormalizerTest extends TestCase
         bool $collapseWhitespace,
         bool $blankToNull,
     ): mixed {
-        if (!is_string($value)) {
+        if (!\is_string($value)) {
             return $value;
         }
 
@@ -394,7 +394,7 @@ final class RowNormalizerTest extends TestCase
         if ($collapseWhitespace) {
             $value = Str::collapseWhitespace($value);
         } elseif ($trim) {
-            $value = trim($value);
+            $value = \trim($value);
         }
 
         return $blankToNull ? Str::nullIfBlank($value) : $value;

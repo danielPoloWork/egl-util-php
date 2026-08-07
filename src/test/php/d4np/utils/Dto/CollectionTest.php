@@ -56,7 +56,7 @@ final class CollectionTest extends TestCase
         $c = new Collection([1, 2, 3]);
 
         self::assertCount(3, $c);
-        self::assertSame([1, 2, 3], iterator_to_array($c));
+        self::assertSame([1, 2, 3], \iterator_to_array($c));
     }
 
     // ---------------------------------------------------------- functional

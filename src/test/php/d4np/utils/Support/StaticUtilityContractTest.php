@@ -55,19 +55,19 @@ final class StaticUtilityContractTest extends TestCase
     {
         $reflection = new ReflectionClass($class);
 
-        self::assertTrue($reflection->isFinal(), sprintf('%s must be final', $class));
+        self::assertTrue($reflection->isFinal(), \sprintf('%s must be final', $class));
         self::assertFalse(
             $reflection->isInstantiable(),
-            sprintf('%s must not be instantiable — its constructor is the guard', $class),
+            \sprintf('%s must not be instantiable — its constructor is the guard', $class),
         );
 
         $constructor = $reflection->getConstructor();
-        self::assertNotNull($constructor, sprintf('%s must declare a constructor to make private', $class));
-        self::assertTrue($constructor->isPrivate(), sprintf('%s::__construct() must be private', $class));
+        self::assertNotNull($constructor, \sprintf('%s must declare a constructor to make private', $class));
+        self::assertTrue($constructor->isPrivate(), \sprintf('%s::__construct() must be private', $class));
         self::assertSame(
             0,
             $constructor->getNumberOfParameters(),
-            sprintf('%s::__construct() takes no parameters — it exists only to be private', $class),
+            \sprintf('%s::__construct() takes no parameters — it exists only to be private', $class),
         );
     }
 
@@ -113,7 +113,7 @@ final class StaticUtilityContractTest extends TestCase
         self::assertSame(
             [],
             $nonStatic,
-            sprintf('%s has public non-static method(s): %s', $class, implode(', ', $nonStatic)),
+            \sprintf('%s has public non-static method(s): %s', $class, \implode(', ', $nonStatic)),
         );
     }
 }

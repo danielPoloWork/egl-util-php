@@ -197,7 +197,7 @@ final class Request
      */
     public function method(): string
     {
-        return strtoupper(self::asString($this->server['REQUEST_METHOD'] ?? null, 'GET') ?? 'GET');
+        return \strtoupper(self::asString($this->server['REQUEST_METHOD'] ?? null, 'GET') ?? 'GET');
     }
 
     /**
@@ -216,7 +216,7 @@ final class Request
         // an isset() check. Forwarded-proto headers are deliberately NOT consulted: they are
         // client-supplied unless a trusted proxy has rewritten them, and this class cannot know
         // whether one has.
-        return $https !== null && $https !== '' && strtolower($https) !== 'off';
+        return $https !== null && $https !== '' && \strtolower($https) !== 'off';
     }
 
     /**
@@ -229,7 +229,7 @@ final class Request
      */
     public function header(string $name, ?string $default = null): ?string
     {
-        return $this->headers()[strtolower($name)] ?? $default;
+        return $this->headers()[\strtolower($name)] ?? $default;
     }
 
     /**
@@ -271,7 +271,7 @@ final class Request
     {
         $file = $this->files[$key] ?? null;
 
-        return is_array($file) ? $file : null;
+        return \is_array($file) ? $file : null;
     }
 
     // ---- coercion ------------------------------------------------------------------------------
@@ -279,11 +279,11 @@ final class Request
     private static function asString(mixed $value, ?string $default = null): ?string
     {
         // Arrays and objects are refused, not flattened — see the class docblock.
-        if (is_string($value)) {
+        if (\is_string($value)) {
             return $value;
         }
 
-        if (is_int($value) || is_float($value)) {
+        if (\is_int($value) || \is_float($value)) {
             return (string) $value;
         }
 
@@ -292,28 +292,28 @@ final class Request
 
     private static function asInt(mixed $value, ?int $default = null): ?int
     {
-        if (is_int($value)) {
+        if (\is_int($value)) {
             return $value;
         }
 
-        if (!is_string($value)) {
+        if (!\is_string($value)) {
             return $default;
         }
 
         // FILTER_VALIDATE_INT rather than a cast: `(int) "12abc"` is 12, which invents a value the
         // client did not send. This returns the default for anything that is not wholly an integer.
-        $parsed = filter_var($value, FILTER_VALIDATE_INT);
+        $parsed = \filter_var($value, FILTER_VALIDATE_INT);
 
         return $parsed === false ? $default : $parsed;
     }
 
     private static function asBool(mixed $value, ?bool $default = null): ?bool
     {
-        if (is_bool($value)) {
+        if (\is_bool($value)) {
             return $value;
         }
 
-        if (!is_string($value)) {
+        if (!\is_string($value)) {
             return $default;
         }
 
@@ -325,7 +325,7 @@ final class Request
         // an **empty** (or whitespace-only) value as `false`, not as "not boolean-shaped". So
         // `?flag=` is false, not absent. Following PHP here rather than inventing a third answer
         // keeps this consistent with `Env::get()`, which uses the same filter.
-        $parsed = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $parsed = \filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 
         return $parsed ?? $default;
     }
@@ -335,7 +335,7 @@ final class Request
      */
     private static function asStringList(mixed $value): array
     {
-        if (!is_array($value)) {
+        if (!\is_array($value)) {
             return [];
         }
 
@@ -360,15 +360,15 @@ final class Request
      */
     private static function headerNameOf(string $key): ?string
     {
-        if (str_starts_with($key, 'HTTP_')) {
-            return strtolower(str_replace('_', '-', substr($key, 5)));
+        if (\str_starts_with($key, 'HTTP_')) {
+            return \strtolower(\str_replace('_', '-', \substr($key, 5)));
         }
 
         // CGI reports these two without the prefix. `HTTP_CONTENT_TYPE` maps to the same name, and
         // whichever the server supplied wins — they cannot disagree in a well-formed request, and
         // preferring one over the other would be inventing a rule no specification states.
         if ($key === 'CONTENT_TYPE' || $key === 'CONTENT_LENGTH') {
-            return strtolower(str_replace('_', '-', $key));
+            return \strtolower(\str_replace('_', '-', $key));
         }
 
         return null;

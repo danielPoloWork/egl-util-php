@@ -58,12 +58,12 @@ final class Collection implements Countable, IteratorAggregate
         iterable $items = [],
         private readonly ?string $itemType = null,
     ) {
-        $list = is_array($items) ? array_values($items) : iterator_to_array($items, false);
+        $list = \is_array($items) ? \array_values($items) : \iterator_to_array($items, false);
 
         if ($itemType !== null) {
             foreach ($list as $index => $item) {
                 if (!$item instanceof $itemType) {
-                    throw TypeMismatchException::at((string) $index, $itemType, get_debug_type($item));
+                    throw TypeMismatchException::at((string) $index, $itemType, \get_debug_type($item));
                 }
             }
         }
@@ -106,7 +106,7 @@ final class Collection implements Countable, IteratorAggregate
      */
     public function map(callable $callback): self
     {
-        return new self(array_map($callback, $this->items));
+        return new self(\array_map($callback, $this->items));
     }
 
     /**
@@ -120,7 +120,7 @@ final class Collection implements Countable, IteratorAggregate
      */
     public function filter(callable $callback): self
     {
-        return new self(array_values(array_filter($this->items, $callback)), $this->itemType);
+        return new self(\array_values(\array_filter($this->items, $callback)), $this->itemType);
     }
 
     /**
@@ -139,7 +139,7 @@ final class Collection implements Countable, IteratorAggregate
      */
     public function reduce(callable $callback, mixed $initial): mixed
     {
-        return array_reduce($this->items, $callback, $initial);
+        return \array_reduce($this->items, $callback, $initial);
     }
 
     /**

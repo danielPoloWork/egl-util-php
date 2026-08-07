@@ -69,7 +69,7 @@ final class ServiceProviderTest extends TestCase
      */
     public function testTheContractIsExactlyOneMethod(): void
     {
-        $declared = array_map(
+        $declared = \array_map(
             static fn (\ReflectionMethod $m): string => $m->getName(),
             (new \ReflectionClass(ServiceProvider::class))->getMethods(),
         );

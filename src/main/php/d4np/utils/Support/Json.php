@@ -31,7 +31,7 @@ final class Json
     public static function encode(mixed $value, int $flags = 0, int $depth = 512): string
     {
         try {
-            return json_encode($value, $flags | JSON_THROW_ON_ERROR, $depth);
+            return \json_encode($value, $flags | JSON_THROW_ON_ERROR, $depth);
         } catch (NativeJsonException $e) {
             throw JsonException::wrap($e);
         }
@@ -45,7 +45,7 @@ final class Json
     public static function decode(string $json, bool $associative = true, int $depth = 512, int $flags = 0): mixed
     {
         try {
-            return json_decode($json, $associative, $depth, $flags | JSON_THROW_ON_ERROR);
+            return \json_decode($json, $associative, $depth, $flags | JSON_THROW_ON_ERROR);
         } catch (NativeJsonException $e) {
             throw JsonException::wrap($e);
         }

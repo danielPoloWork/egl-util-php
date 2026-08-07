@@ -18,7 +18,7 @@ final class WitherValidatingDto extends DataTransferObject
     public function __construct(
         public readonly string $email,
     ) {
-        if (!str_contains($email, '@')) {
+        if (!\str_contains($email, '@')) {
             throw new \InvalidArgumentException('email must contain @');
         }
     }

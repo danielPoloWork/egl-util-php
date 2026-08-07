@@ -81,7 +81,7 @@ final class UrlQueryTest extends TestCase
     public function testHttpBuildQueryDropsNullsWhichIsWhyTheyAreRefused(): void
     {
         // Pinning the PHP behaviour the refusal exists for: 'b' vanishes without a trace.
-        self::assertSame('a=1', http_build_query(['a' => '1', 'b' => null], '', '&', PHP_QUERY_RFC3986));
+        self::assertSame('a=1', \http_build_query(['a' => '1', 'b' => null], '', '&', PHP_QUERY_RFC3986));
     }
 
     public function testANestedNullIsRefusedAndItsPathIsNamed(): void

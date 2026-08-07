@@ -26,18 +26,18 @@ final class CsvRoundTripTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/egl-utils-csv-' . bin2hex(random_bytes(8));
-        if (!mkdir($this->dir) && !is_dir($this->dir)) {
+        $this->dir = \sys_get_temp_dir() . '/egl-utils-csv-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($this->dir) && !\is_dir($this->dir)) {
             self::fail('could not create the test directory');
         }
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            @unlink($entry);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            @\unlink($entry);
         }
-        @rmdir($this->dir);
+        @\rmdir($this->dir);
     }
 
     private function path(string $name = 'out.csv'): string
@@ -50,7 +50,7 @@ final class CsvRoundTripTest extends TestCase
      */
     public static function fieldCases(): iterable
     {
-        $backslash = chr(92);
+        $backslash = \chr(92);
 
         yield 'plain' => [['a', 'b']];
         yield 'embedded delimiter' => [['a,b', 'c']];
@@ -78,7 +78,7 @@ final class CsvRoundTripTest extends TestCase
     {
         Csv::write($this->path(), [$row]);
 
-        self::assertSame([$row], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([$row], \iterator_to_array(Csv::read($this->path())));
     }
 
     /**
@@ -92,8 +92,8 @@ final class CsvRoundTripTest extends TestCase
 
             self::assertSame(
                 [$row],
-                iterator_to_array(Csv::read($this->path(), $delimiter)),
-                sprintf('round trip failed for delimiter %s', $delimiter->name),
+                \iterator_to_array(Csv::read($this->path(), $delimiter)),
+                \sprintf('round trip failed for delimiter %s', $delimiter->name),
             );
         }
     }
@@ -103,15 +103,15 @@ final class CsvRoundTripTest extends TestCase
         // Not testing our code — pinning the native behaviour ADR-0037 is about, so that a
         // future PHP changing it makes this test say so rather than leaving the workaround
         // looking arbitrary.
-        $backslash = chr(92);
+        $backslash = \chr(92);
         $row = ['ends with ' . $backslash, 'next'];
 
-        $handle = fopen('php://memory', 'r+');
+        $handle = \fopen('php://memory', 'r+');
         self::assertIsResource($handle);
-        fputcsv($handle, $row, ',', '"', $backslash);
-        rewind($handle);
-        $back = fgetcsv($handle, 0, ',', '"', $backslash);
-        fclose($handle);
+        \fputcsv($handle, $row, ',', '"', $backslash);
+        \rewind($handle);
+        $back = \fgetcsv($handle, 0, ',', '"', $backslash);
+        \fclose($handle);
 
         // Two fields went in; one came back, having swallowed the delimiter and the newline.
         self::assertIsArray($back);
@@ -128,7 +128,7 @@ final class CsvRoundTripTest extends TestCase
 
         Csv::write($this->path(), $rows);
 
-        self::assertSame($rows, iterator_to_array(Csv::read($this->path())));
+        self::assertSame($rows, \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testNumericsComeBackAsStringsWhichIsWhatCsvIs(): void
@@ -137,6 +137,6 @@ final class CsvRoundTripTest extends TestCase
         // expects otherwise.
         Csv::write($this->path(), [[42, 1.5, true, false, null]]);
 
-        self::assertSame([['42', '1.5', '1', '', '']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([['42', '1.5', '1', '', '']], \iterator_to_array(Csv::read($this->path())));
     }
 }

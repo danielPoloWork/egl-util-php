@@ -42,7 +42,7 @@ final class Env
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        $raw = getenv($key);
+        $raw = \getenv($key);
         if ($raw === false) {
             return $default;
         }
@@ -51,7 +51,7 @@ final class Env
             return '';
         }
 
-        $coerced = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $coerced = \filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 
         return $coerced ?? $raw;
     }

@@ -61,8 +61,8 @@ final class SanitizerDomBypassTest extends TestCase
         $expected = Snapshot::read(self::SNAPSHOT);
         self::assertNotNull($expected, 'no snapshot recorded yet — run with UPDATE_SNAPSHOTS=1 and review it');
 
-        ksort($actual);
-        ksort($expected);
+        \ksort($actual);
+        \ksort($expected);
 
         self::assertSame(
             $expected,
@@ -93,7 +93,7 @@ final class SanitizerDomBypassTest extends TestCase
     {
         $sanitized = Sanitizer::richText($payload);
 
-        self::assertSame(0, preg_match('/\son[a-z]+\s*=/i', $sanitized), $name . ': ' . $sanitized);
+        self::assertSame(0, \preg_match('/\son[a-z]+\s*=/i', $sanitized), $name . ': ' . $sanitized);
     }
 
     /**
@@ -102,7 +102,7 @@ final class SanitizerDomBypassTest extends TestCase
     #[DataProvider('payloads')]
     public function testNoExecutableElementSurvives(string $name, string $payload): void
     {
-        $sanitized = strtolower(Sanitizer::richText($payload));
+        $sanitized = \strtolower(Sanitizer::richText($payload));
 
         foreach (['<script', '<iframe', '<object', '<embed', '<base', '<meta', '<link', '<style', '<form'] as $element) {
             self::assertStringNotContainsString($element, $sanitized, $name);
@@ -116,7 +116,7 @@ final class SanitizerDomBypassTest extends TestCase
     #[DataProvider('payloads')]
     public function testNoScriptingSchemeSurvives(string $name, string $payload): void
     {
-        $sanitized = strtolower(Sanitizer::richText($payload));
+        $sanitized = \strtolower(Sanitizer::richText($payload));
 
         foreach (['javascript:', 'vbscript:', 'data:text/html'] as $scheme) {
             self::assertStringNotContainsString($scheme, $sanitized, $name);
@@ -144,12 +144,12 @@ final class SanitizerDomBypassTest extends TestCase
 
     public function testTheCorpusStillCoversTheMutationTechniquesItClaimsTo(): void
     {
-        $names = array_keys(XssCorpus::domBypassPayloads());
+        $names = \array_keys(XssCorpus::domBypassPayloads());
 
         foreach (['mxss-noscript-title', 'mxss-svg-style', 'mxss-math-mglyph', 'mxss-xmp'] as $required) {
             self::assertContains($required, $names);
         }
 
-        self::assertGreaterThanOrEqual(18, count($names), 'the corpus has shrunk — was that deliberate?');
+        self::assertGreaterThanOrEqual(18, \count($names), 'the corpus has shrunk — was that deliberate?');
     }
 }

@@ -159,7 +159,7 @@ final class TableGatewayTest extends TestCase
         // returns can carry it, because the column never entered the statement.
         $person = $this->gateway()->find(1);
         self::assertInstanceOf(Person::class, $person);
-        self::assertSame(['id', 'name', 'age', 'status'], array_keys(get_object_vars($person)));
+        self::assertSame(['id', 'name', 'age', 'status'], \array_keys(\get_object_vars($person)));
     }
 
     public function testTheProjectionUsesTheSharedReflectionCacheWhenGivenOne(): void
@@ -377,7 +377,7 @@ final class TableGatewayTest extends TestCase
 
         $oldest = (new PersonGateway($this->connection))->oldestFirst(2);
 
-        self::assertSame(['Grace', 'Alan'], array_map(static fn (Person $p): string => $p->name, $oldest));
+        self::assertSame(['Grace', 'Alan'], \array_map(static fn (Person $p): string => $p->name, $oldest));
     }
 
     public function testASubclassInheritsTheCrudSurfaceUnchanged(): void

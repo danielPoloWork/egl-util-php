@@ -44,7 +44,7 @@ final class CsrfTokenTest extends TestCase
      */
     public function testTheTokenIsSixtyFourHexCharacters(): void
     {
-        self::assertSame(1, preg_match('/^[0-9a-f]{64}\z/', $this->csrf->issue()));
+        self::assertSame(1, \preg_match('/^[0-9a-f]{64}\z/', $this->csrf->issue()));
     }
 
     /**
@@ -59,7 +59,7 @@ final class CsrfTokenTest extends TestCase
             $tokens[] = (new CsrfToken(new ArraySessionStore()))->issue();
         }
 
-        self::assertCount(50, array_unique($tokens));
+        self::assertCount(50, \array_unique($tokens));
     }
 
     /**
@@ -75,7 +75,7 @@ final class CsrfTokenTest extends TestCase
     {
         $this->csrf->issue();
 
-        self::assertFalse($this->csrf->validate(bin2hex(random_bytes(32))));
+        self::assertFalse($this->csrf->validate(\bin2hex(\random_bytes(32))));
     }
 
     /**
@@ -88,9 +88,9 @@ final class CsrfTokenTest extends TestCase
     {
         yield 'empty' => [''];
         yield 'too short' => ['abc'];
-        yield 'right length, wrong value' => [str_repeat('0', 64)];
+        yield 'right length, wrong value' => [\str_repeat('0', 64)];
         yield 'prefix of the real token' => ['deadbeef'];
-        yield 'non-hex' => [str_repeat('z', 64)];
+        yield 'non-hex' => [\str_repeat('z', 64)];
     }
 
     #[DataProvider('rejectedTokens')]
@@ -103,7 +103,7 @@ final class CsrfTokenTest extends TestCase
 
     public function testValidationFailsWhenNoTokenHasBeenIssued(): void
     {
-        self::assertFalse($this->csrf->validate(bin2hex(random_bytes(32))));
+        self::assertFalse($this->csrf->validate(\bin2hex(\random_bytes(32))));
         self::assertFalse($this->csrf->validate(''));
     }
 
@@ -146,7 +146,7 @@ final class CsrfTokenTest extends TestCase
         $this->csrf->issue('login');
         $this->csrf->issue('checkout');
 
-        self::assertSame(['_csrf.login', '_csrf.checkout'], array_keys($this->store->entries));
+        self::assertSame(['_csrf.login', '_csrf.checkout'], \array_keys($this->store->entries));
     }
 
     /**
@@ -162,7 +162,7 @@ final class CsrfTokenTest extends TestCase
         yield 'with a space' => ['a b'];
         yield 'with a newline' => ["a\nb"];
         yield 'with a null byte' => ["a\0b"];
-        yield 'over-long' => [str_repeat('a', 65)];
+        yield 'over-long' => [\str_repeat('a', 65)];
         yield 'unicode' => ['scopé'];
     }
 
@@ -184,8 +184,8 @@ final class CsrfTokenTest extends TestCase
 
     public function testLegalScopeShapesAreAccepted(): void
     {
-        foreach (['login', 'check-out', 'form_1', 'a.b', str_repeat('x', 64)] as $scope) {
-            self::assertSame(1, preg_match('/^[0-9a-f]{64}\z/', $this->csrf->issue($scope)), $scope);
+        foreach (['login', 'check-out', 'form_1', 'a.b', \str_repeat('x', 64)] as $scope) {
+            self::assertSame(1, \preg_match('/^[0-9a-f]{64}\z/', $this->csrf->issue($scope)), $scope);
         }
     }
 

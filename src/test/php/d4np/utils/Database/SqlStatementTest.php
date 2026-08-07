@@ -59,7 +59,7 @@ final class SqlStatementTest extends TestCase
         // The shape the escape hatch exists for: a placeholder count that depends on the data,
         // so the text cannot be a literal however safe its inputs are.
         $values = ['a', 'b', 'c'];
-        $sql = 'SELECT * FROM users WHERE name IN (' . implode(', ', array_fill(0, count($values), '?')) . ')';
+        $sql = 'SELECT * FROM users WHERE name IN (' . \implode(', ', \array_fill(0, \count($values), '?')) . ')';
 
         $statement = SqlStatement::composed($sql, $values);
 
@@ -115,15 +115,15 @@ final class SqlStatementTest extends TestCase
      */
     public function testTheOnlyWaysInAreTheNamedConstructors(): void
     {
-        $entryPoints = array_values(array_map(
+        $entryPoints = \array_values(\array_map(
             static fn (ReflectionMethod $m): string => $m->getName(),
-            array_filter(
+            \array_filter(
                 (new ReflectionClass(SqlStatement::class))->getMethods(ReflectionMethod::IS_PUBLIC),
                 static fn (ReflectionMethod $m): bool => $m->isStatic(),
             ),
         ));
 
-        sort($entryPoints);
+        \sort($entryPoints);
 
         self::assertSame(['composed', 'fromMutation', 'fromQueryBuilder', 'literal'], $entryPoints);
     }

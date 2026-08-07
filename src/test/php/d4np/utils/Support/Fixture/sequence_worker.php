@@ -18,7 +18,7 @@ use D4np\Utils\Support\FileSequence;
 /** @var list<string> $argv */
 $argv = $_SERVER['argv'];
 
-if (\count($argv) !== 7) {
+if (count($argv) !== 7) {
     fwrite(STDERR, "usage: sequence_worker.php <autoload> <statePath> <cap> <window> <draws> <outFile>\n");
 
     exit(2);

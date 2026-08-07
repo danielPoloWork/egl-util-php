@@ -24,7 +24,7 @@ final class StrTranscodeTest extends TestCase
 {
     protected function setUp(): void
     {
-        if (!function_exists('iconv')) {
+        if (!\function_exists('iconv')) {
             self::markTestSkipped('ext-iconv is not loaded in this environment.');
         }
     }

@@ -20,22 +20,22 @@ final class FileTest extends TestCase
 
     protected function setUp(): void
     {
-        $base = sys_get_temp_dir() . '/egl-utils-filetest-' . bin2hex(random_bytes(8));
-        if (!mkdir($base) && !is_dir($base)) {
-            self::fail(sprintf('could not create the test directory "%s"', $base));
+        $base = \sys_get_temp_dir() . '/egl-utils-filetest-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($base) && !\is_dir($base)) {
+            self::fail(\sprintf('could not create the test directory "%s"', $base));
         }
         $this->dir = $base;
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            if (is_file($entry)) {
-                unlink($entry);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            if (\is_file($entry)) {
+                \unlink($entry);
             }
         }
-        if (is_dir($this->dir)) {
-            rmdir($this->dir);
+        if (\is_dir($this->dir)) {
+            \rmdir($this->dir);
         }
     }
 
@@ -53,17 +53,17 @@ final class FileTest extends TestCase
         File::write($path, "line one\nline two\n");
 
         self::assertFileExists($path);
-        self::assertSame("line one\nline two\n", file_get_contents($path));
+        self::assertSame("line one\nline two\n", \file_get_contents($path));
     }
 
     public function testWriteReplacesExistingContentsEntirely(): void
     {
         $path = $this->path('replaced.txt');
-        file_put_contents($path, 'a much longer previous content that must not survive');
+        \file_put_contents($path, 'a much longer previous content that must not survive');
 
         File::write($path, 'short');
 
-        self::assertSame('short', file_get_contents($path));
+        self::assertSame('short', \file_get_contents($path));
     }
 
     public function testWriteHandlesEmptyContents(): void
@@ -73,18 +73,18 @@ final class FileTest extends TestCase
         File::write($path, '');
 
         self::assertFileExists($path);
-        self::assertSame('', file_get_contents($path));
-        self::assertSame(0, filesize($path));
+        self::assertSame('', \file_get_contents($path));
+        self::assertSame(0, \filesize($path));
     }
 
     public function testWriteHandlesBinaryContentsWithNullBytes(): void
     {
         $path = $this->path('binary.bin');
-        $binary = random_bytes(4096) . "\x00\x00" . random_bytes(64);
+        $binary = \random_bytes(4096) . "\x00\x00" . \random_bytes(64);
 
         File::write($path, $binary);
 
-        self::assertSame($binary, file_get_contents($path));
+        self::assertSame($binary, \file_get_contents($path));
     }
 
     public function testWriteLeavesNoTemporaryFileBehind(): void
@@ -93,9 +93,9 @@ final class FileTest extends TestCase
 
         File::write($path, 'content');
 
-        $leftovers = array_values(array_filter(
-            glob($this->dir . '/*') ?: [],
-            static fn (string $entry): bool => str_contains(basename($entry), '.egl-utils-'),
+        $leftovers = \array_values(\array_filter(
+            \glob($this->dir . '/*') ?: [],
+            static fn (string $entry): bool => \str_contains(\basename($entry), '.egl-utils-'),
         ));
 
         self::assertSame([], $leftovers, 'the temporary file must be renamed away, not left behind');
@@ -108,14 +108,14 @@ final class FileTest extends TestCase
         }
 
         $path = $this->path('perms.txt');
-        file_put_contents($path, 'before');
-        chmod($path, 0640);
-        clearstatcache(true, $path);
+        \file_put_contents($path, 'before');
+        \chmod($path, 0640);
+        \clearstatcache(true, $path);
 
         File::write($path, 'after');
-        clearstatcache(true, $path);
+        \clearstatcache(true, $path);
 
-        self::assertSame(0640, fileperms($path) & 0777, 'a rewrite must not silently change the mode');
+        self::assertSame(0640, \fileperms($path) & 0777, 'a rewrite must not silently change the mode');
     }
 
     public function testWriteGivesANewFileTheDefaultModeNotTheTempFilesRestrictiveOne(): void
@@ -127,10 +127,10 @@ final class FileTest extends TestCase
         $path = $this->path('newfile.txt');
 
         File::write($path, 'content');
-        clearstatcache(true, $path);
+        \clearstatcache(true, $path);
 
         // tempnam() creates 0600; the target must not inherit it.
-        self::assertSame(0644, fileperms($path) & 0777);
+        self::assertSame(0644, \fileperms($path) & 0777);
     }
 
     public function testWriteThrowsWhenTheDirectoryDoesNotExist(): void
@@ -155,16 +155,16 @@ final class FileTest extends TestCase
     public function testWriteReplacesTheFileRatherThanTruncatingItInPlace(): void
     {
         $path = $this->path('atomic.txt');
-        File::write($path, str_repeat('A', 4096));
+        File::write($path, \str_repeat('A', 4096));
 
-        clearstatcache(true, $path);
-        $before = fileinode($path);
+        \clearstatcache(true, $path);
+        $before = \fileinode($path);
         self::assertNotFalse($before, 'this platform must report inodes for the test to mean anything');
 
-        File::write($path, str_repeat('B', 2048));
+        File::write($path, \str_repeat('B', 2048));
 
-        clearstatcache(true, $path);
-        $after = fileinode($path);
+        \clearstatcache(true, $path);
+        $after = \fileinode($path);
 
         self::assertNotSame(
             $before,
@@ -172,7 +172,7 @@ final class FileTest extends TestCase
             'the inode did not change, so the file was modified in place rather than replaced — '
             . 'an in-place write is observable half-done by a concurrent reader',
         );
-        self::assertSame(str_repeat('B', 2048), file_get_contents($path));
+        self::assertSame(\str_repeat('B', 2048), \file_get_contents($path));
     }
 
     /**
@@ -192,23 +192,23 @@ final class FileTest extends TestCase
         }
 
         $path = $this->path('atomic-open-handle.txt');
-        $old = str_repeat('A', 100_000);
-        $new = str_repeat('B', 40_000);
+        $old = \str_repeat('A', 100_000);
+        $new = \str_repeat('B', 40_000);
 
         File::write($path, $old);
 
-        $reader = fopen($path, 'rb');
+        $reader = \fopen($path, 'rb');
         self::assertNotFalse($reader);
 
         try {
             File::write($path, $new);
 
-            $observed = stream_get_contents($reader);
+            $observed = \stream_get_contents($reader);
 
             self::assertSame($old, $observed, 'an open reader must not observe the replacement at all');
-            self::assertSame($new, file_get_contents($path), 'a fresh read must see the new contents');
+            self::assertSame($new, \file_get_contents($path), 'a fresh read must see the new contents');
         } finally {
-            fclose($reader);
+            \fclose($reader);
         }
     }
 
@@ -217,8 +217,8 @@ final class FileTest extends TestCase
     public function testReadReturnsTheFullContents(): void
     {
         $path = $this->path('read.txt');
-        $contents = str_repeat("payload line\n", 5000);
-        file_put_contents($path, $contents);
+        $contents = \str_repeat("payload line\n", 5000);
+        \file_put_contents($path, $contents);
 
         self::assertSame($contents, File::read($path));
     }
@@ -226,7 +226,7 @@ final class FileTest extends TestCase
     public function testReadRoundTripsWhatWriteStored(): void
     {
         $path = $this->path('roundtrip.bin');
-        $payload = random_bytes(8192);
+        $payload = \random_bytes(8192);
 
         File::write($path, $payload);
 
@@ -236,7 +236,7 @@ final class FileTest extends TestCase
     public function testReadReturnsEmptyStringForAnEmptyFile(): void
     {
         $path = $this->path('emptyread.txt');
-        touch($path);
+        \touch($path);
 
         self::assertSame('', File::read($path));
     }
@@ -272,7 +272,7 @@ final class FileTest extends TestCase
         // reported as application/octet-stream. Verified rather than assumed — and a real file
         // is portable across libmagic versions in a way that relying on one version's leniency
         // would not be.
-        $png = base64_decode(
+        $png = \base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
             true,
         );
@@ -289,7 +289,7 @@ final class FileTest extends TestCase
         // A second format, so the claim "detection reads content" rests on more than one
         // fixture: GIF's magic is self-sufficient where PNG's signature alone is not.
         $path = $this->path('actually-a-gif.pdf');
-        File::write($path, 'GIF89a' . str_repeat("\x00", 32));
+        File::write($path, 'GIF89a' . \str_repeat("\x00", 32));
 
         self::assertSame('image/gif', File::mime($path));
     }

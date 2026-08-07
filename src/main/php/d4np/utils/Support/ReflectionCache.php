@@ -82,8 +82,8 @@ final class ReflectionCache
         // and enums, but returns false for interfaces and traits — verified directly. All are
         // reflectable, and the Container in particular must be able to reflect an interface in
         // order to refuse it as non-instantiable.
-        if (!class_exists($class) && !interface_exists($class) && !trait_exists($class)) {
-            throw new UtilsException(sprintf(
+        if (!\class_exists($class) && !\interface_exists($class) && !\trait_exists($class)) {
+            throw new UtilsException(\sprintf(
                 'Cannot reflect "%s": no such class, interface, enum or trait is loadable.',
                 $class,
             ));
@@ -156,7 +156,7 @@ final class ReflectionCache
         // An intersection type's __toString() is well defined, but building the string from its
         // parts keeps this independent of that (documented-but-easy-to-change) behaviour.
         if ($type instanceof ReflectionIntersectionType) {
-            return implode('&', array_map(
+            return \implode('&', \array_map(
                 static fn (\ReflectionType $part): string => (string) $part,
                 $type->getTypes(),
             ));

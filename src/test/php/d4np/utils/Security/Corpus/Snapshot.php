@@ -29,12 +29,12 @@ final class Snapshot
 
     public static function path(string $name): string
     {
-        return dirname(__DIR__, 5) . '/resources/snapshots/' . $name . '.json';
+        return \dirname(__DIR__, 5) . '/resources/snapshots/' . $name . '.json';
     }
 
     public static function shouldUpdate(): bool
     {
-        return getenv('UPDATE_SNAPSHOTS') === '1';
+        return \getenv('UPDATE_SNAPSHOTS') === '1';
     }
 
     /**
@@ -46,18 +46,18 @@ final class Snapshot
     {
         $path = self::path($name);
 
-        if (!is_file($path)) {
+        if (!\is_file($path)) {
             return null;
         }
 
-        $raw = file_get_contents($path);
+        $raw = \file_get_contents($path);
 
         if ($raw === false) {
             throw new RuntimeException('Could not read snapshot: ' . $path);
         }
 
         /** @var array<string, string> */
-        return json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        return \json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -66,22 +66,22 @@ final class Snapshot
     public static function write(string $name, array $actual): void
     {
         $path = self::path($name);
-        $directory = dirname($path);
+        $directory = \dirname($path);
 
-        if (!is_dir($directory) && !mkdir($directory, 0o777, true) && !is_dir($directory)) {
+        if (!\is_dir($directory) && !\mkdir($directory, 0o777, true) && !\is_dir($directory)) {
             throw new RuntimeException('Could not create snapshot directory: ' . $directory);
         }
 
         // Sorted keys and pretty-printing are not cosmetic: this file's entire job is to produce a
         // diff a human will read, and an unordered or single-line JSON blob produces a diff nobody
         // can review. Slashes and unicode are left unescaped for the same reason.
-        ksort($actual);
+        \ksort($actual);
 
-        $json = json_encode(
+        $json = \json_encode(
             $actual,
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
         );
 
-        file_put_contents($path, $json . "\n");
+        \file_put_contents($path, $json . "\n");
     }
 }

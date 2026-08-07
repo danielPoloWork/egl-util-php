@@ -39,7 +39,7 @@ final class SessionCsrfIntegrationTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        $server = new DevServer(dirname(__DIR__, 4) . '/resources/t03-server');
+        $server = new DevServer(\dirname(__DIR__, 4) . '/resources/t03-server');
         $failure = $server->start();
 
         if ($failure !== '') {
@@ -61,7 +61,7 @@ final class SessionCsrfIntegrationTest extends TestCase
         $exchange = $client->get(self::$server?->url($query) ?? '');
 
         self::assertSame('', $exchange->curlError, 'the request never reached the server');
-        self::assertSame(200, $exchange->status, sprintf(
+        self::assertSame(200, $exchange->status, \sprintf(
             "expected 200 for `%s`, got %d.\nbody: %s\nserver log: %s",
             $query,
             $exchange->status,
@@ -232,7 +232,7 @@ final class SessionCsrfIntegrationTest extends TestCase
 
         $token = $this->get($client, 'action=issue&scope=login')->body;
 
-        self::assertSame(64, strlen($token), '32 CSPRNG bytes, hex-encoded');
+        self::assertSame(64, \strlen($token), '32 CSPRNG bytes, hex-encoded');
         self::assertSame('valid', $this->get($client, "action=validate&scope=login&token={$token}")->body);
     }
 
@@ -286,7 +286,7 @@ final class SessionCsrfIntegrationTest extends TestCase
 
         $this->get($client, 'action=issue&scope=login');
 
-        self::assertSame('invalid', $this->get($client, 'action=validate&scope=login&token=' . str_repeat('0', 64))->body);
+        self::assertSame('invalid', $this->get($client, 'action=validate&scope=login&token=' . \str_repeat('0', 64))->body);
         self::assertSame('invalid', $this->get($client, 'action=validate&scope=login&token=')->body);
     }
 

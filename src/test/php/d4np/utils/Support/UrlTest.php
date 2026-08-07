@@ -106,7 +106,7 @@ final class UrlTest extends TestCase
     {
         // Not testing our code: pinning the PHP behavior the guard exists for, so that if a
         // future PHP starts rejecting these outright, this test says so.
-        $parts = parse_url("https://example.com\n/evil");
+        $parts = \parse_url("https://example.com\n/evil");
 
         self::assertIsArray($parts);
         self::assertSame('example.com_', $parts['host'] ?? null);
@@ -137,7 +137,7 @@ final class UrlTest extends TestCase
     {
         // parse_url('not a url') succeeds with ['path' => 'not a url'], so "did it parse?"
         // cannot answer "is this a URL?".
-        self::assertSame(['path' => 'not a url'], parse_url('not a url'));
+        self::assertSame(['path' => 'not a url'], \parse_url('not a url'));
     }
 
     public function testUnparseableStringIsRefused(): void

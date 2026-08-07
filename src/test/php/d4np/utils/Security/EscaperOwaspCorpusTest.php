@@ -65,8 +65,8 @@ final class EscaperOwaspCorpusTest extends TestCase
             'no snapshot recorded yet — run with UPDATE_SNAPSHOTS=1 and review the result before committing it',
         );
 
-        ksort($actual);
-        ksort($expected);
+        \ksort($actual);
+        \ksort($expected);
 
         self::assertSame(
             $expected,
@@ -111,7 +111,7 @@ final class EscaperOwaspCorpusTest extends TestCase
     {
         $escaped = Escaper::attr($payload);
 
-        self::assertSame(1, preg_match('/^(?:[a-zA-Z0-9]|&#x[0-9A-F]{2};|[\x80-\xFF])*$/', $escaped), $name);
+        self::assertSame(1, \preg_match('/^(?:[a-zA-Z0-9]|&#x[0-9A-F]{2};|[\x80-\xFF])*$/', $escaped), $name);
     }
 
     /**
@@ -123,7 +123,7 @@ final class EscaperOwaspCorpusTest extends TestCase
     {
         $escaped = Escaper::js($payload);
 
-        self::assertSame(1, preg_match('/^(?:[a-zA-Z0-9]|\\\\x[0-9A-F]{2}|\\\\u[0-9A-F]{4})*$/', $escaped), $name);
+        self::assertSame(1, \preg_match('/^(?:[a-zA-Z0-9]|\\\\x[0-9A-F]{2}|\\\\u[0-9A-F]{4})*$/', $escaped), $name);
     }
 
     /**
@@ -148,7 +148,7 @@ final class EscaperOwaspCorpusTest extends TestCase
             /** @var callable(string): string $escaper */
             $escaper = [Escaper::class, $context];
 
-            self::assertSame(1, preg_match('//u', $escaper($payload)), $name . '::' . $context);
+            self::assertSame(1, \preg_match('//u', $escaper($payload)), $name . '::' . $context);
         }
     }
 
@@ -158,12 +158,12 @@ final class EscaperOwaspCorpusTest extends TestCase
      */
     public function testTheCorpusStillCoversTheTechniquesItClaimsTo(): void
     {
-        $names = array_keys(XssCorpus::escaperPayloads());
+        $names = \array_keys(XssCorpus::escaperPayloads());
 
         foreach (['script-alert', 'attr-breakout-unquoted', 'js-script-close', 'url-javascript-scheme', 'js-line-separator'] as $required) {
             self::assertContains($required, $names);
         }
 
-        self::assertGreaterThanOrEqual(30, count($names), 'the corpus has shrunk — was that deliberate?');
+        self::assertGreaterThanOrEqual(30, \count($names), 'the corpus has shrunk — was that deliberate?');
     }
 }

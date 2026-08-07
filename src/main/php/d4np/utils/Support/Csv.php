@@ -88,7 +88,7 @@ final class Csv
 
                     $values = $row->csvRow();
                     if (\count($values) !== $headerWidth) {
-                        throw new CsvException(sprintf(
+                        throw new CsvException(\sprintf(
                             '%s produced %d value(s) for a %d-column header. csvHeader() and '
                             . 'csvRow() must agree, in order and in count.',
                             $row::class,
@@ -124,22 +124,22 @@ final class Csv
      */
     public static function read(string $path, Delimiter $delimiter = Delimiter::Comma): Generator
     {
-        if (!is_file($path)) {
-            throw new FileException(sprintf('Cannot read "%s": not a file.', $path));
+        if (!\is_file($path)) {
+            throw new FileException(\sprintf('Cannot read "%s": not a file.', $path));
         }
 
-        $handle = @fopen($path, 'rb');
+        $handle = @\fopen($path, 'rb');
         if ($handle === false) {
-            throw new FileException(sprintf('Cannot read "%s": failed to open for reading.', $path));
+            throw new FileException(\sprintf('Cannot read "%s": failed to open for reading.', $path));
         }
 
         try {
             while (true) {
-                $row = fgetcsv($handle, 0, $delimiter->value, '"', '');
+                $row = \fgetcsv($handle, 0, $delimiter->value, '"', '');
 
                 if ($row === false) {
-                    if (!feof($handle)) {
-                        throw new CsvException(sprintf('Reading "%s" failed before the end of the file.', $path));
+                    if (!\feof($handle)) {
+                        throw new CsvException(\sprintf('Reading "%s" failed before the end of the file.', $path));
                     }
 
                     return;
@@ -153,7 +153,7 @@ final class Csv
                 yield $row;
             }
         } finally {
-            @fclose($handle);
+            @\fclose($handle);
         }
     }
 
@@ -165,7 +165,7 @@ final class Csv
      */
     private static function putRow($handle, array $row, Delimiter $delimiter, bool $guardFormulas): void
     {
-        $fields = array_values($row);
+        $fields = \array_values($row);
 
         if ($fields === []) {
             throw new CsvException(
@@ -176,7 +176,7 @@ final class Csv
         }
 
         if ($guardFormulas) {
-            $fields = array_map(self::guard(...), $fields);
+            $fields = \array_map(self::guard(...), $fields);
         }
 
         // A row of exactly one empty field is the one shape `fputcsv()` cannot express: it
@@ -185,7 +185,7 @@ final class Csv
         // is written instead; `fputcsv()` never quotes an empty field, and there is no flag
         // to make it (ADR-0037).
         if (\count($fields) === 1 && (string) ($fields[0] ?? '') === '') {
-            if (@fwrite($handle, "\"\"\n") === false) {
+            if (@\fwrite($handle, "\"\"\n") === false) {
                 throw new CsvException('Failed to write a CSV row.');
             }
 
@@ -194,7 +194,7 @@ final class Csv
 
         // escape: '' — see the class docblock and ADR-0037. Not a stylistic choice: the
         // default corrupts any field ending in a backslash.
-        if (@fputcsv($handle, $fields, $delimiter->value, '"', '') === false) {
+        if (@\fputcsv($handle, $fields, $delimiter->value, '"', '') === false) {
             throw new CsvException('Failed to write a CSV row.');
         }
     }
@@ -210,11 +210,11 @@ final class Csv
      */
     private static function guard(string|int|float|bool|null $field): string|int|float|bool|null
     {
-        if (!is_string($field) || $field === '') {
+        if (!\is_string($field) || $field === '') {
             return $field;
         }
 
-        return in_array($field[0], self::FORMULA_LEADERS, true)
+        return \in_array($field[0], self::FORMULA_LEADERS, true)
             ? self::TEXT_PREFIX . $field
             : $field;
     }

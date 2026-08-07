@@ -24,15 +24,15 @@ final class EnvTest extends TestCase
     protected function tearDown(): void
     {
         foreach ($this->setKeys as $key) {
-            putenv($key);
+            \putenv($key);
         }
         $this->setKeys = [];
     }
 
     private function withEnv(string $value): string
     {
-        $key = 'D4NP_UTILS_ENV_TEST_' . bin2hex(random_bytes(8));
-        putenv("{$key}={$value}");
+        $key = 'D4NP_UTILS_ENV_TEST_' . \bin2hex(\random_bytes(8));
+        \putenv("{$key}={$value}");
         $this->setKeys[] = $key;
 
         return $key;
@@ -111,7 +111,7 @@ final class EnvTest extends TestCase
 
     public function testAnUnsetVariableReturnsTheDefault(): void
     {
-        $key = 'D4NP_UTILS_ENV_TEST_DEFINITELY_UNSET_' . bin2hex(random_bytes(8));
+        $key = 'D4NP_UTILS_ENV_TEST_DEFINITELY_UNSET_' . \bin2hex(\random_bytes(8));
 
         self::assertSame('fallback', Env::get($key, 'fallback'));
         self::assertNull(Env::get($key));
@@ -122,7 +122,7 @@ final class EnvTest extends TestCase
         // getenv() itself distinguishes these: false (bool) for unset, '' (string) for
         // set-but-empty. This is the pair of assertions that would fail if Env::get() used a
         // loose (==) comparison instead of ===.
-        $unset = 'D4NP_UTILS_ENV_TEST_UNSET_' . bin2hex(random_bytes(8));
+        $unset = 'D4NP_UTILS_ENV_TEST_UNSET_' . \bin2hex(\random_bytes(8));
         $empty = $this->withEnv('');
 
         self::assertNull(Env::get($unset), 'unset must fall through to the default (null here)');

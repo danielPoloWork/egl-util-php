@@ -109,7 +109,7 @@ final class StrSlugTest extends TestCase
         $once = Str::slug($input);
         $twice = Str::slug($once);
 
-        self::assertSame($once, $twice, sprintf('slug("%s") = "%s" is not idempotent', $input, $once));
+        self::assertSame($once, $twice, \sprintf('slug("%s") = "%s" is not idempotent', $input, $once));
     }
 
     private static function invokeViaMethod(string $method, string $value): ?string
@@ -125,7 +125,7 @@ final class StrSlugTest extends TestCase
 
     public function testViaIntlTransliteratesWhenExtensionIsLoaded(): void
     {
-        if (!function_exists('transliterator_transliterate')) {
+        if (!\function_exists('transliterator_transliterate')) {
             self::markTestSkipped('ext-intl is not loaded in this environment');
         }
 
@@ -135,7 +135,7 @@ final class StrSlugTest extends TestCase
 
     public function testViaIconvTransliteratesWhenExtensionIsLoaded(): void
     {
-        if (!function_exists('iconv')) {
+        if (!\function_exists('iconv')) {
             self::markTestSkipped('ext-iconv is not loaded in this environment');
         }
 
@@ -145,7 +145,7 @@ final class StrSlugTest extends TestCase
         $result = self::invokeViaMethod('viaIconv', 'café');
 
         self::assertNotNull($result);
-        self::assertSame(strlen($result), mb_strlen($result), 'result must be single-byte-per-character ASCII');
+        self::assertSame(\strlen($result), \mb_strlen($result), 'result must be single-byte-per-character ASCII');
         self::assertStringContainsString('caf', $result);
     }
 

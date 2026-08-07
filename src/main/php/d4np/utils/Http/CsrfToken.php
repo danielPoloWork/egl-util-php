@@ -78,7 +78,7 @@ final class CsrfToken
             return $existing;
         }
 
-        $token = bin2hex(random_bytes(self::TOKEN_BYTES));
+        $token = \bin2hex(\random_bytes(self::TOKEN_BYTES));
         $this->store->set($key, $token);
 
         return $token;
@@ -106,7 +106,7 @@ final class CsrfToken
             return false;
         }
 
-        return hash_equals($stored, $token);
+        return \hash_equals($stored, $token);
     }
 
     /**
@@ -141,13 +141,13 @@ final class CsrfToken
      */
     private static function keyFor(string $scope): string
     {
-        if (preg_match(self::SCOPE, $scope) !== 1) {
-            throw new HttpException(sprintf(
+        if (\preg_match(self::SCOPE, $scope) !== 1) {
+            throw new HttpException(\sprintf(
                 'CSRF scope %s is not a legal label. A scope becomes a session-storage key, so it '
                 . 'must be an application-chosen name such as "login" or "checkout" — matching %s '
                 . '— and never a value taken from the request, which would let a client grow the '
                 . 'session record one key at a time.',
-                var_export($scope, true),
+                \var_export($scope, true),
                 self::SCOPE,
             ));
         }

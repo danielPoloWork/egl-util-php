@@ -145,7 +145,7 @@ final class IdentifierTest extends TestCase
         $reflected = (new ReflectionClass(Identifier::class))->getFileName();
         self::assertIsString($reflected);
 
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname($reflected, 2)));
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\dirname($reflected, 2)));
         $carriers = [];
 
         foreach ($files as $file) {
@@ -153,15 +153,15 @@ final class IdentifierTest extends TestCase
                 continue;
             }
 
-            $source = file_get_contents($file->getPathname());
+            $source = \file_get_contents($file->getPathname());
             self::assertIsString($source);
 
-            if (str_contains(self::codeOf($source), 'A-Za-z_][A-Za-z0-9_]')) {
+            if (\str_contains(self::codeOf($source), 'A-Za-z_][A-Za-z0-9_]')) {
                 $carriers[] = $file->getFilename();
             }
         }
 
-        sort($carriers);
+        \sort($carriers);
 
         self::assertSame(
             ['Identifier.php'],
@@ -178,12 +178,12 @@ final class IdentifierTest extends TestCase
     {
         $code = '';
 
-        foreach (token_get_all($source) as $token) {
-            if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+        foreach (\token_get_all($source) as $token) {
+            if (\is_array($token) && \in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
                 continue;
             }
 
-            $code .= is_array($token) ? $token[1] : $token;
+            $code .= \is_array($token) ? $token[1] : $token;
         }
 
         return $code;

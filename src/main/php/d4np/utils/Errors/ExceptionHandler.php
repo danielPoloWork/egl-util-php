@@ -97,7 +97,7 @@ final class ExceptionHandler
         $document['detail'] = $throwable->getMessage();
         $document['exception'] = $throwable::class;
         $document['file'] = $throwable->getFile() . ':' . $throwable->getLine();
-        $document['trace'] = explode("\n", $throwable->getTraceAsString());
+        $document['trace'] = \explode("\n", $throwable->getTraceAsString());
 
         return $document;
     }
@@ -128,7 +128,7 @@ final class ExceptionHandler
      */
     public function report(Throwable $throwable): string
     {
-        $reference = bin2hex(random_bytes(8));
+        $reference = \bin2hex(\random_bytes(8));
 
         $this->logger?->log(
             $this->statusFor($throwable) >= 500 ? LogLevel::ERROR : LogLevel::WARNING,
@@ -157,9 +157,9 @@ final class ExceptionHandler
         $document = $this->problem($throwable, $reference);
         $status = $this->statusFor($throwable);
 
-        if (!headers_sent()) {
-            http_response_code($status);
-            header('Content-Type: application/problem+json');
+        if (!\headers_sent()) {
+            \http_response_code($status);
+            \header('Content-Type: application/problem+json');
         }
 
         echo Json::encode($document);
@@ -173,12 +173,12 @@ final class ExceptionHandler
      */
     public function register(): void
     {
-        set_exception_handler(function (Throwable $throwable): void {
+        \set_exception_handler(function (Throwable $throwable): void {
             $this->handle($throwable);
         });
 
-        register_shutdown_function(function (): void {
-            $error = error_get_last();
+        \register_shutdown_function(function (): void {
+            $error = \error_get_last();
 
             if (self::isFatal($error)) {
                 /** @var array{type: int, message: string, file: string, line: int} $error */
@@ -206,7 +206,7 @@ final class ExceptionHandler
     public static function isFatal(?array $error): bool
     {
         return $error !== null
-            && is_int($error['type'] ?? null)
+            && \is_int($error['type'] ?? null)
             && ($error['type'] & self::FATAL) !== 0;
     }
 
