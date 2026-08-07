@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — Two answers where the estate had one](docs/journal/2026/08/2026-08-07-router.md).
+  [2026-08-07 — Three envelopes become one, and the exception stays home](docs/journal/2026/08/2026-08-07-api-envelope.md).
 
 ## Model & effort routing (advisory)
 
@@ -1154,11 +1154,27 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       session:** *a `sed` plant silently failed to match and my guard did not catch it because it
       checked that the* **replacement** *was present — and `$value` already occurred elsewhere.
       The check has to be that the* **original is gone**.
-- [ ] 11.3 `ApiEnvelope`: readonly envelope value, fixed JSON shape (`status`, `code`,
+- [x] 11.3 `ApiEnvelope`: readonly envelope value, fixed JSON shape (`status`, `code`,
       `messages`, `data`), outcome constructors (ok/created/updated/deleted/empty/invalid/
       notFound/failed/caught); message strings caller-supplied, `Result`-mapping stays a
       documented app-side pattern (RFC-0002 FR-39) (severity:medium — consumer-visible API
-      shape) — size: S · route: standard / medium
+      shape) — size: S · route: standard / medium *(session model matched the route — first time
+      this milestone)* · **ADR-0051** *(not scheduled by the item: a security-relevant decision
+      surfaced, and §7/§10 require one under the enterprise posture)*. *Three estate envelopes and
+      232+ construction sites become one shape, with the nine outcomes as an* `Outcome` *enum that
+      owns its HTTP status (ADR-0015's reasoning; the estate re-derived that mapping three times).*
+      **The security decision:** `caught()` *takes a* **correlation reference, not a** `Throwable`
+      *— an envelope built from an exception puts* `getMessage()` *on the wire, and a message names
+      schemas and paths as readily as a trace does (ADR-0029's stance at the payload boundary).
+      Asserted as a* **mechanism on the reflected signature**, *because no behavioural test can see
+      an overload that does not exist.* **Two status choices argued rather than assumed:**
+      `Invalid` *is* **422** *not 400 (well-formed but rejected — RFC 4918 §11.2), and* `Empty` *is*
+      **200** *not 404 (a search with no results is a successful search; the estate's 404 is what
+      teaches clients to retry "no rows").* **The shape is the product:** *all four keys on every
+      outcome, `data: null` present in the JSON and `messages` pinned to encode as* `[]` *not* `{}`.
+      *The* `Result`*→envelope mapping stayed* **out** *of the library (an* `Http`*→*`Errors` *edge
+      the layering rule forbids) and is now written out in the endpoint-kernel pattern doc. 2525
+      tests (+28), 5 planted defects, 5 caught.*
 - [ ] 11.4 T-07 `HttpClient` behavioural suite against a live `php -S` origin (timeout,
       refusal and error-taxonomy paths; T-03's process discipline) (RFC-0002 T-07)
       (security) — size: M · route: frontier-reasoning / extra
