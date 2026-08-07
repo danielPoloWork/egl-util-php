@@ -87,6 +87,17 @@ taking from it: **on this project, no benchmark claim under ~3% may be published
 The decision itself never depended on it — enabling the rule rests on the normalizer, which cleared
 the noise twice.
 
+A third run (this correction's own commit triggered it) said **−24.44%** for the normalizer,
+**−0.02%** for the control, and **1.61×** for NFR-09. So: the normalizer holds at n=3, and the
+ratio has now measured 1.61×, 1.66× and 1.73× on *identical code* — two of three below master,
+which hints at a small real gain I still cannot report, because a number swinging ±0.06 between
+runs is not a movement. ±0.06 is simply what NFR-09 can resolve here.
+
+And then I stopped counting, deliberately. Every docs commit triggers another A/B; chasing each one
+is an unbounded regress that restates the same conclusion with more decimals. Three runs, a stated
+resolution limit, and a rule that carries forward is where the evidence stops being worth more
+runner time.
+
 ## Lesson
 
 **Put a control in the benchmark.** Not a baseline — a *control*: a subject the change cannot

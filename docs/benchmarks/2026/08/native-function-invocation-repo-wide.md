@@ -80,9 +80,25 @@ Two corrections follow, and the second one matters:
    figure `master` reports. The claim "1.73× → 1.66×" is **withdrawn**: on two runs of the same
    code the ratio is indistinguishable from where it started, exactly as it was for item 10.11.
 
-**What survives two runs is the one claim the decision rests on:** `RowNormalizer::normalize()` at
-**−20.81% and −24.02%**, against controls moving at most 2.6% — a signal roughly an order of
-magnitude clear of the noise in both runs.
+### Run 3, and where this report stops counting
+
+| Subject | run 1 | run 2 | run 3 |
+|---|---|---|---|
+| `RowNormalizerBench::benchNormalizeHundredRows` | −24.02% | −20.81% | **−24.44%** |
+| **control** `benchInlineTrimHundredRows` | −0.08% | −2.57% | **−0.02%** |
+| **NFR-09 ratio** | 1.66× | 1.73× | **1.61×** |
+
+**The one claim holds at n=3:** −24.02%, −20.81%, −24.44%, against a control that sat at −0.02% and
+−0.08% in two of three runs. **The ratio still cannot be claimed:** 1.61×, 1.66× and 1.73× on
+*identical code*, against `master`'s 1.73×. Two of three runs came in below master and the mean is
+lower, so a small real improvement may well be there — but a number that swings 1.61–1.73 between
+runs cannot be reported as a movement, and the useful fact to carry forward is that **±0.06 is
+roughly NFR-09's resolution limit on this runner**.
+
+**This report stops at three.** Every docs commit on the branch triggers another A/B, so counting
+further is an unbounded regress that would keep restating the same conclusion. The standing rule
+the exercise earned — *no benchmark claim under ~3% from a single run on this runner* — is what
+carries forward, not more rows in this table.
 
 ## Interpretation
 

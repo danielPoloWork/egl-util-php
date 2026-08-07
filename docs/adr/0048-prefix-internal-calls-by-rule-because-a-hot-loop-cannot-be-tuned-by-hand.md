@@ -62,12 +62,13 @@ formatting exception messages that dominate the diff. It is enabled anyway, beca
 where it pays are exactly the ones nobody can be trusted to remember to hand-tune — which is the
 finding item 10.11 filed.
 
-**A second run withdrew one claim and left the decision standing.** The first run measured NFR-09
-at 1.66×; the second measured **1.73×**, `master`'s own figure, and moved a control by −2.57%
-where the first had moved it by −0.08%. So the ratio improvement is **withdrawn** — on two runs of
-identical code it is indistinguishable from where it started — and the usable noise band is about
-**±2.6%**, which also swallows the gateway path's −3.98%/−2.17%. The normalizer's −24.02%/−20.81%
-is the one result clear of it in both runs, and it is what this decision rests on.
+**Re-measurement withdrew one claim and left the decision standing.** Three runs of identical code
+put NFR-09 at **1.66×, 1.73× and 1.61×** against `master`'s 1.73× — so the ratio improvement is
+**withdrawn**: a figure that swings ±0.06 between runs cannot be reported as a movement, and that
+swing is roughly the gate's resolution limit on this runner. The same variance swallows the gateway
+path (−3.98%, then −2.17% against a control that moved −2.57%). What holds across all three runs is
+the normalizer — **−24.02%, −20.81%, −24.44%** — against a control sitting at −0.02% and −0.08% in
+two of them. That is the result this decision rests on, and the only one it needs.
 
 ## Alternatives Considered
 
