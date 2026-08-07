@@ -92,6 +92,11 @@ class TableGateway extends Repository
      */
     private ?array $projection = null;
 
+    /**
+     * The base `SELECT <projection> FROM <table>` builder, resolved once — see {@see self::query()}.
+     */
+    private ?QueryBuilder $baseQuery = null;
+
     private readonly ReflectionCache $cache;
 
     /**
@@ -274,11 +279,23 @@ class TableGateway extends Repository
      * hand-written SQL. `protected` because it is a building block, not part of the gateway's
      * contract with its callers.
      *
+     * **The base builder is resolved once per instance, not once per call** (roadmap 10.6,
+     * NFR-09). Every call used to construct a fresh `QueryBuilder`, which re-runs
+     * {@see Identifier}'s allowlist on the table name — already checked once in
+     * {@see self::__construct()} — and again on every projected column, on every single read.
+     * Neither can have changed since construction, so re-checking them is pure repetition, not
+     * safety: caching costs nothing, because `QueryBuilder` is immutable and every fluent method
+     * already returns a `clone` rather than mutating `$this` — a caller chaining off the cached
+     * instance can never see, or corrupt, what the next caller receives. Found by profiling
+     * `GatewayBench` against NFR-09's 1.5× budget, the same discipline roadmap item 4.6 used for
+     * NFR-03: measured first, fixed what the profile actually named.
+     *
      * @throws DatabaseException if the table or a projected column fails the allowlist
      */
     protected function query(): QueryBuilder
     {
-        return (new QueryBuilder($this->connection, $this->table))->select(...$this->projection());
+        return $this->baseQuery ??= (new QueryBuilder($this->connection, $this->table))
+            ->select(...$this->projection());
     }
 
     /**
