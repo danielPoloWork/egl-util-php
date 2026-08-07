@@ -13,14 +13,14 @@ final class StrRandomTest extends TestCase
 {
     public function testDefaultLengthIsThirtyTwo(): void
     {
-        self::assertSame(32, strlen(Str::random()));
+        self::assertSame(32, \strlen(Str::random()));
     }
 
     public function testRespectsACustomLength(): void
     {
-        self::assertSame(0, strlen(Str::random(0)));
-        self::assertSame(1, strlen(Str::random(1)));
-        self::assertSame(64, strlen(Str::random(64)));
+        self::assertSame(0, \strlen(Str::random(0)));
+        self::assertSame(1, \strlen(Str::random(1)));
+        self::assertSame(64, \strlen(Str::random(64)));
     }
 
     public function testEveryCharacterComesFromTheDefaultAlphabet(): void
@@ -49,7 +49,7 @@ final class StrRandomTest extends TestCase
             $tokens[] = Str::random();
         }
 
-        self::assertCount(200, array_unique($tokens));
+        self::assertCount(200, \array_unique($tokens));
     }
 
     public function testNegativeLengthThrows(): void

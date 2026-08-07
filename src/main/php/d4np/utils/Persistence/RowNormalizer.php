@@ -126,8 +126,8 @@ final class RowNormalizer
             foreach ($row as $column => $value) {
                 // Same guard as the general path: only strings are touched, everything else
                 // — including a BLOB resource — passes through by identity.
-                if (is_string($value)) {
-                    $row[$column] = trim($value);
+                if (\is_string($value)) {
+                    $row[$column] = \trim($value);
                 }
             }
 
@@ -135,7 +135,7 @@ final class RowNormalizer
         }
 
         foreach ($row as $column => $value) {
-            if (!is_string($value)) {
+            if (!\is_string($value)) {
                 // int, float, bool, null and resources (BLOB streams) are returned by
                 // identity: none of the steps below is meaningful for them, and transcoding
                 // a resource would destroy it.
@@ -162,7 +162,7 @@ final class RowNormalizer
                 // is the difference between a fixable report and a guessing game — the
                 // estate's seventeen silent catches being the extreme version of the same
                 // problem. The original is preserved as the cause.
-                throw new DatabaseException(sprintf(
+                throw new DatabaseException(\sprintf(
                     'Column "%s": value did not survive transcoding from "%s" to "%s". %s',
                     $column,
                     $this->fromEncoding,
@@ -177,7 +177,7 @@ final class RowNormalizer
             // it — checked in that order so enabling both is not a contradiction.
             $value = Str::collapseWhitespace($value);
         } elseif ($this->trim) {
-            $value = trim($value);
+            $value = \trim($value);
         }
 
         return $this->blankToNull ? Str::nullIfBlank($value) : $value;

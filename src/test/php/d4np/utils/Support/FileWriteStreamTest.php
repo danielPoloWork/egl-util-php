@@ -23,18 +23,18 @@ final class FileWriteStreamTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/egl-utils-stream-' . bin2hex(random_bytes(8));
-        if (!mkdir($this->dir) && !is_dir($this->dir)) {
+        $this->dir = \sys_get_temp_dir() . '/egl-utils-stream-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($this->dir) && !\is_dir($this->dir)) {
             self::fail('could not create the test directory');
         }
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            @unlink($entry);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            @\unlink($entry);
         }
-        @rmdir($this->dir);
+        @\rmdir($this->dir);
     }
 
     private function path(): string
@@ -49,8 +49,8 @@ final class FileWriteStreamTest extends TestCase
      */
     private function strayFiles(): array
     {
-        return array_values(array_filter(
-            glob($this->dir . '/*') ?: [],
+        return \array_values(\array_filter(
+            \glob($this->dir . '/*') ?: [],
             fn (string $p): bool => $p !== $this->path() && $p !== $this->path() . '.lock',
         ));
     }
@@ -58,31 +58,31 @@ final class FileWriteStreamTest extends TestCase
     public function testWritesWhatTheCallbackStreams(): void
     {
         File::writeStream($this->path(), static function ($handle): void {
-            fwrite($handle, 'one ');
-            fwrite($handle, 'two');
+            \fwrite($handle, 'one ');
+            \fwrite($handle, 'two');
         });
 
-        self::assertSame('one two', file_get_contents($this->path()));
+        self::assertSame('one two', \file_get_contents($this->path()));
     }
 
     public function testReplacesAnExistingFileCompletely(): void
     {
-        file_put_contents($this->path(), 'a much longer previous content');
+        \file_put_contents($this->path(), 'a much longer previous content');
 
         File::writeStream($this->path(), static function ($handle): void {
-            fwrite($handle, 'short');
+            \fwrite($handle, 'short');
         });
 
-        self::assertSame('short', file_get_contents($this->path()));
+        self::assertSame('short', \file_get_contents($this->path()));
     }
 
     public function testAThrowingWriterLeavesThePreviousContentIntact(): void
     {
-        file_put_contents($this->path(), 'previous');
+        \file_put_contents($this->path(), 'previous');
 
         try {
             File::writeStream($this->path(), static function ($handle): void {
-                fwrite($handle, 'partial');
+                \fwrite($handle, 'partial');
 
                 throw new RuntimeException('writer failed');
             });
@@ -91,14 +91,14 @@ final class FileWriteStreamTest extends TestCase
             self::assertSame('writer failed', $e->getMessage());
         }
 
-        self::assertSame('previous', file_get_contents($this->path()));
+        self::assertSame('previous', \file_get_contents($this->path()));
     }
 
     public function testAThrowingWriterLeavesNoTemporaryFileBehind(): void
     {
         try {
             File::writeStream($this->path(), static function ($handle): void {
-                fwrite($handle, 'partial');
+                \fwrite($handle, 'partial');
 
                 throw new RuntimeException('boom');
             });
@@ -123,7 +123,7 @@ final class FileWriteStreamTest extends TestCase
     public function testASuccessfulWriteLeavesNoTemporaryFileBehind(): void
     {
         File::writeStream($this->path(), static function ($handle): void {
-            fwrite($handle, 'ok');
+            \fwrite($handle, 'ok');
         });
 
         self::assertSame([], $this->strayFiles());
@@ -143,7 +143,7 @@ final class FileWriteStreamTest extends TestCase
         File::writeStream($this->path(), static function (): void {
         });
 
-        self::assertSame('', file_get_contents($this->path()));
+        self::assertSame('', \file_get_contents($this->path()));
     }
 
     public function testAnExistingFilesModeIsPreserved(): void
@@ -152,13 +152,13 @@ final class FileWriteStreamTest extends TestCase
             self::markTestSkipped('POSIX permission bits are not meaningful on Windows.');
         }
 
-        file_put_contents($this->path(), 'x');
-        chmod($this->path(), 0640);
+        \file_put_contents($this->path(), 'x');
+        \chmod($this->path(), 0640);
 
         File::writeStream($this->path(), static function ($handle): void {
-            fwrite($handle, 'y');
+            \fwrite($handle, 'y');
         });
 
-        self::assertSame(0640, fileperms($this->path()) & 0777);
+        self::assertSame(0640, \fileperms($this->path()) & 0777);
     }
 }

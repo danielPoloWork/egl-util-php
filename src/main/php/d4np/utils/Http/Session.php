@@ -169,7 +169,7 @@ final class Session implements SessionStore
         // Only strings come back. A session written by other code can hold anything, and quietly
         // casting an array or object here would be the coercion `Request` refuses for the same
         // reason (ADR-0025).
-        return is_string($value) ? $value : null;
+        return \is_string($value) ? $value : null;
     }
 
     public function set(string $key, string $value): void

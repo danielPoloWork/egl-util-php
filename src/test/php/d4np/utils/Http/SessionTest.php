@@ -100,7 +100,7 @@ final class SessionTest extends TestCase
      */
     public function testSameSiteIsAClosedSetOfExactlyThreePolicies(): void
     {
-        self::assertSame(['Lax', 'Strict', 'None'], array_map(
+        self::assertSame(['Lax', 'Strict', 'None'], \array_map(
             static fn (SameSite $case): string => $case->value,
             SameSite::cases(),
         ));

@@ -146,7 +146,7 @@ final class DatabaseConnection
             // statement's text is the most likely place for data a consumer would rather not see
             // in a log line. The driver's own message and SQLSTATE are preserved via getPrevious().
             throw new DatabaseException(
-                sprintf('Database statement failed: %s', $e->getMessage()),
+                \sprintf('Database statement failed: %s', $e->getMessage()),
                 0,
                 $e,
             );
@@ -189,7 +189,7 @@ final class DatabaseConnection
     private function pinAttribute(int $attribute, mixed $value, string $label): void
     {
         if (!$this->pdo->setAttribute($attribute, $value)) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 'The PDO driver "%s" refused the pinned default %s. This connection cannot offer '
                 . 'the guarantees DatabaseConnection exists to make, so it is refused rather than '
                 . 'used with a weaker setting.',
@@ -224,7 +224,7 @@ final class DatabaseConnection
         }
 
         if ($stillEmulating) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 'The PDO driver "%s" is still emulating prepared statements after being told not '
                 . 'to. Emulated prepares interpolate values into the SQL text client-side, which '
                 . 'is the behaviour FR-06 pins this default to prevent, so this connection is '

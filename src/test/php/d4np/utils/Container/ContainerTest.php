@@ -190,7 +190,7 @@ final class ContainerTest extends TestCase
         $this->container->factory('greeting', static function (Container $c): string {
             $name = $c->get('name');
 
-            return 'hello ' . (is_string($name) ? $name : '');
+            return 'hello ' . (\is_string($name) ? $name : '');
         });
 
         self::assertSame('hello world', $this->container->get('greeting'));

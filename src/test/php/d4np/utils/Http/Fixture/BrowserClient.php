@@ -24,17 +24,17 @@ final class BrowserClient
     {
         $headers = [];
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
+        $ch = \curl_init($url);
+        \curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HEADERFUNCTION => static function ($_, string $line) use (&$headers): int {
-                $trimmed = trim($line);
+                $trimmed = \trim($line);
                 if ($trimmed !== '') {
                     $headers[] = $trimmed;
                 }
 
-                return strlen($line);
+                return \strlen($line);
             },
         ]);
 
@@ -43,24 +43,24 @@ final class BrowserClient
             foreach ($this->cookies as $name => $value) {
                 $pairs[] = "{$name}={$value}";
             }
-            curl_setopt($ch, CURLOPT_COOKIE, implode('; ', $pairs));
+            \curl_setopt($ch, CURLOPT_COOKIE, \implode('; ', $pairs));
         }
 
-        $body = curl_exec($ch);
-        $error = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+        $body = \curl_exec($ch);
+        $error = \curl_error($ch);
+        $status = (int) \curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        \curl_close($ch);
 
         $exchange = new HttpExchange(
             $status,
             $headers,
-            is_string($body) ? $body : '',
+            \is_string($body) ? $body : '',
             $error,
         );
 
         foreach ($exchange->setCookieHeaders() as $header) {
-            if (preg_match('/^([^=]+)=([^;]*)/', $header, $m) === 1) {
-                $this->cookies[trim($m[1])] = $m[2];
+            if (\preg_match('/^([^=]+)=([^;]*)/', $header, $m) === 1) {
+                $this->cookies[\trim($m[1])] = $m[2];
             }
         }
 

@@ -72,10 +72,10 @@ final class Logger extends AbstractLogger
         string $minimumLevel = LogLevel::DEBUG,
     ) {
         $this->threshold = self::SEVERITY[self::validLevel($minimumLevel)];
-        $this->isStream = str_contains($destination, '://');
+        $this->isStream = \str_contains($destination, '://');
 
         if (!$this->isStream && !self::isWritable($destination)) {
-            throw new UtilsException(sprintf(
+            throw new UtilsException(\sprintf(
                 'The log destination "%s" cannot be written to. Checked at construction rather than '
                 . 'at the first write, so this surfaces where the logger is wired instead of during '
                 . 'the incident it was supposed to record.',
@@ -100,10 +100,10 @@ final class Logger extends AbstractLogger
             return;
         }
 
-        $line = sprintf(
+        $line = \sprintf(
             '[%s] %s: %s',
-            gmdate('Y-m-d\TH:i:s\Z'),
-            strtoupper($name),
+            \gmdate('Y-m-d\TH:i:s\Z'),
+            \strtoupper($name),
             self::interpolate((string) $message, $context),
         );
 
@@ -112,7 +112,7 @@ final class Logger extends AbstractLogger
         }
 
         // Deliberately unchecked. A failure here must not escalate: see the class docblock.
-        @file_put_contents(
+        @\file_put_contents(
             $this->destination,
             $line . "\n",
             $this->isStream ? FILE_APPEND : FILE_APPEND | LOCK_EX,
@@ -130,22 +130,22 @@ final class Logger extends AbstractLogger
      */
     private static function interpolate(string $message, array $context): string
     {
-        if (!str_contains($message, '{')) {
+        if (!\str_contains($message, '{')) {
             return $message;
         }
 
         $replacements = [];
         foreach ($context as $key => $value) {
-            if (is_scalar($value) || $value === null || $value instanceof \Stringable) {
+            if (\is_scalar($value) || $value === null || $value instanceof \Stringable) {
                 $replacements['{' . $key . '}'] = match (true) {
                     $value === null => 'null',
-                    is_bool($value) => $value ? 'true' : 'false',
+                    \is_bool($value) => $value ? 'true' : 'false',
                     default => (string) $value,
                 };
             }
         }
 
-        return $replacements === [] ? $message : strtr($message, $replacements);
+        return $replacements === [] ? $message : \strtr($message, $replacements);
     }
 
     /**
@@ -193,27 +193,27 @@ final class Logger extends AbstractLogger
      */
     private static function validLevel(mixed $level): string
     {
-        if (is_string($level) && isset(self::SEVERITY[$level])) {
+        if (\is_string($level) && isset(self::SEVERITY[$level])) {
             return $level;
         }
 
         // PSR-3 requires exactly this: an unknown level throws, rather than being logged at some
         // guessed severity where it would be filtered by a rule nobody wrote.
-        throw new InvalidArgumentException(sprintf(
+        throw new InvalidArgumentException(\sprintf(
             '"%s" is not a PSR-3 log level. Expected one of: %s.',
-            is_scalar($level) || $level === null ? var_export($level, true) : get_debug_type($level),
-            implode(', ', array_keys(self::SEVERITY)),
+            \is_scalar($level) || $level === null ? \var_export($level, true) : \get_debug_type($level),
+            \implode(', ', \array_keys(self::SEVERITY)),
         ));
     }
 
     private static function isWritable(string $path): bool
     {
-        if (is_file($path)) {
-            return is_writable($path);
+        if (\is_file($path)) {
+            return \is_writable($path);
         }
 
         $directory = \dirname($path);
 
-        return is_dir($directory) && is_writable($directory);
+        return \is_dir($directory) && \is_writable($directory);
     }
 }

@@ -23,20 +23,20 @@ final class CsvTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/egl-utils-csvio-' . bin2hex(random_bytes(8));
-        if (!mkdir($this->dir) && !is_dir($this->dir)) {
+        $this->dir = \sys_get_temp_dir() . '/egl-utils-csvio-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($this->dir) && !\is_dir($this->dir)) {
             self::fail('could not create the test directory');
         }
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/{,.}*', GLOB_BRACE) ?: [] as $entry) {
-            if (is_file($entry)) {
-                @unlink($entry);
+        foreach (\glob($this->dir . '/{,.}*', GLOB_BRACE) ?: [] as $entry) {
+            if (\is_file($entry)) {
+                @\unlink($entry);
             }
         }
-        @rmdir($this->dir);
+        @\rmdir($this->dir);
     }
 
     private function path(string $name = 'out.csv'): string
@@ -58,37 +58,37 @@ final class CsvTest extends TestCase
         })();
 
         self::assertSame(5, Csv::write($this->path(), $rows));
-        self::assertCount(5, iterator_to_array(Csv::read($this->path())));
+        self::assertCount(5, \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testDelimiterIsHonouredOnTheWire(): void
     {
         Csv::write($this->path(), [['a', 'b']], Delimiter::Semicolon);
 
-        self::assertSame("a;b\n", file_get_contents($this->path()));
+        self::assertSame("a;b\n", \file_get_contents($this->path()));
     }
 
     public function testTabDelimitedFieldsAreQuotedNotSplit(): void
     {
         Csv::write($this->path(), [["has\ttab", 'x']], Delimiter::Comma);
 
-        self::assertSame([["has\ttab", 'x']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([["has\ttab", 'x']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testReadSkipsEntirelyBlankLines(): void
     {
-        file_put_contents($this->path(), "a,b\n\nc,d\n\n");
+        \file_put_contents($this->path(), "a,b\n\nc,d\n\n");
 
-        self::assertSame([['a', 'b'], ['c', 'd']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([['a', 'b'], ['c', 'd']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testAQuotedEmptyFieldIsARealRowAndIsNotSkipped(): void
     {
         // The distinction the blank-line skip must not blur: "" is a row holding one empty
         // field; a blank line is not a row at all.
-        file_put_contents($this->path(), "a\n\"\"\nb\n");
+        \file_put_contents($this->path(), "a\n\"\"\nb\n");
 
-        self::assertSame([['a'], [''], ['b']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([['a'], [''], ['b']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testReadIsAGeneratorSoNothingIsReadBeforeItIsAskedFor(): void
@@ -118,7 +118,7 @@ final class CsvTest extends TestCase
             // expected
         }
 
-        self::assertSame("original\n", file_get_contents($this->path()));
+        self::assertSame("original\n", \file_get_contents($this->path()));
     }
 
     public function testAFailedWriteLeavesNoTemporaryFileBehind(): void
@@ -135,12 +135,12 @@ final class CsvTest extends TestCase
             // expected
         }
 
-        $leftovers = array_filter(
-            glob($this->dir . '/*') ?: [],
-            static fn (string $p): bool => !str_ends_with($p, '.csv') && !str_ends_with($p, '.lock'),
+        $leftovers = \array_filter(
+            \glob($this->dir . '/*') ?: [],
+            static fn (string $p): bool => !\str_ends_with($p, '.csv') && !\str_ends_with($p, '.lock'),
         );
 
-        self::assertSame([], array_values($leftovers));
+        self::assertSame([], \array_values($leftovers));
     }
 
     public function testWritingToAMissingDirectoryThrowsFileException(): void
@@ -155,14 +155,14 @@ final class CsvTest extends TestCase
         $this->expectException(FileException::class);
         $this->expectExceptionMessage('not a file');
 
-        iterator_to_array(Csv::read($this->path('absent.csv')));
+        \iterator_to_array(Csv::read($this->path('absent.csv')));
     }
 
     public function testWritingAnEmptyIterableProducesAnEmptyFile(): void
     {
         self::assertSame(0, Csv::write($this->path(), []));
-        self::assertSame('', file_get_contents($this->path()));
-        self::assertSame([], iterator_to_array(Csv::read($this->path())));
+        self::assertSame('', \file_get_contents($this->path()));
+        self::assertSame([], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testSerializableEmitsItsHeaderOnceThenEveryRow(): void
@@ -175,7 +175,7 @@ final class CsvTest extends TestCase
         self::assertSame(2, Csv::write($this->path(), $rows));
         self::assertSame(
             [['id', 'label'], ['1', 'first'], ['2', 'second']],
-            iterator_to_array(Csv::read($this->path())),
+            \iterator_to_array(Csv::read($this->path())),
         );
     }
 
@@ -197,7 +197,7 @@ final class CsvTest extends TestCase
     {
         Csv::write($this->path(), [['a', 'b']]);
 
-        self::assertSame([['a', 'b']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([['a', 'b']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testASingleEmptyFieldSurvivesInsteadOfVanishing(): void
@@ -207,26 +207,26 @@ final class CsvTest extends TestCase
         // written instead.
         Csv::write($this->path(), [['a'], [''], ['b']]);
 
-        self::assertSame("a\n\"\"\nb\n", file_get_contents($this->path()));
-        self::assertSame([['a'], [''], ['b']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame("a\n\"\"\nb\n", \file_get_contents($this->path()));
+        self::assertSame([['a'], [''], ['b']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testASingleNullFieldIsTheSameCase(): void
     {
         Csv::write($this->path(), [[null]]);
 
-        self::assertSame([['']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([['']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testFputcsvCannotExpressASingleEmptyFieldWhichIsWhyWeWriteItOurselves(): void
     {
         // Pinning the native behaviour the special case exists for.
-        $handle = fopen('php://memory', 'r+');
+        $handle = \fopen('php://memory', 'r+');
         self::assertIsResource($handle);
-        fputcsv($handle, [''], ',', '"', '');
-        rewind($handle);
-        $raw = stream_get_contents($handle);
-        fclose($handle);
+        \fputcsv($handle, [''], ',', '"', '');
+        \rewind($handle);
+        $raw = \stream_get_contents($handle);
+        \fclose($handle);
 
         self::assertSame("\n", $raw, 'fputcsv() emits a bare newline for a single empty field');
     }

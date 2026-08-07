@@ -313,7 +313,7 @@ final class GatewayInjectionTest extends TestCase
     ): void {
         try {
             $operation($this->gateway, $identifier);
-            self::fail('the hostile identifier was accepted: ' . var_export($identifier, true));
+            self::fail('the hostile identifier was accepted: ' . \var_export($identifier, true));
         } catch (DatabaseException) {
             // The refusal is the expected outcome; what follows is the part worth asserting.
         }
@@ -330,7 +330,7 @@ final class GatewayInjectionTest extends TestCase
     {
         try {
             new TableGateway($this->connection, $identifier, Person::class);
-            self::fail('the hostile table name was accepted: ' . var_export($identifier, true));
+            self::fail('the hostile table name was accepted: ' . \var_export($identifier, true));
         } catch (DatabaseException) {
             // Expected — ADR-0044's fail-fast at wiring time.
         }
@@ -423,7 +423,7 @@ final class GatewayInjectionTest extends TestCase
 
         $statements = $this->log->statements();
         self::assertCount(1, $statements);
-        self::assertSame(4, substr_count($statements[0], '?'));
+        self::assertSame(4, \substr_count($statements[0], '?'));
         self::assertCount(4, $this->log->boundValues());
     }
 }

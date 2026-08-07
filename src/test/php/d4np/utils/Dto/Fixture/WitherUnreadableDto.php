@@ -19,6 +19,6 @@ final class WitherUnreadableDto extends DataTransferObject
 
     public function __construct(string $incoming)
     {
-        $this->stored = strtoupper($incoming);
+        $this->stored = \strtoupper($incoming);
     }
 }

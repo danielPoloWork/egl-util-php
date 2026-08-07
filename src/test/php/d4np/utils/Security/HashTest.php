@@ -28,7 +28,7 @@ final class HashTest extends TestCase
         // fail: the absence is a property of the interpreter, not a defect in the library. This
         // replaced an `assertTrue(defined(...))`, which PHPStan correctly flagged as always-true
         // against its own stubs — a guard that is statically true is not a guard.
-        if (!defined('PASSWORD_ARGON2ID')) {
+        if (!\defined('PASSWORD_ARGON2ID')) {
             self::markTestSkipped('this PHP build has no Argon2id support');
         }
     }
@@ -85,7 +85,7 @@ final class HashTest extends TestCase
         $stored = (new Hash())->make('pw');
 
         self::assertStringStartsWith('$argon2id$', $stored);
-        self::assertSame('argon2id', password_get_info($stored)['algoName']);
+        self::assertSame('argon2id', \password_get_info($stored)['algoName']);
     }
 
     public function testAFreshHashDoesNotNeedRehashing(): void
@@ -102,7 +102,7 @@ final class HashTest extends TestCase
     public function testABcryptHashVerifiesButReportsThatItNeedsRehashing(): void
     {
         $hash = new Hash();
-        $legacy = password_hash('pw', PASSWORD_BCRYPT);
+        $legacy = \password_hash('pw', PASSWORD_BCRYPT);
 
         self::assertTrue($hash->verify('pw', $legacy), 'a legacy hash must still let its owner log in');
         self::assertTrue($hash->needsRehash($legacy), 'and must be flagged for upgrade');
@@ -114,7 +114,7 @@ final class HashTest extends TestCase
     public function testUpgradeOnLoginReplacesALegacyHash(): void
     {
         $hash = new Hash();
-        $stored = password_hash('pw', PASSWORD_BCRYPT);
+        $stored = \password_hash('pw', PASSWORD_BCRYPT);
 
         if ($hash->verify('pw', $stored) && $hash->needsRehash($stored)) {
             $stored = $hash->make('pw');
@@ -132,7 +132,7 @@ final class HashTest extends TestCase
      */
     public function testWeakerParametersUnderTheSameAlgorithmAlsoNeedRehashing(): void
     {
-        $weak = password_hash('pw', PASSWORD_ARGON2ID, ['memory_cost' => 8192, 'time_cost' => 1, 'threads' => 1]);
+        $weak = \password_hash('pw', PASSWORD_ARGON2ID, ['memory_cost' => 8192, 'time_cost' => 1, 'threads' => 1]);
 
         self::assertTrue((new Hash())->needsRehash($weak));
     }
@@ -168,7 +168,7 @@ final class HashTest extends TestCase
     {
         $hash = new Hash();
 
-        foreach (["with\0null", 'héllo 漢 🙂', str_repeat('a', 200)] as $password) {
+        foreach (["with\0null", 'héllo 漢 🙂', \str_repeat('a', 200)] as $password) {
             self::assertTrue($hash->verify($password, $hash->make($password)), $password);
         }
     }

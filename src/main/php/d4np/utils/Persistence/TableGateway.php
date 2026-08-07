@@ -308,7 +308,7 @@ class TableGateway extends Repository
     private function filtered(array $criteria, string $method): QueryBuilder
     {
         if ($criteria === []) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 '%s() on "%s" was given no criteria. An empty array is what an unvalidated '
                 . 'request filter collapses to, and matching every row is not a smaller version '
                 . 'of matching some — so it is refused here. Call all() when the whole table is '

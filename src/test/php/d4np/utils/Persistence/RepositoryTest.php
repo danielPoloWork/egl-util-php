@@ -68,7 +68,7 @@ final class RepositoryTest extends TestCase
 
         self::assertCount(2, $rows);
         self::assertContainsOnlyInstancesOf(UserRow::class, $rows);
-        self::assertSame([1, 2], array_map(static fn (UserRow $r): int => $r->id, $rows));
+        self::assertSame([1, 2], \array_map(static fn (UserRow $r): int => $r->id, $rows));
         self::assertSame('Ada', $rows[0]->name);
         self::assertSame(45, $rows[1]->age);
     }
@@ -223,11 +223,11 @@ final class RepositoryTest extends TestCase
         $file = (new ReflectionClass(\D4np\Utils\Persistence\Repository::class))->getFileName();
         self::assertIsString($file);
 
-        $source = file_get_contents($file);
+        $source = \file_get_contents($file);
         self::assertIsString($source);
 
         // Strip the docblocks, which discuss catching at length, before looking for one.
-        $code = preg_replace('#/\*.*?\*/#s', '', $source) ?? '';
+        $code = \preg_replace('#/\*.*?\*/#s', '', $source) ?? '';
 
         self::assertDoesNotMatchRegularExpression(
             '/\bcatch\s*\(/',

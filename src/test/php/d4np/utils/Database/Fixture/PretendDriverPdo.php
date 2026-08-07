@@ -63,7 +63,7 @@ final class PretendDriverPdo extends PDO
 
         // SQLite does not understand MySQL's session-charset statement; swallow it so the rest of
         // the connection behaves normally, and record it so a test can assert it was issued.
-        if (str_starts_with($statement, 'SET NAMES')) {
+        if (\str_starts_with($statement, 'SET NAMES')) {
             return 0;
         }
 

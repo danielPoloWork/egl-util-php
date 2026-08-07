@@ -87,7 +87,7 @@ final class Escaper
      */
     public static function html(string $value): string
     {
-        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return \htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     /**
@@ -112,7 +112,7 @@ final class Escaper
      */
     public static function attr(string $value): string
     {
-        $escaped = preg_replace_callback(
+        $escaped = \preg_replace_callback(
             '/[^a-zA-Z0-9]/',
             static function (array $match): string {
                 $byte = $match[0];
@@ -122,7 +122,7 @@ final class Escaper
                     return $byte;
                 }
 
-                return sprintf('&#x%02X;', ord($byte));
+                return \sprintf('&#x%02X;', \ord($byte));
             },
             self::toValidUtf8($value),
         );
@@ -158,13 +158,13 @@ final class Escaper
      */
     public static function js(string $value): string
     {
-        $escaped = preg_replace_callback(
+        $escaped = \preg_replace_callback(
             '/[^a-zA-Z0-9]/u',
             static function (array $match): string {
                 $character = $match[0];
 
-                if (strlen($character) === 1) {
-                    return sprintf('\\x%02X', ord($character));
+                if (\strlen($character) === 1) {
+                    return \sprintf('\\x%02X', \ord($character));
                 }
 
                 $codepoint = self::codepointOf($character);
@@ -174,10 +174,10 @@ final class Escaper
                     // BMP is written as the surrogate pair it is stored as.
                     $offset = $codepoint - 0x10000;
 
-                    return sprintf('\\u%04X\\u%04X', 0xD800 + ($offset >> 10), 0xDC00 + ($offset & 0x3FF));
+                    return \sprintf('\\u%04X\\u%04X', 0xD800 + ($offset >> 10), 0xDC00 + ($offset & 0x3FF));
                 }
 
-                return sprintf('\\u%04X', $codepoint);
+                return \sprintf('\\u%04X', $codepoint);
             },
             self::toValidUtf8($value),
         );
@@ -207,7 +207,7 @@ final class Escaper
      */
     public static function url(string $value): string
     {
-        return rawurlencode($value);
+        return \rawurlencode($value);
     }
 
     /**
@@ -218,12 +218,12 @@ final class Escaper
      */
     private static function toValidUtf8(string $value): string
     {
-        $valid = preg_replace_callback(
+        $valid = \preg_replace_callback(
             self::UTF8_SEQUENCE,
             static function (array $match): string {
                 // A single byte above ASCII reached the `.` alternative, meaning it did not form a
                 // valid sequence with its neighbours.
-                if (strlen($match[0]) === 1 && $match[0] >= "\x80") {
+                if (\strlen($match[0]) === 1 && $match[0] >= "\x80") {
                     return "\u{FFFD}";
                 }
 
@@ -244,16 +244,16 @@ final class Escaper
      */
     private static function codepointOf(string $character): int
     {
-        return match (strlen($character)) {
-            2 => ((ord($character[0]) & 0x1F) << 6)
-                | (ord($character[1]) & 0x3F),
-            3 => ((ord($character[0]) & 0x0F) << 12)
-                | ((ord($character[1]) & 0x3F) << 6)
-                | (ord($character[2]) & 0x3F),
-            default => ((ord($character[0]) & 0x07) << 18)
-                | ((ord($character[1]) & 0x3F) << 12)
-                | ((ord($character[2]) & 0x3F) << 6)
-                | (ord($character[3]) & 0x3F),
+        return match (\strlen($character)) {
+            2 => ((\ord($character[0]) & 0x1F) << 6)
+                | (\ord($character[1]) & 0x3F),
+            3 => ((\ord($character[0]) & 0x0F) << 12)
+                | ((\ord($character[1]) & 0x3F) << 6)
+                | (\ord($character[2]) & 0x3F),
+            default => ((\ord($character[0]) & 0x07) << 18)
+                | ((\ord($character[1]) & 0x3F) << 12)
+                | ((\ord($character[2]) & 0x3F) << 6)
+                | (\ord($character[3]) & 0x3F),
         };
     }
 }

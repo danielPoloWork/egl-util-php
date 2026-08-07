@@ -41,8 +41,8 @@ final class Str
      */
     public static function slug(string $value, string $separator = '-'): string
     {
-        $ascii = strtolower(self::transliterateToAscii($value));
-        $collapsed = preg_replace('/[^a-z0-9]+/', $separator, $ascii) ?? '';
+        $ascii = \strtolower(self::transliterateToAscii($value));
+        $collapsed = \preg_replace('/[^a-z0-9]+/', $separator, $ascii) ?? '';
 
         if ($separator === '') {
             return $collapsed;
@@ -50,9 +50,9 @@ final class Str
 
         // trim() treats its second argument as a character LIST, not a substring, so it would
         // mis-trim a multi-character separator. Strip the separator as a literal run instead.
-        $quoted = preg_quote($separator, '/');
+        $quoted = \preg_quote($separator, '/');
 
-        return preg_replace("/^(?:{$quoted})+|(?:{$quoted})+\$/", '', $collapsed) ?? '';
+        return \preg_replace("/^(?:{$quoted})+|(?:{$quoted})+\$/", '', $collapsed) ?? '';
     }
 
     /**
@@ -64,19 +64,19 @@ final class Str
      */
     public static function uuid(): string
     {
-        $bytes = random_bytes(16);
-        $bytes[6] = chr((ord($bytes[6]) & 0x0F) | 0x40);
-        $bytes[8] = chr((ord($bytes[8]) & 0x3F) | 0x80);
+        $bytes = \random_bytes(16);
+        $bytes[6] = \chr((\ord($bytes[6]) & 0x0F) | 0x40);
+        $bytes[8] = \chr((\ord($bytes[8]) & 0x3F) | 0x80);
 
-        $hex = bin2hex($bytes);
+        $hex = \bin2hex($bytes);
 
-        return sprintf(
+        return \sprintf(
             '%s-%s-%s-%s-%s',
-            substr($hex, 0, 8),
-            substr($hex, 8, 4),
-            substr($hex, 12, 4),
-            substr($hex, 16, 4),
-            substr($hex, 20, 12),
+            \substr($hex, 0, 8),
+            \substr($hex, 8, 4),
+            \substr($hex, 12, 4),
+            \substr($hex, 16, 4),
+            \substr($hex, 20, 12),
         );
     }
 
@@ -94,17 +94,17 @@ final class Str
     public static function random(int $length = 32, string $alphabet = self::DEFAULT_ALPHABET): string
     {
         if ($length < 0) {
-            throw new InvalidArgumentException(sprintf('$length must be >= 0, got %d.', $length));
+            throw new InvalidArgumentException(\sprintf('$length must be >= 0, got %d.', $length));
         }
 
-        $alphabetLength = strlen($alphabet);
+        $alphabetLength = \strlen($alphabet);
         if ($alphabetLength < 2) {
             throw new InvalidArgumentException('$alphabet must contain at least two characters.');
         }
 
         $token = '';
         for ($i = 0; $i < $length; $i++) {
-            $token .= $alphabet[random_int(0, $alphabetLength - 1)];
+            $token .= $alphabet[\random_int(0, $alphabetLength - 1)];
         }
 
         return $token;
@@ -122,7 +122,7 @@ final class Str
      */
     public static function collapseWhitespace(string $value): string
     {
-        return preg_replace('/\s+/', ' ', trim($value)) ?? '';
+        return \preg_replace('/\s+/', ' ', \trim($value)) ?? '';
     }
 
     /**
@@ -136,7 +136,7 @@ final class Str
      */
     public static function nullIfBlank(?string $value): ?string
     {
-        if ($value === null || trim($value) === '') {
+        if ($value === null || \trim($value) === '') {
             return null;
         }
 
@@ -167,7 +167,7 @@ final class Str
         string $to = 'UTF-8',
         bool $lossy = false,
     ): string {
-        if (!function_exists('iconv')) {
+        if (!\function_exists('iconv')) {
             throw new UtilsException(
                 'Str::transcode() requires ext-iconv, which is not loaded. Install/enable '
                 . 'ext-iconv (composer.json lists it under "suggest").',
@@ -178,8 +178,8 @@ final class Str
         // encoding" and "unconvertible input" identically (false + a notice), and the empty
         // string can only fail for the first reason — so the two failures stay distinguishable
         // in the message.
-        if (@iconv($from, $to, '') === false) {
-            throw new UtilsException(sprintf(
+        if (@\iconv($from, $to, '') === false) {
+            throw new UtilsException(\sprintf(
                 'Str::transcode(): unknown encoding in pair "%s" -> "%s".',
                 $from,
                 $to,
@@ -187,10 +187,10 @@ final class Str
         }
 
         $target = $lossy ? $to . '//IGNORE' : $to;
-        $result = @iconv($from, $target, $value);
+        $result = @\iconv($from, $target, $value);
 
         if ($result === false) {
-            throw new UtilsException(sprintf(
+            throw new UtilsException(\sprintf(
                 'Str::transcode(): value is not losslessly convertible from "%s" to "%s" '
                 . '(invalid byte sequence or unrepresentable character). '
                 . 'Pass $lossy = true to drop unrepresentable characters explicitly.',
@@ -245,20 +245,20 @@ final class Str
      */
     public static function shortClassName(object|string $class): string
     {
-        $name = is_object($class) ? get_class($class) : $class;
+        $name = \is_object($class) ? \get_class($class) : $class;
 
         // Anonymous-class runtime names embed a NUL byte and the defining FILE PATH — which
         // contains backslashes on Windows, so naive last-separator surgery would return a
         // platform-dependent fragment. One deterministic answer on every platform instead.
-        if (str_starts_with($name, 'class@anonymous')) {
+        if (\str_starts_with($name, 'class@anonymous')) {
             return 'class@anonymous';
         }
 
-        $position = strrpos($name, '\\');
-        $short = $position === false ? $name : substr($name, $position + 1);
+        $position = \strrpos($name, '\\');
+        $short = $position === false ? $name : \substr($name, $position + 1);
 
         if ($short === '') {
-            throw new InvalidArgumentException(sprintf(
+            throw new InvalidArgumentException(\sprintf(
                 'shortClassName(): "%s" carries no class name after the final "\\".',
                 $name,
             ));
@@ -278,9 +278,9 @@ final class Str
      */
     public static function pascalCase(string $value): string
     {
-        $worded = preg_replace('/[\s_\-]+/', ' ', trim($value)) ?? '';
+        $worded = \preg_replace('/[\s_\-]+/', ' ', \trim($value)) ?? '';
 
-        return str_replace(' ', '', ucwords(strtolower($worded)));
+        return \str_replace(' ', '', \ucwords(\strtolower($worded)));
     }
 
     /**
@@ -302,9 +302,9 @@ final class Str
         }
 
         $padChars = self::countCodePoints($pad, '$pad');
-        $repeated = str_repeat($pad, (int) ceil($deficit / $padChars));
-        $codePoints = preg_split('//u', $repeated, -1, PREG_SPLIT_NO_EMPTY);
-        $padding = implode('', array_slice($codePoints === false ? [] : $codePoints, 0, $deficit));
+        $repeated = \str_repeat($pad, (int) \ceil($deficit / $padChars));
+        $codePoints = \preg_split('//u', $repeated, -1, PREG_SPLIT_NO_EMPTY);
+        $padding = \implode('', \array_slice($codePoints === false ? [] : $codePoints, 0, $deficit));
 
         return $side === STR_PAD_LEFT ? $padding . $value : $value . $padding;
     }
@@ -315,10 +315,10 @@ final class Str
      */
     private static function countCodePoints(string $value, string $parameter): int
     {
-        $count = preg_match_all('/./su', $value);
+        $count = \preg_match_all('/./su', $value);
 
         if ($count === false) {
-            throw new InvalidArgumentException(sprintf('%s is not valid UTF-8.', $parameter));
+            throw new InvalidArgumentException(\sprintf('%s is not valid UTF-8.', $parameter));
         }
 
         return $count;
@@ -337,11 +337,11 @@ final class Str
      */
     private static function viaIntl(string $value): ?string
     {
-        if (!function_exists('transliterator_transliterate')) {
+        if (!\function_exists('transliterator_transliterate')) {
             return null;
         }
 
-        $result = @transliterator_transliterate('Any-Latin; Latin-ASCII', $value);
+        $result = @\transliterator_transliterate('Any-Latin; Latin-ASCII', $value);
 
         return $result === false ? null : $result;
     }
@@ -355,11 +355,11 @@ final class Str
      */
     private static function viaIconv(string $value): ?string
     {
-        if (!function_exists('iconv')) {
+        if (!\function_exists('iconv')) {
             return null;
         }
 
-        $result = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $result = @\iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
 
         return $result === false ? null : $result;
     }
@@ -371,6 +371,6 @@ final class Str
      */
     private static function viaAsciiFilter(string $value): string
     {
-        return preg_replace('/[^\x20-\x7E]/', '', $value) ?? '';
+        return \preg_replace('/[^\x20-\x7E]/', '', $value) ?? '';
     }
 }

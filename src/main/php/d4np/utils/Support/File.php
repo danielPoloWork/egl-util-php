@@ -91,10 +91,10 @@ final class File
 
         try {
             $current = '';
-            if (is_file($path)) {
-                $read = @file_get_contents($path);
+            if (\is_file($path)) {
+                $read = @\file_get_contents($path);
                 if ($read === false) {
-                    throw new FileException(sprintf('Cannot update "%s": reading the current contents failed.', $path));
+                    throw new FileException(\sprintf('Cannot update "%s": reading the current contents failed.', $path));
                 }
                 $current = $read;
             }
@@ -139,9 +139,9 @@ final class File
             $tmp = self::createTempFileIn($dir);
 
             try {
-                $handle = @fopen($tmp, 'wb');
+                $handle = @\fopen($tmp, 'wb');
                 if ($handle === false) {
-                    throw new FileException(sprintf('Cannot write "%s": failed to open the temporary file.', $path));
+                    throw new FileException(\sprintf('Cannot write "%s": failed to open the temporary file.', $path));
                 }
 
                 try {
@@ -149,25 +149,25 @@ final class File
 
                     // fflush() before the rename: buffered bytes still in userland when the
                     // rename happens would make the "complete or previous" promise a lie.
-                    if (!fflush($handle)) {
-                        throw new FileException(sprintf('Cannot write "%s": flushing the temporary file failed.', $path));
+                    if (!\fflush($handle)) {
+                        throw new FileException(\sprintf('Cannot write "%s": flushing the temporary file failed.', $path));
                     }
                 } finally {
-                    @fclose($handle);
+                    @\fclose($handle);
                 }
 
-                if (!@chmod($tmp, $mode)) {
-                    throw new FileException(sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
+                if (!@\chmod($tmp, $mode)) {
+                    throw new FileException(\sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
                 }
 
-                if (!@rename($tmp, $path)) {
-                    throw new FileException(sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
+                if (!@\rename($tmp, $path)) {
+                    throw new FileException(\sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
                 }
             } catch (\Throwable $e) {
                 // Catch Throwable, not FileException: the caller's writer may throw anything,
                 // and the temporary file must not survive either way.
-                if (is_file($tmp)) {
-                    @unlink($tmp);
+                if (\is_file($tmp)) {
+                    @\unlink($tmp);
                 }
 
                 throw $e;
@@ -188,29 +188,29 @@ final class File
      */
     public static function read(string $path): string
     {
-        if (!is_file($path)) {
-            throw new FileException(sprintf('Cannot read "%s": not a file.', $path));
+        if (!\is_file($path)) {
+            throw new FileException(\sprintf('Cannot read "%s": not a file.', $path));
         }
 
-        $handle = @fopen($path, 'rb');
+        $handle = @\fopen($path, 'rb');
         if ($handle === false) {
-            throw new FileException(sprintf('Cannot read "%s": failed to open for reading.', $path));
+            throw new FileException(\sprintf('Cannot read "%s": failed to open for reading.', $path));
         }
 
         try {
-            if (!flock($handle, LOCK_SH)) {
-                throw new FileException(sprintf('Cannot read "%s": failed to acquire a shared lock.', $path));
+            if (!\flock($handle, LOCK_SH)) {
+                throw new FileException(\sprintf('Cannot read "%s": failed to acquire a shared lock.', $path));
             }
 
-            $contents = stream_get_contents($handle);
+            $contents = \stream_get_contents($handle);
             if ($contents === false) {
-                throw new FileException(sprintf('Cannot read "%s": read failed after locking.', $path));
+                throw new FileException(\sprintf('Cannot read "%s": read failed after locking.', $path));
             }
 
             return $contents;
         } finally {
-            @flock($handle, LOCK_UN);
-            @fclose($handle);
+            @\flock($handle, LOCK_UN);
+            @\fclose($handle);
         }
     }
 
@@ -225,24 +225,24 @@ final class File
      */
     public static function mime(string $path): string
     {
-        if (!is_file($path)) {
-            throw new FileException(sprintf('Cannot detect the MIME type of "%s": not a file.', $path));
+        if (!\is_file($path)) {
+            throw new FileException(\sprintf('Cannot detect the MIME type of "%s": not a file.', $path));
         }
 
-        $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+        $finfo = @\finfo_open(FILEINFO_MIME_TYPE);
         if ($finfo === false) {
             throw new FileException('Cannot detect a MIME type: failed to open the fileinfo database.');
         }
 
         try {
-            $mime = @finfo_file($finfo, $path);
+            $mime = @\finfo_file($finfo, $path);
             if ($mime === false) {
-                throw new FileException(sprintf('Cannot detect the MIME type of "%s": detection failed.', $path));
+                throw new FileException(\sprintf('Cannot detect the MIME type of "%s": detection failed.', $path));
             }
 
             return $mime;
         } finally {
-            finfo_close($finfo);
+            \finfo_close($finfo);
         }
     }
 
@@ -254,11 +254,11 @@ final class File
     private static function writableDirectoryOf(string $path): string
     {
         $dir = \dirname($path);
-        if (!is_dir($dir)) {
-            throw new FileException(sprintf('Cannot write "%s": directory "%s" does not exist.', $path, $dir));
+        if (!\is_dir($dir)) {
+            throw new FileException(\sprintf('Cannot write "%s": directory "%s" does not exist.', $path, $dir));
         }
-        if (!is_writable($dir)) {
-            throw new FileException(sprintf('Cannot write "%s": directory "%s" is not writable.', $path, $dir));
+        if (!\is_writable($dir)) {
+            throw new FileException(\sprintf('Cannot write "%s": directory "%s" is not writable.', $path, $dir));
         }
 
         return $dir;
@@ -280,17 +280,17 @@ final class File
 
             // chmod BEFORE the rename: tempnam() creates 0600, and a reader must never see
             // the target briefly carrying the temp file's restrictive mode.
-            if (!@chmod($tmp, $mode)) {
-                throw new FileException(sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
+            if (!@\chmod($tmp, $mode)) {
+                throw new FileException(\sprintf('Cannot write "%s": failed to set mode on the temporary file.', $path));
             }
 
-            if (!@rename($tmp, $path)) {
-                throw new FileException(sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
+            if (!@\rename($tmp, $path)) {
+                throw new FileException(\sprintf('Cannot write "%s": atomic rename from the temporary file failed.', $path));
             }
         } catch (FileException $e) {
             // The temp file is this method's litter, not the caller's problem.
-            if (is_file($tmp)) {
-                @unlink($tmp);
+            if (\is_file($tmp)) {
+                @\unlink($tmp);
             }
 
             throw $e;
@@ -303,11 +303,11 @@ final class File
      */
     private static function currentModeOf(string $path): int
     {
-        if (!is_file($path)) {
+        if (!\is_file($path)) {
             return self::DEFAULT_MODE;
         }
 
-        $perms = @fileperms($path);
+        $perms = @\fileperms($path);
 
         return $perms === false ? self::DEFAULT_MODE : ($perms & 0777);
     }
@@ -322,15 +322,15 @@ final class File
 
         // 'c' creates the file when absent and does NOT truncate it — the sidecar carries no
         // content, only the lock, so truncation would be harmless but pointless.
-        $handle = @fopen($lockPath, 'c');
+        $handle = @\fopen($lockPath, 'c');
         if ($handle === false) {
-            throw new FileException(sprintf('Cannot write "%s": failed to open the lock file "%s".', $path, $lockPath));
+            throw new FileException(\sprintf('Cannot write "%s": failed to open the lock file "%s".', $path, $lockPath));
         }
 
-        if (!flock($handle, LOCK_EX)) {
-            @fclose($handle);
+        if (!\flock($handle, LOCK_EX)) {
+            @\fclose($handle);
 
-            throw new FileException(sprintf('Cannot write "%s": failed to acquire an exclusive lock.', $path));
+            throw new FileException(\sprintf('Cannot write "%s": failed to acquire an exclusive lock.', $path));
         }
 
         return $handle;
@@ -341,8 +341,8 @@ final class File
      */
     private static function releaseLock($handle): void
     {
-        @flock($handle, LOCK_UN);
-        @fclose($handle);
+        @\flock($handle, LOCK_UN);
+        @\fclose($handle);
     }
 
     /**
@@ -357,17 +357,17 @@ final class File
      */
     private static function createTempFileIn(string $dir): string
     {
-        $tmp = @tempnam($dir, '.egl-utils-');
+        $tmp = @\tempnam($dir, '.egl-utils-');
         if ($tmp === false) {
-            throw new FileException(sprintf('Failed to create a temporary file in "%s".', $dir));
+            throw new FileException(\sprintf('Failed to create a temporary file in "%s".', $dir));
         }
 
-        $tmpDir = realpath(\dirname($tmp));
-        $wanted = realpath($dir);
+        $tmpDir = \realpath(\dirname($tmp));
+        $wanted = \realpath($dir);
         if ($tmpDir === false || $wanted === false || $tmpDir !== $wanted) {
-            @unlink($tmp);
+            @\unlink($tmp);
 
-            throw new FileException(sprintf(
+            throw new FileException(\sprintf(
                 'Refusing to write: the temporary file landed in "%s" instead of "%s", so the '
                 . 'replacement would cross filesystems and lose atomicity.',
                 $tmpDir === false ? 'an unresolvable directory' : $tmpDir,
@@ -385,14 +385,14 @@ final class File
      */
     private static function putAll(string $tmp, string $contents, string $target): void
     {
-        $written = @file_put_contents($tmp, $contents);
+        $written = @\file_put_contents($tmp, $contents);
         if ($written === false) {
-            throw new FileException(sprintf('Cannot write "%s": writing the temporary file failed.', $target));
+            throw new FileException(\sprintf('Cannot write "%s": writing the temporary file failed.', $target));
         }
 
         $expected = \strlen($contents);
         if ($written !== $expected) {
-            throw new FileException(sprintf(
+            throw new FileException(\sprintf(
                 'Cannot write "%s": short write to the temporary file (%d of %d bytes).',
                 $target,
                 $written,

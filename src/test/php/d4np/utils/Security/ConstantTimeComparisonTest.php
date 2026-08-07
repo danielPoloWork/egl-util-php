@@ -74,7 +74,7 @@ final class ConstantTimeComparisonTest extends TestCase
         self::assertStringContainsString(
             $comparator . '(',
             self::sourceOf($class, $method),
-            sprintf(
+            \sprintf(
                 '%s::%s() must compare with %s(); a variable-time comparison returns the same value '
                 . 'for every input, so no behavioural test in this suite would notice its absence.',
                 $class,
@@ -105,13 +105,13 @@ final class ConstantTimeComparisonTest extends TestCase
         $body = self::sourceOf($class, $method);
 
         self::assertDoesNotMatchRegularExpression(
-            sprintf(
+            \sprintf(
                 '/\$%1$s\s*(?:={2,3}|!={1,2}|<=>)\s*\$%2$s|\$%2$s\s*(?:={2,3}|!={1,2}|<=>)\s*\$%1$s/',
-                preg_quote($secretA, '/'),
-                preg_quote($secretB, '/'),
+                \preg_quote($secretA, '/'),
+                \preg_quote($secretB, '/'),
             ),
             $body,
-            sprintf(
+            \sprintf(
                 'comparing $%s with $%s directly leaks the matching prefix length through timing, '
                 . 'which is enough to reconstruct the secret byte by byte given enough attempts.',
                 $secretA,
@@ -163,7 +163,7 @@ final class ConstantTimeComparisonTest extends TestCase
                 }
 
                 if (!$covered) {
-                    $unregistered[] = sprintf('%s() at %s:%d', $name, basename($file), $line);
+                    $unregistered[] = \sprintf('%s() at %s:%d', $name, \basename($file), $line);
                 }
             }
         }
@@ -181,7 +181,7 @@ final class ConstantTimeComparisonTest extends TestCase
      */
     private static function libraryFiles(): array
     {
-        $root = dirname(__DIR__, 5) . '/main/php/d4np/utils';
+        $root = \dirname(__DIR__, 5) . '/main/php/d4np/utils';
         $found = [];
 
         /** @var iterable<\SplFileInfo> $iterator */
@@ -192,7 +192,7 @@ final class ConstantTimeComparisonTest extends TestCase
             }
         }
 
-        sort($found);
+        \sort($found);
 
         return $found;
     }
@@ -204,17 +204,17 @@ final class ConstantTimeComparisonTest extends TestCase
      */
     private static function constantTimeCallsIn(string $file): array
     {
-        $tokens = token_get_all((string) file_get_contents($file));
+        $tokens = \token_get_all((string) \file_get_contents($file));
         $calls = [];
 
         foreach ($tokens as $index => $token) {
-            if (!is_array($token) || $token[0] !== T_STRING || !in_array($token[1], self::CONSTANT_TIME, true)) {
+            if (!\is_array($token) || $token[0] !== T_STRING || !\in_array($token[1], self::CONSTANT_TIME, true)) {
                 continue;
             }
 
             // `->hash_equals` or `::hash_equals` would be a method, not the PHP function.
             $previous = $tokens[$index - 1] ?? null;
-            if (is_array($previous) && in_array($previous[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) {
+            if (\is_array($previous) && \in_array($previous[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) {
                 continue;
             }
 
@@ -230,10 +230,10 @@ final class ConstantTimeComparisonTest extends TestCase
     private static function sourceOf(string $class, string $method): string
     {
         $reflected = new \ReflectionMethod($class, $method);
-        $lines = file((string) $reflected->getFileName());
+        $lines = \file((string) $reflected->getFileName());
         self::assertIsArray($lines);
 
-        return implode('', array_slice(
+        return \implode('', \array_slice(
             $lines,
             $reflected->getStartLine() - 1,
             $reflected->getEndLine() - $reflected->getStartLine() + 1,

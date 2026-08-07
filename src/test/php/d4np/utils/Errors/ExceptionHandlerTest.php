@@ -47,8 +47,8 @@ final class ExceptionHandlerTest extends TestCase
 
         $document = (new ExceptionHandler(debug: false))->problem(new DatabaseException($secret));
 
-        self::assertStringNotContainsString('users_backup', json_encode($document, JSON_THROW_ON_ERROR));
-        self::assertStringNotContainsString('SQLSTATE', json_encode($document, JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('users_backup', \json_encode($document, JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('SQLSTATE', \json_encode($document, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -65,7 +65,7 @@ final class ExceptionHandlerTest extends TestCase
             new HttpException('token abc123 rejected'),
             new DatabaseException('pdo dsn mysql:host=10.0.0.5'),
         ] as $throwable) {
-            $serialised = json_encode($handler->problem($throwable, 'ref-1'), JSON_THROW_ON_ERROR);
+            $serialised = \json_encode($handler->problem($throwable, 'ref-1'), JSON_THROW_ON_ERROR);
 
             self::assertStringNotContainsString($throwable->getMessage(), $serialised);
             self::assertStringNotContainsString($throwable::class, $serialised);
@@ -102,7 +102,7 @@ final class ExceptionHandlerTest extends TestCase
      */
     public function testTheStringFalseDoesNotEnableDebug(): void
     {
-        putenv('D4NP_TEST_DEBUG=false');
+        \putenv('D4NP_TEST_DEBUG=false');
 
         try {
             $document = ExceptionHandler::fromEnvironment(variable: 'D4NP_TEST_DEBUG')
@@ -110,13 +110,13 @@ final class ExceptionHandlerTest extends TestCase
 
             self::assertArrayNotHasKey('trace', $document, "'false' must not read as on");
         } finally {
-            putenv('D4NP_TEST_DEBUG');
+            \putenv('D4NP_TEST_DEBUG');
         }
     }
 
     public function testTheStringTrueEnablesDebug(): void
     {
-        putenv('D4NP_TEST_DEBUG=true');
+        \putenv('D4NP_TEST_DEBUG=true');
 
         try {
             $document = ExceptionHandler::fromEnvironment(variable: 'D4NP_TEST_DEBUG')
@@ -124,7 +124,7 @@ final class ExceptionHandlerTest extends TestCase
 
             self::assertArrayHasKey('trace', $document);
         } finally {
-            putenv('D4NP_TEST_DEBUG');
+            \putenv('D4NP_TEST_DEBUG');
         }
     }
 
@@ -228,7 +228,7 @@ final class ExceptionHandlerTest extends TestCase
             $seen[] = $handler->report(new \RuntimeException('x'));
         }
 
-        self::assertCount(50, array_unique($seen));
+        self::assertCount(50, \array_unique($seen));
     }
 
     public function testServerErrorsLogAtErrorAndClientErrorsAtWarning(): void

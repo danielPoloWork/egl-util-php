@@ -50,7 +50,7 @@ final class FileSequence
         private readonly int $cap,
     ) {
         if ($cap < 1) {
-            throw new InvalidArgumentException(sprintf('$cap must be >= 1, got %d.', $cap));
+            throw new InvalidArgumentException(\sprintf('$cap must be >= 1, got %d.', $cap));
         }
     }
 
@@ -74,7 +74,7 @@ final class FileSequence
             $next = $storedWindow === $window ? $counter + 1 : 1;
 
             if ($next > $this->cap) {
-                throw new SequenceExhaustedException(sprintf(
+                throw new SequenceExhaustedException(\sprintf(
                     'Sequence "%s" is exhausted for window "%s": %d of %d issued. It will not '
                     . 'wrap, because wrapping re-issues identifiers that are already in use.',
                     $this->path,
@@ -103,7 +103,7 @@ final class FileSequence
      */
     public function peek(string $window): int
     {
-        if (!is_file($this->path)) {
+        if (!\is_file($this->path)) {
             return 0;
         }
 
@@ -136,16 +136,16 @@ final class FileSequence
      */
     private function parse(string $raw): array
     {
-        $trimmed = trim($raw);
+        $trimmed = \trim($raw);
 
         if ($trimmed === '') {
             return ['', 0];
         }
 
-        $parts = explode(self::SEPARATOR, $trimmed);
+        $parts = \explode(self::SEPARATOR, $trimmed);
 
-        if (\count($parts) !== 2 || $parts[0] === '' || preg_match('/\A\d+\z/', $parts[1]) !== 1) {
-            throw new FileException(sprintf(
+        if (\count($parts) !== 2 || $parts[0] === '' || \preg_match('/\A\d+\z/', $parts[1]) !== 1) {
+            throw new FileException(\sprintf(
                 'Sequence state file "%s" is corrupt: expected "window%scounter", found "%s". '
                 . 'Refusing to treat it as a fresh start, which would re-issue every number '
                 . 'in the window.',
@@ -167,8 +167,8 @@ final class FileSequence
             throw new InvalidArgumentException('$window must not be empty.');
         }
 
-        if (str_contains($window, self::SEPARATOR) || preg_match('/[\r\n]/', $window) === 1) {
-            throw new InvalidArgumentException(sprintf(
+        if (\str_contains($window, self::SEPARATOR) || \preg_match('/[\r\n]/', $window) === 1) {
+            throw new InvalidArgumentException(\sprintf(
                 '$window must not contain "%s" or a line break: the state file stores '
                 . '"window%scounter" on one line, and either would make it unparseable.',
                 self::SEPARATOR,

@@ -97,7 +97,7 @@ final class Hydrator
             if ($parameter->isVariadic) {
                 // hydrateAt() refuses these anyway; stopping here keeps the message about the
                 // wither rather than about a payload the caller never wrote.
-                throw new HydrationException(sprintf(
+                throw new HydrationException(\sprintf(
                     'Cannot apply withers to %s: parameter "%s" is variadic, so the current '
                     . 'value cannot be read back as a single argument.',
                     $class,
@@ -105,8 +105,8 @@ final class Hydrator
                 ), $parameter->name);
             }
 
-            if (!property_exists($source, $parameter->name)) {
-                throw new HydrationException(sprintf(
+            if (!\property_exists($source, $parameter->name)) {
+                throw new HydrationException(\sprintf(
                     'Cannot apply withers to %s: constructor parameter "%s" has no property of '
                     . 'the same name to read the current value from. Withers rebuild through the '
                     . 'constructor, so every parameter must be recoverable — which promoted '
@@ -124,7 +124,7 @@ final class Hydrator
         }
 
         /** @var T */
-        return $this->hydrateAt($class, array_merge($current, $changes), false, '');
+        return $this->hydrateAt($class, \array_merge($current, $changes), false, '');
     }
 
     /**
@@ -154,7 +154,7 @@ final class Hydrator
 
         if (!$meta->isInstantiable) {
             throw new HydrationException(
-                sprintf('Cannot hydrate %s: the class is not instantiable.', $class),
+                \sprintf('Cannot hydrate %s: the class is not instantiable.', $class),
                 $prefix,
             );
         }
@@ -170,8 +170,8 @@ final class Hydrator
             if ($parameter->isVariadic) {
                 // A variadic parameter consumes an arbitrary number of positional arguments,
                 // which a keyed payload has no way to express. Refused rather than guessed at.
-                if (array_key_exists($parameter->name, $data)) {
-                    throw new HydrationException(sprintf(
+                if (\array_key_exists($parameter->name, $data)) {
+                    throw new HydrationException(\sprintf(
                         'Cannot hydrate %s: parameter "%s" is variadic, which a keyed payload '
                         . 'cannot express.',
                         $class,
@@ -182,7 +182,7 @@ final class Hydrator
                 continue;
             }
 
-            if (!array_key_exists($parameter->name, $data)) {
+            if (!\array_key_exists($parameter->name, $data)) {
                 // RFC-0001 R-4, and the order matters. A declared default is applied by PHP
                 // itself when the argument is omitted, so the cleanest thing is to pass nothing.
                 // A nullable parameter WITHOUT a default is a different case: PHP treats it as
@@ -215,9 +215,9 @@ final class Hydrator
      */
     private function rejectUnknownKeys(array $declared, array $data, string $class, string $prefix): void
     {
-        foreach (array_keys($data) as $key) {
+        foreach (\array_keys($data) as $key) {
             $name = (string) $key;
-            if (!in_array($name, $declared, true)) {
+            if (!\in_array($name, $declared, true)) {
                 throw UnknownKeyException::forKey(self::join($prefix, $name), $class);
             }
         }
@@ -261,8 +261,8 @@ final class Hydrator
             // narrows `string` to `class-string` for the type system, and because a consumer who
             // does not run PHPStan can still reach it. A fixture to cover it was written, seen
             // rejected by the linter, and removed rather than suppressed.
-            if (!class_exists($type) && !interface_exists($type)) {
-                throw new HydrationException(sprintf(
+            if (!\class_exists($type) && !\interface_exists($type)) {
+                throw new HydrationException(\sprintf(
                     'Cannot hydrate: parameter type "%s" does not resolve to a loadable class '
                     . 'or interface.',
                     $type,
@@ -273,7 +273,7 @@ final class Hydrator
         }
 
         if (!self::satisfiesBuiltin($value, $type)) {
-            throw TypeMismatchException::at($path, $type, get_debug_type($value));
+            throw TypeMismatchException::at($path, $type, \get_debug_type($value));
         }
 
         return $value;
@@ -306,8 +306,8 @@ final class Hydrator
             return $value;
         }
 
-        if (!is_iterable($value)) {
-            throw TypeMismatchException::at($path, Collection::class, get_debug_type($value));
+        if (!\is_iterable($value)) {
+            throw TypeMismatchException::at($path, Collection::class, \get_debug_type($value));
         }
 
         $of = $parameter->attribute(CollectionOf::class);
@@ -322,11 +322,11 @@ final class Hydrator
 
             if ($element instanceof $of->type) {
                 $items[] = $element;
-            } elseif (is_a($of->type, DataTransferObject::class, true) && is_array($element)) {
+            } elseif (\is_a($of->type, DataTransferObject::class, true) && \is_array($element)) {
                 /** @var array<string, mixed> $element */
                 $items[] = $this->hydrateAt($of->type, $element, $lenient, $elementPath);
             } else {
-                throw TypeMismatchException::at($elementPath, $of->type, get_debug_type($element));
+                throw TypeMismatchException::at($elementPath, $of->type, \get_debug_type($element));
             }
 
             $index++;
@@ -352,16 +352,16 @@ final class Hydrator
 
         // A nested DTO is the recursive case spec FR-01 names: an array becomes the child DTO,
         // and the path grows so a failure deep in the graph says where it happened.
-        if (is_a($type, DataTransferObject::class, true) && is_array($value)) {
+        if (\is_a($type, DataTransferObject::class, true) && \is_array($value)) {
             /** @var array<string, mixed> $value */
             return $this->hydrateAt($type, $value, $lenient, $path);
         }
 
-        if (is_a($type, BackedEnum::class, true) && (is_int($value) || is_string($value))) {
+        if (\is_a($type, BackedEnum::class, true) && (\is_int($value) || \is_string($value))) {
             return $this->coerceBackedEnum($value, $type, $path);
         }
 
-        throw TypeMismatchException::at($path, $type, get_debug_type($value));
+        throw TypeMismatchException::at($path, $type, \get_debug_type($value));
     }
 
     /**
@@ -385,8 +385,8 @@ final class Hydrator
         if ($case === null) {
             throw TypeMismatchException::at(
                 $path,
-                sprintf('%s (one of: %s)', $type, self::backingValuesOf($type)),
-                get_debug_type($value) . ' ' . var_export($value, true),
+                \sprintf('%s (one of: %s)', $type, self::backingValuesOf($type)),
+                \get_debug_type($value) . ' ' . \var_export($value, true),
             );
         }
 
@@ -401,8 +401,8 @@ final class Hydrator
         /** @var list<BackedEnum> $cases */
         $cases = $type::cases();
 
-        return implode(', ', array_map(
-            static fn (BackedEnum $case): string => var_export($case->value, true),
+        return \implode(', ', \array_map(
+            static fn (BackedEnum $case): string => \var_export($case->value, true),
             $cases,
         ));
     }
@@ -417,13 +417,13 @@ final class Hydrator
     private static function satisfiesBuiltin(mixed $value, string $type): bool
     {
         return match ($type) {
-            'int' => is_int($value),
-            'float' => is_float($value) || is_int($value),
-            'string' => is_string($value),
-            'bool' => is_bool($value),
-            'array' => is_array($value),
-            'iterable' => is_iterable($value),
-            'object' => is_object($value),
+            'int' => \is_int($value),
+            'float' => \is_float($value) || \is_int($value),
+            'string' => \is_string($value),
+            'bool' => \is_bool($value),
+            'array' => \is_array($value),
+            'iterable' => \is_iterable($value),
+            'object' => \is_object($value),
             // Everything else falls through deliberately, rather than growing an arm per type.
             //
             // `callable` cannot be a property type at all, and the standalone `null`, `true` and
@@ -458,7 +458,7 @@ final class Hydrator
             // intersection type, a union arm. Without this a consumer catching UtilsThrowable
             // would miss a bare TypeError, breaking ADR-0004's "one thing to catch" contract.
             throw new HydrationException(
-                sprintf('Cannot hydrate %s: %s', $class, $e->getMessage()),
+                \sprintf('Cannot hydrate %s: %s', $class, $e->getMessage()),
                 $prefix,
                 $e,
             );

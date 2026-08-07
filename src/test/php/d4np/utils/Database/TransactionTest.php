@@ -46,7 +46,7 @@ final class TransactionTest extends TestCase
      */
     private function rows(): array
     {
-        return array_map(
+        return \array_map(
             static function (array $row): string {
                 self::assertIsString($row['v']);
 

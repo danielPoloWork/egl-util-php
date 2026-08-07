@@ -12,6 +12,6 @@ final class Variadic
 
     public function __construct(NoDependencies ...$items)
     {
-        $this->items = array_values($items);
+        $this->items = \array_values($items);
     }
 }

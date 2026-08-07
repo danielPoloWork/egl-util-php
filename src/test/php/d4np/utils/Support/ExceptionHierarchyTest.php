@@ -42,19 +42,19 @@ final class ExceptionHierarchyTest extends TestCase
      */
     private static function discoverExceptionClasses(): array
     {
-        $dir = realpath(self::SUPPORT_DIR);
+        $dir = \realpath(self::SUPPORT_DIR);
         self::assertIsString($dir, 'the Support source directory should be resolvable');
 
         $found = [];
-        foreach (scandir($dir) ?: [] as $entry) {
-            if (!str_ends_with($entry, 'Exception.php')) {
+        foreach (\scandir($dir) ?: [] as $entry) {
+            if (!\str_ends_with($entry, 'Exception.php')) {
                 continue;
             }
             /** @var class-string $class */
-            $class = self::NAMESPACE_PREFIX . basename($entry, '.php');
+            $class = self::NAMESPACE_PREFIX . \basename($entry, '.php');
             $found[] = $class;
         }
-        sort($found);
+        \sort($found);
 
         return $found;
     }
@@ -67,8 +67,8 @@ final class ExceptionHierarchyTest extends TestCase
 
         foreach ($classes as $class) {
             self::assertTrue(
-                is_a($class, UtilsThrowable::class, true),
-                sprintf(
+                \is_a($class, UtilsThrowable::class, true),
+                \sprintf(
                     '%s does not implement %s. Every exception this package throws must be '
                     . 'catchable through the one marker interface (ADR-0004).',
                     $class,
@@ -76,8 +76,8 @@ final class ExceptionHierarchyTest extends TestCase
                 ),
             );
             self::assertTrue(
-                is_a($class, UtilsException::class, true),
-                sprintf('%s does not extend %s.', $class, UtilsException::class),
+                \is_a($class, UtilsException::class, true),
+                \sprintf('%s does not extend %s.', $class, UtilsException::class),
             );
         }
     }
@@ -122,8 +122,8 @@ final class ExceptionHierarchyTest extends TestCase
     public function testHydrationLeavesAreCatchableCoarsely(string $leaf): void
     {
         self::assertTrue(
-            is_a($leaf, HydrationException::class, true),
-            sprintf('%s must be catchable as %s', $leaf, HydrationException::class),
+            \is_a($leaf, HydrationException::class, true),
+            \sprintf('%s must be catchable as %s', $leaf, HydrationException::class),
         );
     }
 
@@ -138,17 +138,17 @@ final class ExceptionHierarchyTest extends TestCase
         // literals is something PHPStan can decide statically — which would make this assertion
         // a tautology dressed as a test.
         $hydration = [HydrationException::class, UnknownKeyException::class, MissingKeyException::class, TypeMismatchException::class];
-        $others = array_values(array_filter(
+        $others = \array_values(\array_filter(
             self::discoverExceptionClasses(),
-            static fn (string $class): bool => !in_array($class, $hydration, true),
+            static fn (string $class): bool => !\in_array($class, $hydration, true),
         ));
 
         self::assertNotSame([], $others, 'no non-hydration exceptions found — the test would be vacuous');
 
         foreach ($others as $class) {
             self::assertFalse(
-                is_a($class, HydrationException::class, true),
-                sprintf('%s must NOT be catchable as %s', $class, HydrationException::class),
+                \is_a($class, HydrationException::class, true),
+                \sprintf('%s must NOT be catchable as %s', $class, HydrationException::class),
             );
         }
     }
@@ -159,7 +159,7 @@ final class ExceptionHierarchyTest extends TestCase
         foreach ([UtilsException::class, HydrationException::class] as $base) {
             self::assertFalse(
                 (new ReflectionClass($base))->isFinal(),
-                sprintf('%s is a documented extension point and must stay non-final', $base),
+                \sprintf('%s is a documented extension point and must stay non-final', $base),
             );
         }
         $leaves = [
@@ -177,7 +177,7 @@ final class ExceptionHierarchyTest extends TestCase
         foreach ($leaves as $leaf) {
             self::assertTrue(
                 (new ReflectionClass($leaf))->isFinal(),
-                sprintf('%s is a concrete leaf of a MAJOR-pinned hierarchy and must be final', $leaf),
+                \sprintf('%s is a concrete leaf of a MAJOR-pinned hierarchy and must be final', $leaf),
             );
         }
     }

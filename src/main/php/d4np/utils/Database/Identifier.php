@@ -77,8 +77,8 @@ final class Identifier
      */
     public function quote(string $name): string
     {
-        if (preg_match(self::PATTERN, $name) !== 1) {
-            throw new DatabaseException(sprintf(
+        if (\preg_match(self::PATTERN, $name) !== 1) {
+            throw new DatabaseException(\sprintf(
                 'The identifier "%s" is not allowed. Table and column names cannot be bound as '
                 . 'parameters — a prepared statement has no placeholder for them — so this '
                 . 'library allows only bare names matching %s and refuses everything else. If '
@@ -96,6 +96,6 @@ final class Identifier
         // skipped, because a quoting routine that is only safe when called in the right order is
         // a trap for whoever calls it next. Quoting also lets a legal-but-reserved word (`order`,
         // `select`) be used as a column name at all.
-        return $open . str_replace($close, $close . $close, $name) . $close;
+        return $open . \str_replace($close, $close . $close, $name) . $close;
     }
 }

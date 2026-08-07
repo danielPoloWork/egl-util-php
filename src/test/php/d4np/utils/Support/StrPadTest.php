@@ -23,12 +23,12 @@ final class StrPadTest extends TestCase
     {
         // 'héllo' is 5 characters but 6 bytes. Asked for 7, str_pad() counts bytes: it emits
         // 7 BYTES — which render as only 6 characters, one short. padLeft() emits 7 characters.
-        $native = str_pad('héllo', 7);
+        $native = \str_pad('héllo', 7);
 
-        self::assertSame(7, strlen($native));
-        self::assertSame(6, preg_match_all('/./su', $native));
+        self::assertSame(7, \strlen($native));
+        self::assertSame(6, \preg_match_all('/./su', $native));
         self::assertSame('  héllo', Str::padLeft('héllo', 7));
-        self::assertSame(7, preg_match_all('/./su', Str::padLeft('héllo', 7)));
+        self::assertSame(7, \preg_match_all('/./su', Str::padLeft('héllo', 7)));
     }
 
     /**

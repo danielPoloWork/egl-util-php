@@ -14,6 +14,6 @@ final class VariadicDto extends DataTransferObject
 
     public function __construct(string ...$rest)
     {
-        $this->rest = array_values($rest);
+        $this->rest = \array_values($rest);
     }
 }

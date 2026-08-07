@@ -32,7 +32,7 @@ final class BridgePackageBoundaryTest extends TestCase
         $path = self::path('composer.json');
         self::assertFileExists($path, 'the bridge package manifest is missing');
 
-        $decoded = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $decoded = \json_decode((string) \file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($decoded);
 
         /** @var array<string, mixed> $decoded */
@@ -41,7 +41,7 @@ final class BridgePackageBoundaryTest extends TestCase
 
     private static function path(string $relative): string
     {
-        return dirname(__DIR__, 5) . '/' . self::PACKAGE . '/' . $relative;
+        return \dirname(__DIR__, 5) . '/' . self::PACKAGE . '/' . $relative;
     }
 
     /**
@@ -51,8 +51,8 @@ final class BridgePackageBoundaryTest extends TestCase
      */
     private static function coreManifest(): array
     {
-        $decoded = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 5) . '/composer.json'),
+        $decoded = \json_decode(
+            (string) \file_get_contents(\dirname(__DIR__, 5) . '/composer.json'),
             true,
             512,
             JSON_THROW_ON_ERROR,

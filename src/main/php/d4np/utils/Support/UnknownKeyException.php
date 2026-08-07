@@ -21,7 +21,7 @@ final class UnknownKeyException extends HydrationException
     public static function forKey(string $path, string $target): self
     {
         return new self(
-            sprintf(
+            \sprintf(
                 'Unknown key "%s" for %s. Strict hydration rejects keys the target does not '
                 . 'declare; use lenient() to ignore them.',
                 $path,

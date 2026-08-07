@@ -31,8 +31,8 @@ final class HttpExchange
     {
         $found = [];
         foreach ($this->headers as $header) {
-            if (preg_match('/^Set-Cookie:\s*(.+)$/i', $header, $m) === 1) {
-                $found[] = trim($m[1]);
+            if (\preg_match('/^Set-Cookie:\s*(.+)$/i', $header, $m) === 1) {
+                $found[] = \trim($m[1]);
             }
         }
 
@@ -42,7 +42,7 @@ final class HttpExchange
     public function sessionCookie(): ?string
     {
         foreach ($this->setCookieHeaders() as $header) {
-            if (stripos($header, 'PHPSESSID=') === 0) {
+            if (\stripos($header, 'PHPSESSID=') === 0) {
                 return $header;
             }
         }

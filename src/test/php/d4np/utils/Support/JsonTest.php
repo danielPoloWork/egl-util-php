@@ -80,14 +80,14 @@ final class JsonTest extends TestCase
 
     public function testEncodeThrowsOnAResourceWhichCannotBeEncoded(): void
     {
-        $resource = fopen('php://memory', 'rb');
+        $resource = \fopen('php://memory', 'rb');
         self::assertIsResource($resource);
 
         try {
             $this->expectException(JsonException::class);
             Json::encode($resource);
         } finally {
-            fclose($resource);
+            \fclose($resource);
         }
     }
 

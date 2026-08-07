@@ -25,18 +25,18 @@ final class CsvFormulaGuardTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/egl-utils-csvguard-' . bin2hex(random_bytes(8));
-        if (!mkdir($this->dir) && !is_dir($this->dir)) {
+        $this->dir = \sys_get_temp_dir() . '/egl-utils-csvguard-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($this->dir) && !\is_dir($this->dir)) {
             self::fail('could not create the test directory');
         }
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            @unlink($entry);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            @\unlink($entry);
         }
-        @rmdir($this->dir);
+        @\rmdir($this->dir);
     }
 
     private function path(): string
@@ -70,7 +70,7 @@ final class CsvFormulaGuardTest extends TestCase
 
         // Default off: the value is exported unchanged. Asserted, not assumed — a default
         // that silently rewrote data would be the magic_quotes mistake (spec §1).
-        self::assertSame([[$payload]], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([[$payload]], \iterator_to_array(Csv::read($this->path())));
     }
 
     #[DataProvider('formulaPayloads')]
@@ -78,7 +78,7 @@ final class CsvFormulaGuardTest extends TestCase
     {
         Csv::write($this->path(), [[$payload]], guardFormulas: true);
 
-        $rows = iterator_to_array(Csv::read($this->path()));
+        $rows = \iterator_to_array(Csv::read($this->path()));
 
         self::assertSame([["'" . $payload]], $rows);
         self::assertStringStartsWith("'", $rows[0][0]);
@@ -102,8 +102,8 @@ final class CsvFormulaGuardTest extends TestCase
     {
         Csv::write($this->path(), [[$value]], guardFormulas: true);
 
-        $rows = iterator_to_array(Csv::read($this->path()));
-        $expected = $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)
+        $rows = \iterator_to_array(Csv::read($this->path()));
+        $expected = $value !== '' && \in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)
             ? "'" . $value
             : $value;
 
@@ -116,7 +116,7 @@ final class CsvFormulaGuardTest extends TestCase
         // guard on means the file is no longer equal to what was exported.
         Csv::write($this->path(), [['=1+1']], guardFormulas: true);
 
-        self::assertNotSame([['=1+1']], iterator_to_array(Csv::read($this->path())));
+        self::assertNotSame([['=1+1']], \iterator_to_array(Csv::read($this->path())));
     }
 
     public function testTheGuardAppliesToTheHeaderRowToo(): void
@@ -125,7 +125,7 @@ final class CsvFormulaGuardTest extends TestCase
 
         self::assertSame(
             [["'=evil", 'ok'], ['1', '2']],
-            iterator_to_array(Csv::read($this->path())),
+            \iterator_to_array(Csv::read($this->path())),
         );
     }
 
@@ -135,6 +135,6 @@ final class CsvFormulaGuardTest extends TestCase
         // the caller controls. Guarding it would corrupt legitimate numeric exports.
         Csv::write($this->path(), [[-42, 7]], guardFormulas: true);
 
-        self::assertSame([['-42', '7']], iterator_to_array(Csv::read($this->path())));
+        self::assertSame([['-42', '7']], \iterator_to_array(Csv::read($this->path())));
     }
 }

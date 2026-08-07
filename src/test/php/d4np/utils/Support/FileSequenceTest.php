@@ -24,18 +24,18 @@ final class FileSequenceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/egl-utils-seq-' . bin2hex(random_bytes(8));
-        if (!mkdir($this->dir) && !is_dir($this->dir)) {
+        $this->dir = \sys_get_temp_dir() . '/egl-utils-seq-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($this->dir) && !\is_dir($this->dir)) {
             self::fail('could not create the test directory');
         }
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            @unlink($entry);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            @\unlink($entry);
         }
-        @rmdir($this->dir);
+        @\rmdir($this->dir);
     }
 
     private function path(): string
@@ -84,7 +84,7 @@ final class FileSequenceTest extends TestCase
         $this->sequence()->next('day-1');
         $this->sequence()->next('day-1');
 
-        self::assertSame("day-1|2\n", file_get_contents($this->path()));
+        self::assertSame("day-1|2\n", \file_get_contents($this->path()));
     }
 
     public function testTheCapIsIssuableAndTheNextDrawIsRefused(): void
@@ -114,7 +114,7 @@ final class FileSequenceTest extends TestCase
         }
 
         // The state must be untouched by the refusal — not reset, not advanced.
-        self::assertSame("w|1\n", file_get_contents($this->path()));
+        self::assertSame("w|1\n", \file_get_contents($this->path()));
     }
 
     public function testARefusedDrawDoesNotConsumeTheNextWindowsCapacity(): void
@@ -146,14 +146,14 @@ final class FileSequenceTest extends TestCase
 
     public function testAnAbsentStateFileIsAFreshStartNotAnError(): void
     {
-        self::assertFalse(is_file($this->path()));
+        self::assertFalse(\is_file($this->path()));
         self::assertSame(1, $this->sequence()->next('w'));
     }
 
     public function testABlankStateFileIsAlsoAFreshStart(): void
     {
         // What `touch` and most deploy scripts leave behind.
-        file_put_contents($this->path(), "  \n");
+        \file_put_contents($this->path(), "  \n");
 
         self::assertSame(1, $this->sequence()->next('w'));
     }
@@ -174,7 +174,7 @@ final class FileSequenceTest extends TestCase
     #[DataProvider('corruptStates')]
     public function testACorruptStateFileIsRefusedNotSilentlyReset(string $contents): void
     {
-        file_put_contents($this->path(), $contents);
+        \file_put_contents($this->path(), $contents);
 
         $this->expectException(FileException::class);
         $this->expectExceptionMessage('corrupt');
@@ -184,7 +184,7 @@ final class FileSequenceTest extends TestCase
 
     public function testACorruptStateFileIsNotOverwrittenByTheRefusal(): void
     {
-        file_put_contents($this->path(), "garbage\n");
+        \file_put_contents($this->path(), "garbage\n");
 
         try {
             $this->sequence()->next('w');
@@ -193,7 +193,7 @@ final class FileSequenceTest extends TestCase
         }
 
         // The evidence a human needs to diagnose it must survive.
-        self::assertSame("garbage\n", file_get_contents($this->path()));
+        self::assertSame("garbage\n", \file_get_contents($this->path()));
     }
 
     public function testPeekReportsTheLastIssuedNumber(): void

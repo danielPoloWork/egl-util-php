@@ -82,16 +82,16 @@ final class Url
     {
         self::guardControlCharacters($url, 'URL');
 
-        $parts = parse_url($url);
+        $parts = \parse_url($url);
         if ($parts === false) {
-            throw new InvalidUrlException(sprintf('Cannot parse "%s" as a URL.', $url));
+            throw new InvalidUrlException(\sprintf('Cannot parse "%s" as a URL.', $url));
         }
 
-        $scheme = isset($parts['scheme']) ? strtolower($parts['scheme']) : '';
-        $host = isset($parts['host']) ? strtolower($parts['host']) : '';
+        $scheme = isset($parts['scheme']) ? \strtolower($parts['scheme']) : '';
+        $host = isset($parts['host']) ? \strtolower($parts['host']) : '';
 
         if ($scheme === '' || $host === '') {
-            throw new InvalidUrlException(sprintf(
+            throw new InvalidUrlException(\sprintf(
                 'An absolute URL (scheme and host) is required, got "%s".',
                 $url,
             ));
@@ -164,7 +164,7 @@ final class Url
      */
     public function query(): array
     {
-        parse_str($this->rawQuery, $decoded);
+        \parse_str($this->rawQuery, $decoded);
 
         return $decoded;
     }
@@ -206,18 +206,18 @@ final class Url
     public function withScheme(string $scheme): self
     {
         self::guardControlCharacters($scheme, 'Scheme');
-        $normalized = strtolower($scheme);
+        $normalized = \strtolower($scheme);
 
-        if (preg_match('/\A[a-z][a-z0-9+.\-]*\z/', $normalized) !== 1) {
-            throw new InvalidUrlException(sprintf(
+        if (\preg_match('/\A[a-z][a-z0-9+.\-]*\z/', $normalized) !== 1) {
+            throw new InvalidUrlException(\sprintf(
                 'Invalid scheme "%s": a scheme is a letter followed by letters, digits, '
                 . '"+", "-" or "." (RFC 3986 §3.1).',
                 $scheme,
             ));
         }
 
-        if (in_array($normalized, self::DOWNGRADE_TARGETS[$this->scheme] ?? [], true)) {
-            throw new InvalidUrlException(sprintf(
+        if (\in_array($normalized, self::DOWNGRADE_TARGETS[$this->scheme] ?? [], true)) {
+            throw new InvalidUrlException(\sprintf(
                 'Refusing to downgrade "%s" to "%s": the transport would go from encrypted '
                 . 'to plaintext. Build the URL with the intended scheme instead.',
                 $this->scheme,
@@ -287,7 +287,7 @@ final class Url
             $this->host,
             $this->port,
             $this->path,
-            http_build_query($params, '', '&', PHP_QUERY_RFC3986),
+            \http_build_query($params, '', '&', PHP_QUERY_RFC3986),
             $this->fragment,
         );
     }
@@ -402,8 +402,8 @@ final class Url
      */
     private static function guardControlCharacters(string $value, string $subject): void
     {
-        if (preg_match('/[\x00-\x1F\x7F]/', $value) === 1) {
-            throw new InvalidUrlException(sprintf(
+        if (\preg_match('/[\x00-\x1F\x7F]/', $value) === 1) {
+            throw new InvalidUrlException(\sprintf(
                 '%s contains a control character. parse_url() would rewrite it to "_" rather '
                 . 'than reject it, so the parsed value would differ from the input.',
                 $subject,
@@ -424,7 +424,7 @@ final class Url
             $path = $prefix === '' ? (string) $key : $prefix . '.' . $key;
 
             if ($value === null) {
-                throw new InvalidUrlException(sprintf(
+                throw new InvalidUrlException(\sprintf(
                     'Query parameter "%s" is null, which http_build_query() would drop '
                     . 'silently. Pass "" for an empty value, or withoutQueryParam() to remove '
                     . 'the key.',
@@ -432,7 +432,7 @@ final class Url
                 ));
             }
 
-            if (is_array($value)) {
+            if (\is_array($value)) {
                 self::guardNoNullValues($value, $path);
             }
         }

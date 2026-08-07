@@ -76,7 +76,7 @@ final class SanitizerTest extends TestCase
      */
     private function matching(DatabaseConnection $connection, string $pattern): array
     {
-        return array_map(
+        return \array_map(
             static function (array $row): string {
                 self::assertIsString($row['v']);
 
@@ -197,7 +197,7 @@ final class SanitizerTest extends TestCase
     public function testJavascriptAndDataSchemesAreRefused(): void
     {
         foreach (['javascript:alert(1)', 'data:text/html;base64,PHNjcmlwdD4='] as $href) {
-            $sanitized = Sanitizer::richText(sprintf('<a href="%s">x</a>', $href));
+            $sanitized = Sanitizer::richText(\sprintf('<a href="%s">x</a>', $href));
 
             self::assertStringNotContainsString('javascript:', $sanitized);
             self::assertStringNotContainsString('data:', $sanitized);

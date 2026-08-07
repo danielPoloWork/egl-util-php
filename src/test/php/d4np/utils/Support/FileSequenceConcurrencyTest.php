@@ -28,18 +28,18 @@ final class FileSequenceConcurrencyTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/egl-utils-t14-' . bin2hex(random_bytes(8));
-        if (!mkdir($this->dir) && !is_dir($this->dir)) {
+        $this->dir = \sys_get_temp_dir() . '/egl-utils-t14-' . \bin2hex(\random_bytes(8));
+        if (!\mkdir($this->dir) && !\is_dir($this->dir)) {
             self::fail('could not create the test directory');
         }
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/*') ?: [] as $entry) {
-            @unlink($entry);
+        foreach (\glob($this->dir . '/*') ?: [] as $entry) {
+            @\unlink($entry);
         }
-        @rmdir($this->dir);
+        @\rmdir($this->dir);
     }
 
     private static function autoloadPath(): string
@@ -67,7 +67,7 @@ final class FileSequenceConcurrencyTest extends TestCase
             $out = $this->dir . "/worker-{$i}.out";
             $outputs[] = $out;
 
-            $process = @proc_open(
+            $process = @\proc_open(
                 [
                     PHP_BINARY,
                     self::workerPath(),
@@ -91,16 +91,16 @@ final class FileSequenceConcurrencyTest extends TestCase
         }
 
         foreach ($processes as $process) {
-            proc_close($process);
+            \proc_close($process);
         }
 
         $drawn = [];
         foreach ($outputs as $index => $out) {
             self::assertFileExists($out, "worker {$index} produced no output");
-            $contents = trim((string) file_get_contents($out));
+            $contents = \trim((string) \file_get_contents($out));
             self::assertStringStartsNotWith('ERROR:', $contents, "worker {$index} failed: {$contents}");
 
-            foreach (explode("\n", $contents) as $line) {
+            foreach (\explode("\n", $contents) as $line) {
                 if ($line !== '') {
                     $drawn[] = (int) $line;
                 }
@@ -118,9 +118,9 @@ final class FileSequenceConcurrencyTest extends TestCase
 
         self::assertCount($total, $drawn, 'every worker should have completed all its draws');
 
-        sort($drawn);
+        \sort($drawn);
 
-        self::assertSame(range(1, $total), $drawn, 'the drawn numbers must be 1..N with no duplicate and no gap');
+        self::assertSame(\range(1, $total), $drawn, 'the drawn numbers must be 1..N with no duplicate and no gap');
     }
 
     public function testTheSuiteWouldSeeADuplicateIfOneOccurred(): void
@@ -128,16 +128,16 @@ final class FileSequenceConcurrencyTest extends TestCase
         // Guards the assertion above against being vacuous: the comparison it makes is one
         // that a duplicated draw genuinely fails.
         $withDuplicate = [1, 2, 2, 4];
-        sort($withDuplicate);
+        \sort($withDuplicate);
 
-        self::assertNotSame(range(1, 4), $withDuplicate);
+        self::assertNotSame(\range(1, 4), $withDuplicate);
     }
 
     public function testTheCapHoldsUnderConcurrencySoNoWorkerExceedsIt(): void
     {
         // Half the capacity the workers collectively ask for: some draws must be refused,
         // and no number above the cap may ever be issued.
-        $cap = intdiv(self::WORKERS * self::DRAWS_EACH, 2);
+        $cap = \intdiv(self::WORKERS * self::DRAWS_EACH, 2);
         $state = $this->dir . '/capped.state';
         $processes = [];
         $outputs = [];
@@ -146,7 +146,7 @@ final class FileSequenceConcurrencyTest extends TestCase
             $out = $this->dir . "/capped-{$i}.out";
             $outputs[] = $out;
 
-            $process = @proc_open(
+            $process = @\proc_open(
                 [
                     PHP_BINARY,
                     self::workerPath(),
@@ -170,23 +170,23 @@ final class FileSequenceConcurrencyTest extends TestCase
         }
 
         foreach ($processes as $process) {
-            proc_close($process);
+            \proc_close($process);
         }
 
         $drawn = [];
         $refusals = 0;
 
         foreach ($outputs as $out) {
-            $contents = trim((string) file_get_contents($out));
+            $contents = \trim((string) \file_get_contents($out));
 
-            if (str_starts_with($contents, 'ERROR:')) {
+            if (\str_starts_with($contents, 'ERROR:')) {
                 $refusals++;
                 self::assertStringContainsString('exhausted', $contents);
 
                 continue;
             }
 
-            foreach (explode("\n", $contents) as $line) {
+            foreach (\explode("\n", $contents) as $line) {
                 if ($line !== '') {
                     $drawn[] = (int) $line;
                 }
@@ -197,8 +197,8 @@ final class FileSequenceConcurrencyTest extends TestCase
         self::assertLessThanOrEqual($cap, \count($drawn), 'no more numbers than the cap may be issued');
 
         if ($drawn !== []) {
-            self::assertLessThanOrEqual($cap, max($drawn), 'no number above the cap may be issued');
-            self::assertSame(\count($drawn), \count(array_unique($drawn)), 'no number may be issued twice');
+            self::assertLessThanOrEqual($cap, \max($drawn), 'no number above the cap may be issued');
+            self::assertSame(\count($drawn), \count(\array_unique($drawn)), 'no number may be issued twice');
         }
     }
 }

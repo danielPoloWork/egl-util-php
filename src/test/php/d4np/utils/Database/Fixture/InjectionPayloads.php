@@ -54,7 +54,7 @@ final class InjectionPayloads
         yield 'sqlite attach' => ["'; ATTACH DATABASE '/tmp/x' AS x;--"];
         yield 'unicode quote lookalike' => ["admin\u{2019} OR 1=1"];
         yield 'emoji' => ['🙂 OR 1=1'];
-        yield 'very long' => [str_repeat("' OR 1=1 --", 500)];
+        yield 'very long' => [\str_repeat("' OR 1=1 --", 500)];
         yield 'only whitespace' => ['   '];
         yield 'empty string' => [''];
         yield 'json-ish' => ['{"$ne": null}'];

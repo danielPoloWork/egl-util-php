@@ -56,7 +56,7 @@ final class EscaperTest extends TestCase
         self::assertStringContainsString('after', $escaped);
         self::assertStringContainsString("\u{FFFD}", $escaped);
         // And what comes out is itself well-formed, so it cannot corrupt the document.
-        self::assertSame(1, preg_match('//u', $escaped));
+        self::assertSame(1, \preg_match('//u', $escaped));
     }
 
     // ---- attr() -------------------------------------------------------------------------------
@@ -110,7 +110,7 @@ final class EscaperTest extends TestCase
     {
         $escaped = Escaper::attr("ok\xC3\x28bad");
 
-        self::assertSame(1, preg_match('//u', $escaped));
+        self::assertSame(1, \preg_match('//u', $escaped));
         self::assertStringContainsString("\u{FFFD}", $escaped);
     }
 
@@ -160,7 +160,7 @@ final class EscaperTest extends TestCase
     {
         $escaped = Escaper::js('héllo 漢 🙂 <>&"\'');
 
-        self::assertSame(1, preg_match('/^[\x20-\x7E]*$/', $escaped), 'output must survive any document charset');
+        self::assertSame(1, \preg_match('/^[\x20-\x7E]*$/', $escaped), 'output must survive any document charset');
     }
 
     public function testJsLeavesAlphanumericsAlone(): void
@@ -191,7 +191,7 @@ final class EscaperTest extends TestCase
      */
     public function testUrlUsesRawEncodingNotFormEncoding(): void
     {
-        self::assertNotSame(urlencode('a b'), Escaper::url('a b'));
+        self::assertNotSame(\urlencode('a b'), Escaper::url('a b'));
     }
 
     /**
@@ -250,7 +250,7 @@ final class EscaperTest extends TestCase
     {
         $escaped = Escaper::attr($payload);
 
-        self::assertSame(1, preg_match('/^(?:[a-zA-Z0-9]|&#x[0-9A-F]{2};|[\x80-\xFF]+)*$/', $escaped));
+        self::assertSame(1, \preg_match('/^(?:[a-zA-Z0-9]|&#x[0-9A-F]{2};|[\x80-\xFF]+)*$/', $escaped));
     }
 
     /**
@@ -262,7 +262,7 @@ final class EscaperTest extends TestCase
     {
         $escaped = Escaper::js($payload);
 
-        self::assertSame(1, preg_match('/^(?:[a-zA-Z0-9]|\\\\x[0-9A-F]{2}|\\\\u[0-9A-F]{4})*$/', $escaped));
+        self::assertSame(1, \preg_match('/^(?:[a-zA-Z0-9]|\\\\x[0-9A-F]{2}|\\\\u[0-9A-F]{4})*$/', $escaped));
         self::assertStringNotContainsString('/', $escaped);
         self::assertStringNotContainsString("'", $escaped);
         self::assertStringNotContainsString('"', $escaped);

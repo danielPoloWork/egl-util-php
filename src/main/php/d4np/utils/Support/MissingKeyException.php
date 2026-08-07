@@ -23,7 +23,7 @@ final class MissingKeyException extends HydrationException
     public static function forKey(string $path, string $target): self
     {
         return new self(
-            sprintf(
+            \sprintf(
                 'Missing required key "%s" for %s. The property is neither nullable nor '
                 . 'defaulted, so it cannot be omitted — in strict or lenient mode.',
                 $path,

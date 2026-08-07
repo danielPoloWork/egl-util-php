@@ -22,7 +22,7 @@ final class TypeMismatchException extends HydrationException
     public static function at(string $path, string $expected, string $actual): self
     {
         return new self(
-            sprintf('Expected %s at "%s", got %s.', $expected, $path, $actual),
+            \sprintf('Expected %s at "%s", got %s.', $expected, $path, $actual),
             $path,
         );
     }

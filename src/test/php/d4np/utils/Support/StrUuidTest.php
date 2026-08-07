@@ -23,7 +23,7 @@ final class StrUuidTest extends TestCase
     {
         $uuid = Str::uuid();
 
-        self::assertSame(36, strlen($uuid));
+        self::assertSame(36, \strlen($uuid));
         self::assertSame('-', $uuid[8]);
         self::assertSame('-', $uuid[13]);
         self::assertSame('-', $uuid[18]);
@@ -41,6 +41,6 @@ final class StrUuidTest extends TestCase
             $uuids[] = Str::uuid();
         }
 
-        self::assertCount($count, array_unique($uuids));
+        self::assertCount($count, \array_unique($uuids));
     }
 }

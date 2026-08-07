@@ -18,8 +18,8 @@ final class BootstrapTest extends TestCase
     public function testPhpVersionMeetsTheDeclaredFloor(): void
     {
         self::assertTrue(
-            version_compare(PHP_VERSION, '8.1.0', '>='),
-            sprintf('PHP %s does not meet the composer.json floor of >=8.1', PHP_VERSION)
+            \version_compare(PHP_VERSION, '8.1.0', '>='),
+            \sprintf('PHP %s does not meet the composer.json floor of >=8.1', PHP_VERSION)
         );
     }
 
@@ -29,8 +29,8 @@ final class BootstrapTest extends TestCase
         // require returns `true`, not the ClassLoader — recover the already-registered
         // instance from the SPL autoload stack instead of relying on first-load semantics.
         $loader = null;
-        foreach (spl_autoload_functions() as $callback) {
-            if (is_array($callback) && $callback[0] instanceof ClassLoader) {
+        foreach (\spl_autoload_functions() as $callback) {
+            if (\is_array($callback) && $callback[0] instanceof ClassLoader) {
                 $loader = $callback[0];
                 break;
             }
@@ -42,8 +42,8 @@ final class BootstrapTest extends TestCase
 
         self::assertArrayHasKey('D4np\\Utils\\', $prefixes, 'the production PSR-4 prefix is not registered');
 
-        $mainDir = realpath($prefixes['D4np\\Utils\\'][0]);
-        $expected = realpath(dirname(__DIR__, 5) . '/src/main/php/d4np/utils');
+        $mainDir = \realpath($prefixes['D4np\\Utils\\'][0]);
+        $expected = \realpath(\dirname(__DIR__, 5) . '/src/main/php/d4np/utils');
 
         self::assertSame($expected, $mainDir, 'D4np\\Utils\\ does not map to src/main/php/d4np/utils/');
     }

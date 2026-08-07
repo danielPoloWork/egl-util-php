@@ -121,7 +121,7 @@ final class QueryBuilder
         // named arguments into one (`select(first: 'id')`), which produces string keys. PHPStan at
         // max level is what surfaced that — the keys are discarded here either way, but the
         // declared `list<string>` has to be true rather than nearly true.
-        $clone->columns = array_values(array_map(fn (string $c): string => $this->identifier($c), $columns));
+        $clone->columns = \array_values(\array_map(fn (string $c): string => $this->identifier($c), $columns));
 
         return $clone;
     }
@@ -192,7 +192,7 @@ final class QueryBuilder
     public function whereIn(string $column, array $values): self
     {
         if ($values === []) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 'whereIn() on "%s" was given an empty list. `IN ()` is not valid SQL, and both '
                 . 'ways of hiding that are wrong: matching nothing would be an accident rather '
                 . 'than a decision, and dropping the condition would silently widen the result '
@@ -203,7 +203,7 @@ final class QueryBuilder
 
         $clone = clone $this;
         $clone->conditions[] = $this->identifier($column)
-            . ' IN (' . implode(', ', array_fill(0, count($values), '?')) . ')';
+            . ' IN (' . \implode(', ', \array_fill(0, \count($values), '?')) . ')';
         foreach ($values as $value) {
             $clone->bindings[] = $value;
         }
@@ -285,15 +285,15 @@ final class QueryBuilder
     public function toSql(): string
     {
         $sql = 'SELECT '
-            . ($this->columns === [] ? '*' : implode(', ', $this->columns))
+            . ($this->columns === [] ? '*' : \implode(', ', $this->columns))
             . ' FROM ' . $this->quotedTable;
 
         if ($this->conditions !== []) {
-            $sql .= ' WHERE ' . implode(' AND ', $this->conditions);
+            $sql .= ' WHERE ' . \implode(' AND ', $this->conditions);
         }
 
         if ($this->orderBy !== []) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
+            $sql .= ' ORDER BY ' . \implode(', ', $this->orderBy);
         }
 
         // Rendered as literals, which is safe only because both are `int` by signature and
@@ -365,7 +365,7 @@ final class QueryBuilder
     private function nonNegative(int $value, string $clause): int
     {
         if ($value < 0) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 '%s must be a non-negative integer, got %d. Refused rather than clamped to 0: a '
                 . 'negative value here means the caller computed it wrongly, and silently '
                 . 'returning a different page than the one asked for would hide that.',

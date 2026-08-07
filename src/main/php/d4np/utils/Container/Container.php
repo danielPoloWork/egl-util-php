@@ -178,28 +178,28 @@ final class Container implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        if (isset($this->factories[$id]) || isset($this->aliases[$id]) || array_key_exists($id, $this->instances)) {
+        if (isset($this->factories[$id]) || isset($this->aliases[$id]) || \array_key_exists($id, $this->instances)) {
             return true;
         }
 
-        return class_exists($id) && $this->cache->for($id)->isInstantiable;
+        return \class_exists($id) && $this->cache->for($id)->isInstantiable;
     }
 
     private function resolve(string $id): mixed
     {
-        if (array_key_exists($id, $this->instances)) {
+        if (\array_key_exists($id, $this->instances)) {
             return $this->instances[$id];
         }
 
         $target = $this->aliases[$id] ?? $id;
 
         if (isset($this->buildingIndex[$id])) {
-            throw new CircularDependencyException(sprintf(
+            throw new CircularDependencyException(\sprintf(
                 'Circular dependency detected while resolving "%s": %s. This container does not '
                 . 'resolve cycles by design (imported ADR-001); break the cycle, or inject a '
                 . 'factory so one side is built on demand.',
                 $id,
-                implode(' -> ', [...$this->building, $id]),
+                \implode(' -> ', [...$this->building, $id]),
             ));
         }
 
@@ -211,7 +211,7 @@ final class Container implements ContainerInterface
                 ? ($this->factories[$id])($this)
                 : $this->build($target, $id);
         } finally {
-            array_pop($this->building);
+            \array_pop($this->building);
             unset($this->buildingIndex[$id]);
         }
 
@@ -236,8 +236,8 @@ final class Container implements ContainerInterface
         // arrive at this method. Refusing it as "no such class" would send the reader hunting for a
         // typo instead of telling them to bind() it. This mirrors ReflectionCache's own three-way
         // check, and is the reason that check exists.
-        if (!class_exists($class) && !interface_exists($class) && !trait_exists($class)) {
-            throw new NotFoundException(sprintf(
+        if (!\class_exists($class) && !\interface_exists($class) && !\trait_exists($class)) {
+            throw new NotFoundException(\sprintf(
                 'No entry is registered for "%s", and it is not a loadable class this container '
                 . 'could autowire.',
                 $id,
@@ -247,7 +247,7 @@ final class Container implements ContainerInterface
         $metadata = $this->cache->for($class);
 
         if (!$metadata->isInstantiable) {
-            throw new ContainerException(sprintf(
+            throw new ContainerException(\sprintf(
                 '"%s" cannot be instantiated (it is an interface, an abstract class, or has a '
                 . 'non-public constructor). Bind it to a concrete class with bind(), or register a '
                 . 'factory for it.',
@@ -275,7 +275,7 @@ final class Container implements ContainerInterface
         // preserved verbatim, precisely so this refusal can name what it saw. Imported ADR-001
         // requires failing here rather than picking an arm.
         if ($parameter->type === null && $parameter->declaredType !== null) {
-            return $this->fallbackOrFail($parameter, sprintf(
+            return $this->fallbackOrFail($parameter, \sprintf(
                 'Cannot autowire $%s of %s: its type "%s" is a union or intersection, and choosing '
                 . 'an arm would be a guess. Register a factory for %s instead.',
                 $parameter->name,
@@ -286,7 +286,7 @@ final class Container implements ContainerInterface
         }
 
         if ($parameter->type === null) {
-            return $this->fallbackOrFail($parameter, sprintf(
+            return $this->fallbackOrFail($parameter, \sprintf(
                 'Cannot autowire $%s of %s: it has no type declaration, so there is nothing to '
                 . 'resolve it by.',
                 $parameter->name,
@@ -295,7 +295,7 @@ final class Container implements ContainerInterface
         }
 
         if ($parameter->isBuiltin) {
-            return $this->fallbackOrFail($parameter, sprintf(
+            return $this->fallbackOrFail($parameter, \sprintf(
                 'Cannot autowire $%s of %s: "%s" is a built-in type with no default. Register a '
                 . 'factory for %s, or give the parameter a default.',
                 $parameter->name,

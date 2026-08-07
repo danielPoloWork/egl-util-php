@@ -139,7 +139,7 @@ final class Transaction
             $this->connection->pdo()->exec('SAVEPOINT ' . $name);
         } catch (PDOException $e) {
             throw new DatabaseException(
-                sprintf('Could not open savepoint %s for a nested transaction: %s', $name, $e->getMessage()),
+                \sprintf('Could not open savepoint %s for a nested transaction: %s', $name, $e->getMessage()),
                 0,
                 $e,
             );
@@ -164,7 +164,7 @@ final class Transaction
             $this->connection->pdo()->exec('RELEASE SAVEPOINT ' . $name);
         } catch (PDOException $e) {
             throw new DatabaseException(
-                sprintf('Could not release savepoint %s: %s', $name, $e->getMessage()),
+                \sprintf('Could not release savepoint %s: %s', $name, $e->getMessage()),
                 0,
                 $e,
             );

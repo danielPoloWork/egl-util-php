@@ -73,7 +73,7 @@ final class Hash
         private readonly ?LoggerInterface $logger = null,
     ) {
         $this->algorithm = self::selectAlgorithm(
-            defined('PASSWORD_ARGON2ID'),
+            \defined('PASSWORD_ARGON2ID'),
             $this->bcryptFallback,
             $this->logger,
         );
@@ -161,7 +161,7 @@ final class Hash
         // removed, because PHPStan at max level correctly reported the comparison as dead: the
         // return type is `non-empty-string`. Dead defensive code is worse than none, since it
         // implies a failure mode that does not exist.
-        return password_hash($password, $this->algorithm);
+        return \password_hash($password, $this->algorithm);
     }
 
     /**
@@ -178,7 +178,7 @@ final class Hash
      */
     public function verify(string $password, string $hash): bool
     {
-        return password_verify($password, $hash);
+        return \password_verify($password, $hash);
     }
 
     /**
@@ -198,6 +198,6 @@ final class Hash
      */
     public function needsRehash(string $hash): bool
     {
-        return password_needs_rehash($hash, $this->algorithm);
+        return \password_needs_rehash($hash, $this->algorithm);
     }
 }

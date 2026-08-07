@@ -112,19 +112,19 @@ final class HashMatrixTest extends TestCase
      */
     public static function rehashMatrix(): iterable
     {
-        if (!defined('PASSWORD_ARGON2ID')) {
+        if (!\defined('PASSWORD_ARGON2ID')) {
             return;
         }
 
-        yield 'current defaults' => [password_hash('pw', PASSWORD_ARGON2ID), false];
-        yield 'weaker memory_cost' => [password_hash('pw', PASSWORD_ARGON2ID, ['memory_cost' => 8192]), true];
-        yield 'weaker time_cost' => [password_hash('pw', PASSWORD_ARGON2ID, ['time_cost' => 1]), true];
+        yield 'current defaults' => [\password_hash('pw', PASSWORD_ARGON2ID), false];
+        yield 'weaker memory_cost' => [\password_hash('pw', PASSWORD_ARGON2ID, ['memory_cost' => 8192]), true];
+        yield 'weaker time_cost' => [\password_hash('pw', PASSWORD_ARGON2ID, ['time_cost' => 1]), true];
         // Surprising, and real: PHP compares parameters for *equality* with the current defaults,
         // not for "at least as strong". A hash hardened beyond the defaults is therefore also
         // reported as needing a rehash — and would be silently *downgraded* on next login.
-        yield 'stronger parameters' => [password_hash('pw', PASSWORD_ARGON2ID, ['memory_cost' => 131072, 'time_cost' => 8]), true];
-        yield 'different algorithm (bcrypt)' => [password_hash('pw', PASSWORD_BCRYPT), true];
-        yield 'bcrypt at a high cost' => [password_hash('pw', PASSWORD_BCRYPT, ['cost' => 13]), true];
+        yield 'stronger parameters' => [\password_hash('pw', PASSWORD_ARGON2ID, ['memory_cost' => 131072, 'time_cost' => 8]), true];
+        yield 'different algorithm (bcrypt)' => [\password_hash('pw', PASSWORD_BCRYPT), true];
+        yield 'bcrypt at a high cost' => [\password_hash('pw', PASSWORD_BCRYPT, ['cost' => 13]), true];
         yield 'malformed' => ['not-a-hash', true];
         yield 'empty' => ['', true];
     }
@@ -172,11 +172,11 @@ final class HashMatrixTest extends TestCase
      */
     public function testTheArgon2idWorkFactorMeetsTheOwaspFloor(): void
     {
-        if (!defined('PASSWORD_ARGON2ID')) {
+        if (!\defined('PASSWORD_ARGON2ID')) {
             self::markTestSkipped('this PHP build has no Argon2id support');
         }
 
-        $options = password_get_info((new Hash())->make('pw'))['options'];
+        $options = \password_get_info((new Hash())->make('pw'))['options'];
 
         self::assertIsArray($options);
         self::assertArrayHasKey('memory_cost', $options);
@@ -192,12 +192,12 @@ final class HashMatrixTest extends TestCase
      */
     public function testTheLibraryUsesPhpsOwnDefaultsRatherThanItsOwn(): void
     {
-        if (!defined('PASSWORD_ARGON2ID')) {
+        if (!\defined('PASSWORD_ARGON2ID')) {
             self::markTestSkipped('this PHP build has no Argon2id support');
         }
 
-        $ours = password_get_info((new Hash())->make('pw'))['options'];
-        $phps = password_get_info(password_hash('pw', PASSWORD_ARGON2ID))['options'];
+        $ours = \password_get_info((new Hash())->make('pw'))['options'];
+        $phps = \password_get_info(\password_hash('pw', PASSWORD_ARGON2ID))['options'];
 
         self::assertSame($phps, $ours);
     }

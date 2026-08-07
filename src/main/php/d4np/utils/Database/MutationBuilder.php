@@ -68,7 +68,7 @@ final class MutationBuilder
         $quotedTable = $identifiers->quote($table);
 
         if ($values === []) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 'insert() into "%s" was given no values. An INSERT with no columns is not a '
                 . 'smaller insert, it is a different statement (the driver-specific DEFAULT '
                 . 'VALUES form), so writing one has to be deliberate rather than the result of '
@@ -90,8 +90,8 @@ final class MutationBuilder
 
         return new self(
             'INSERT INTO ' . $quotedTable
-                . ' (' . implode(', ', $columns) . ')'
-                . ' VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')',
+                . ' (' . \implode(', ', $columns) . ')'
+                . ' VALUES (' . \implode(', ', \array_fill(0, \count($columns), '?')) . ')',
             $bindings,
         );
     }
@@ -123,7 +123,7 @@ final class MutationBuilder
         $quotedTable = $identifiers->quote($table);
 
         if ($values === []) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 'update() on "%s" was given no values to set. `SET` with nothing after it is a '
                 . 'syntax error, and the two silent alternatives are both wrong: running the '
                 . 'statement without the SET clause would delete-by-update, and skipping the '
@@ -143,7 +143,7 @@ final class MutationBuilder
         [$where, $whereBindings] = self::conditions($identifiers, $criteria, 'update', $table);
 
         return new self(
-            'UPDATE ' . $quotedTable . ' SET ' . implode(', ', $assignments) . ' WHERE ' . $where,
+            'UPDATE ' . $quotedTable . ' SET ' . \implode(', ', $assignments) . ' WHERE ' . $where,
             [...$bindings, ...$whereBindings],
         );
     }
@@ -211,14 +211,14 @@ final class MutationBuilder
         string $table,
     ): array {
         if ($criteria === []) {
-            throw new DatabaseException(sprintf(
+            throw new DatabaseException(\sprintf(
                 '%s() on "%s" was given no criteria. An unqualified %s applies to every row in '
                 . 'the table, and an empty array is what an unvalidated request filter collapses '
                 . 'to — so it is refused here rather than executed. If the whole table really is '
                 . 'the target, say so in a SqlStatement::literal() the next reader cannot miss.',
                 $verb,
                 $table,
-                strtoupper($verb),
+                \strtoupper($verb),
             ));
         }
 
@@ -238,6 +238,6 @@ final class MutationBuilder
             $bindings[] = $value;
         }
 
-        return [implode(' AND ', $clauses), $bindings];
+        return [\implode(' AND ', $clauses), $bindings];
     }
 }
