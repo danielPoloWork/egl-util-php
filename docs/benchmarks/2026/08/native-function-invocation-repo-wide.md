@@ -54,25 +54,54 @@ Base = `master` (unqualified), head = prefixed, same runner, same job. µs unles
 | `HydrationBench::benchManualConstruction` | 0.399 | 0.393 | −1.55% |
 
 **Gates:** `bench-regression` OK (nothing regressed >10%); `bench-budget` OK; NFR-01
-`benchHydrateWarm / benchManualConstruction` = **2.42×** (budget 3×, unchanged); NFR-09
-`benchGatewayFetchNormalizeHydrate / benchHandWrittenPdoLoop` = **1.66×** (budget 2.5×, was 1.73×).
+`benchHydrateWarm / benchManualConstruction` = **2.42×** (budget 3×, unchanged).
+
+### Run 2 — and it withdraws one of the claims above
+
+The docs commit on this branch triggered a second A/B of the same code. Recorded because the
+first run's NFR-09 figure did **not** survive it:
+
+| Subject | base | head | Δ (run 2) | Δ (run 1) |
+|---|---|---|---|---|
+| `RowNormalizerBench::benchNormalizeHundredRows` | 21.712 | 17.194 | **−20.81%** | −24.02% |
+| `GatewayBench::benchGatewayFetchNormalizeHydrate` | 151.042 | 147.765 | −2.17% | −3.98% |
+| **control** `RowNormalizerBench::benchInlineTrimHundredRows` | 18.970 | 18.482 | **−2.57%** | −0.08% |
+| **control** `GatewayBench::benchHandWrittenPdoLoop` | 86.261 | 85.557 | −0.82% | +0.45% |
+| **NFR-09 ratio** | | | **1.73×** | 1.66× |
+
+Two corrections follow, and the second one matters:
+
+1. **The noise band is wider than run 1 suggested.** The unprefixable controls moved −0.08% and
+   +0.45% in run 1, then −2.57% and −0.82% in run 2. Taken together the band is roughly
+   **−2.6% … +0.5%**, and the base measurement of one subject moved 5% between runs for identical
+   code (22.798 → 21.712). Every delta under ~3% in this report is therefore unclaimable, which
+   now includes the gateway path.
+2. **NFR-09's improvement does not reproduce.** 1.66× in run 1, **1.73× in run 2** — the same
+   figure `master` reports. The claim "1.73× → 1.66×" is **withdrawn**: on two runs of the same
+   code the ratio is indistinguishable from where it started, exactly as it was for item 10.11.
+
+**What survives two runs is the one claim the decision rests on:** `RowNormalizer::normalize()` at
+**−20.81% and −24.02%**, against controls moving at most 2.6% — a signal roughly an order of
+magnitude clear of the noise in both runs.
 
 ## Interpretation
 
-**The noise band comes from the controls, and it is wider than most of the wins.** Code the rule
-cannot touch moved between −1.55% and +2.98%. So the small negative deltas — Container,
-QueryBuilder, Hydration, at 1.8–3.3% — are individually **inside** that band and cannot be claimed
-one by one.
+**The noise band comes from the controls, and across both runs it is wider than most of the wins.**
+Code the rule cannot touch moved −0.08%, +0.45%, −1.55% (run 1) and −2.57%, −0.82% (run 2). So the
+small negative deltas — Container, QueryBuilder, Hydration at 1.8–3.3%, and the gateway path at
+−3.98%/−2.17% — are individually **inside** that band and are not claimed here.
 
-What *can* be claimed is the pattern. Eleven of thirteen prefixable subjects moved negative, while
-the three unprefixable controls scattered in both directions; a rule with no effect does not
-produce that lean. And two results sit clearly outside the band:
+What *can* be claimed is the pattern plus one result. Eleven of thirteen prefixable subjects moved
+negative in run 1 while the unprefixable controls scattered in both directions; a rule with no
+effect does not produce that lean, so a small real improvement almost certainly exists — it is
+simply not resolvable subject by subject on this runner.
 
-- **`RowNormalizer::normalize()` at −24.02%** — an order of magnitude above the noise. This is the
-  method item 10.11 had already optimized, and it is the shape that explains everything else: a
-  tight loop calling internal functions once per value, where the fallback lookup is a
-  double-digit share of the work.
-- **The gateway path at −3.98%**, which is that same method plus everything around it.
+The one result clear of the noise in **both** runs:
+
+- **`RowNormalizer::normalize()` at −24.02% and −20.81%** — roughly an order of magnitude above the
+  controls. This is the method item 10.11 had already optimized, and it is the shape that explains
+  the lean everywhere else: a tight loop calling internal functions once per value, where the
+  fallback lookup is a double-digit share of the work.
 
 **The benefit is therefore concentrated, not spread.** That matches the diff: `sprintf()` is the
 most-prefixed call in the change (~93 sites), almost entirely formatting exception messages, where
@@ -86,12 +115,14 @@ item 10.12 was filed on the local number and the correction is the point of havi
 
 **Two caveats stated rather than buried.**
 
-1. **NFR-09's ratio improved partly by asymmetry.** The library side is now prefixed and its
-   hand-written comparator, living in `src/bench`, is not — so 1.73× → 1.66× is not purely the
-   library getting faster relative to equivalent code. It is arguably the *more* realistic
-   comparison (a consumer writing that loop in their own namespaced application would not prefix
-   it either), but it is a change in what the number means, and NFR-09's methodology is the spec's
-   to own (ADR-0040). Named as an open question in ADR-0048, not settled here.
+1. **The library/comparator asymmetry is real even though the ratio did not move.** The library
+   side is now prefixed and its hand-written comparator, living in `src/bench`, is not — so any
+   future NFR-09 movement is not purely the library getting faster relative to equivalent code.
+   It is arguably the *more* realistic comparison (a consumer writing that loop in their own
+   namespaced application would not prefix it either), but it is a change in what the number
+   means, and NFR-09's methodology is the spec's to own (ADR-0040). Named as an open question in
+   ADR-0048, not settled here. (Run 2 withdrew the observed 1.66×; the asymmetry survives the
+   withdrawal because it is structural, not statistical.)
 2. **This is the OPcache-off environment NFR-06 pins.** Consumers running OPcache — most
    production deployments — get a different distribution: the fallback lookup is cheaper there,
    while prefixed calls in the `@compiler_optimized` set become eligible for opcode substitution,

@@ -18,8 +18,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   rather than by hand. Inside a namespace PHP resolves `trim()` by trying the namespaced name before
   the global one, and NFR-06 pins the benchmark interpreter with OPcache off, where that second
   lookup is not optimized away. Measured by CI's same-runner A/B: **`RowNormalizer::normalize()`
-  −24.02%**, the gateway path **−3.98%**, NFR-09 **1.73× → 1.66×** — while three benchmark subjects
-  the rule cannot touch stayed put (−1.55% … +0.45%), which is what makes the rest believable. **No
+  −24.02%**, reproduced at **−20.81%** on a second run — roughly an order of magnitude clear of the
+  benchmark subjects the rule cannot touch, which moved −2.57% … +0.45% across the two runs and are
+  what makes the claim checkable. Smaller deltas elsewhere lean consistently negative but sit inside
+  that band and are not claimed; **NFR-09's ratio did not move** (1.66× then 1.73×, against
+  `master`'s 1.73×). **No
   behaviour changes**: `\trim()` and `trim()` are the same call to PHP, and no function in this
   package shadows an internal one.
 

@@ -64,6 +64,29 @@ methodology questions about what those numbers mean, the spec owns its numbers (
 guessing would have been the fifth benchmark-scope error on this project's record. Handed over with
 the evidence attached.
 
+## And then run 2 took one of my two claims back
+
+The docs commit triggered a second A/B of identical code, and I read it precisely because item
+10.11 had just taught me not to publish n=1.
+
+| | run 1 | run 2 |
+|---|---|---|
+| `RowNormalizer::normalize()` | −24.02% | **−20.81%** |
+| gateway path | −3.98% | −2.17% |
+| control (inline floor) | −0.08% | **−2.57%** |
+| **NFR-09 ratio** | 1.66× | **1.73×** |
+
+The normalizer holds. The gateway path does not — a −2.17% delta against a control that moved
+−2.57% is nothing. And **NFR-09's improvement is withdrawn**: 1.73× is exactly what `master`
+reports, so on two runs of the same code the ratio is where it started. The base measurement of one
+subject moved 5% between runs for code that did not change at all (22.798 → 21.712).
+
+That is the second consecutive item where a ratio claim from a single run failed to reproduce. It
+is not bad luck; it is what this runner's variance does to any delta under ~3%. The rule I am
+taking from it: **on this project, no benchmark claim under ~3% may be published from one run.**
+The decision itself never depended on it — enabling the rule rests on the normalizer, which cleared
+the noise twice.
+
 ## Lesson
 
 **Put a control in the benchmark.** Not a baseline — a *control*: a subject the change cannot

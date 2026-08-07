@@ -1076,9 +1076,11 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       control:** *`src/bench` is outside the CS-Fixer finder, so three subjects are unprefixed on
       both sides and set the noise band at −1.55%…+2.98% — **wider than most of the wins**, so the
       1.8–3.3% deltas on Container/QueryBuilder/Hydration cannot be claimed individually. Two
-      results clear it:* **`RowNormalizer::normalize()` −24.02%** *(22.798 → 17.322 µs) and the
-      gateway path* **−3.98%**; *NFR-09 1.73× → 1.66×. So the benefit is **concentrated, not
-      spread** — the rule pays in tight per-item loops and is inert in the ~93 `sprintf()` sites
+      result clears it in **both** runs:* **`RowNormalizer::normalize()` −24.02% and −20.81%**
+      *(22.798 → 17.322 µs). The gateway path's −3.98% did* **not** *survive re-measurement
+      (−2.17% on run 2, against a control that moved −2.57%), and* **NFR-09's ratio improvement was
+      withdrawn outright** *— 1.66× on run 1, 1.73× on run 2, `master`'s own figure. So the benefit
+      is **concentrated, not spread** — the rule pays in tight per-item loops and is inert in the ~93 `sprintf()` sites
       formatting exception messages that dominate the diff. Enabled anyway, because those loops are
       exactly the ones nobody remembers to hand-tune (ADR-0047's finding).* **Local overstated it
       again:** *13.6 µs predicted, 5.48 µs measured — direction right, magnitude 2.5× high.* **One

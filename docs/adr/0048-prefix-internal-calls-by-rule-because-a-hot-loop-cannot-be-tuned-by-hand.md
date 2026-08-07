@@ -44,17 +44,17 @@ change, both measured in one job on one runner:
 
 | Subject | Δ |
 |---|---|
-| **`RowNormalizerBench::benchNormalizeHundredRows`** | **−24.02%** (22.798 → 17.322 µs) |
-| `GatewayBench::benchGatewayFetchNormalizeHydrate` (NFR-09's path) | **−3.98%** |
+| **`RowNormalizerBench::benchNormalizeHundredRows`** | **−24.02%**, and **−20.81%** on a second run |
+| `GatewayBench::benchGatewayFetchNormalizeHydrate` (NFR-09's path) | −3.98%, then −2.17% |
 | Container / QueryBuilder / Hydration subjects | −1.8% to −3.3% |
 | I/O- and crypto-dominated subjects (Csv, Memory, bcrypt) | −0.6% to −0.04% |
-| **controls** — benchmark-internal code the rule cannot touch | −1.55% … +2.98% |
+| **controls** — benchmark-internal code the rule cannot touch | −2.57% … +2.98% |
 
 `src/bench` sits outside the CS-Fixer finder, which turned out to be the most useful accident in
 this measurement: three subjects are unprefixed on *both* sides and establish the noise band. That
-band is **wider than most of the wins** — the 1.8–3.3% deltas cannot be claimed individually. Two
-results survive it: the normalizer at −24.02%, an order of magnitude clear, and the gateway path
-at −3.98%, which is that method plus its surroundings.
+band is **wider than most of the wins** — across two runs the controls moved from −2.57% to +0.45%,
+so neither the 1.8–3.3% deltas nor the gateway path can be claimed individually. **One result
+survives in both runs**: the normalizer, roughly an order of magnitude clear of the controls.
 
 So the honest shape of the benefit is **concentrated, not spread**: the rule pays inside tight
 loops that call internal functions once per item, and is inert in the ~93 `sprintf()` sites
@@ -62,11 +62,19 @@ formatting exception messages that dominate the diff. It is enabled anyway, beca
 where it pays are exactly the ones nobody can be trusted to remember to hand-tune — which is the
 finding item 10.11 filed.
 
+**A second run withdrew one claim and left the decision standing.** The first run measured NFR-09
+at 1.66×; the second measured **1.73×**, `master`'s own figure, and moved a control by −2.57%
+where the first had moved it by −0.08%. So the ratio improvement is **withdrawn** — on two runs of
+identical code it is indistinguishable from where it started — and the usable noise band is about
+**±2.6%**, which also swallows the gateway path's −3.98%/−2.17%. The normalizer's −24.02%/−20.81%
+is the one result clear of it in both runs, and it is what this decision rests on.
+
 ## Alternatives Considered
 
-- **Accept the cost; change nothing.** The item's other named option, and defensible on the small
-  deltas alone. Rejected on the −24.02%: that is one measured hot loop today, and the next one
-  gets the benefit for free under a rule where it would otherwise need another item like 10.11.
+- **Accept the cost; change nothing.** The item's other named option, and the defensible one if
+  the small deltas were all there was — two runs say they are not resolvable. Rejected on the
+  normalizer alone (−24.02%, −20.81%): that is one measured hot loop today, and the next one gets
+  the benefit for free under a rule where it would otherwise need another item like 10.11.
 - **`include: ['@compiler_optimized']`, the fixer's own default** — the curated set where
   prefixing lets OPcache substitute opcodes. Rejected as the *primary* configuration because
   NFR-06 pins the benchmark interpreter with OPcache **off**, where the fallback lookup applies to
@@ -98,8 +106,10 @@ if a formatter can turn it red, it is asserting more than it means to. The repos
 source-inspecting tests (`IdentifierTest`, `RepositoryTest`, `ConstantTimeComparisonTest`) match
 patterns rather than literal call spellings and were unaffected.
 
-**NFR-09's ratio moved from 1.73× to 1.66×, and part of that is asymmetry, not speed.** The library
-is prefixed; its hand-written comparator lives in `src/bench` and is not. That is arguably the more
+**The library and its comparator are now formatted under different rules, and that outlives the
+withdrawn number.** The first run's 1.73× → 1.66× did not reproduce, but the asymmetry that would
+have explained it is structural: the library is prefixed; its hand-written comparator lives in
+`src/bench` and is not. That is arguably the more
 realistic comparison — a consumer writing that loop in their own namespaced application would not
 prefix it either — but it changes what the number measures, and the change was not authorised by
 the spec. **Left as an open question for the maintainer**, with the evidence in the benchmark
