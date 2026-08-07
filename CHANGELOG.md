@@ -16,9 +16,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   [benchmark record](docs/benchmarks/2026/08/nfr09-rownormalizer-trim-only-fast-path.md)). The
   policy decision is now computed once in the constructor instead of per value, and the default
   policy — trim, and nothing else, which is what `TableGateway` and `Repository` configure unless a
-  consumer says otherwise — runs through one guarded fast path. Measured: **95.2 → 65.2 µs per 100
-  four-column rows**, the overhead over an inline trim loop **+52.3 → +22.3 µs (58% removed)**;
-  NFR-09's gateway ratio improves accordingly. **No behaviour changes**: ADR-0042's four switches,
+  consumer says otherwise — runs through one guarded fast path. Measured on the development machine:
+  **95.2 → 65.2 µs per 100 four-column rows**, the overhead over an inline trim loop **+52.3 →
+  +22.3 µs (58% removed)**. On CI, the environment NFR-06 defines, the remaining overhead is
+  **+2.760 µs** and **NFR-09's ratio is unchanged at 1.73×** — the component is 4.6% of the gateway
+  overhead there, not the 27% a local decomposition had attributed, and the ratio's own noise band
+  (1.71–1.85×, ADR-0046) is wider than the change. **No behaviour changes**: ADR-0042's four switches,
   their defaults, the step ordering and the strict-failure stance are untouched, and the two
   execution paths are held to identical output by T-15's differential matrix across all sixteen
   policy combinations.

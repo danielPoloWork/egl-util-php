@@ -1032,7 +1032,14 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       work**: 281 ns per string value (186 of the 400 values in a 100-row batch) to re-derive, per
       value, four decisions that are properties of the immutable policy. Hoisted into the
       constructor as one `trimOnly` flag with a single guarded fast path: **95.2 → 65.2 µs, the
-      overhead +52.3 → +22.3 µs, 58% removed.* **All four designs were measured before choosing,
+      overhead +52.3 → +22.3 µs, 58% removed** (development machine).* ***CI corrected the premise:***
+      *on the reference-class runner the remaining overhead is **+2.760 µs** (22.423 vs the inline
+      floor's 19.663) and **NFR-09's ratio did not move — 1.73×, `master`'s own figure**, since
+      ~2.8 µs of 141.75 sits inside the 1.71–1.85× noise band ADR-0046 recorded. **Item 10.10's "27%
+      of NFR-09's overhead" was a Windows figure**: on CI this component is **4.6%** of the gateway
+      overhead. The saving on CI hardware is **unmeasured** — the subject is new, so the same-runner
+      harness had nothing to compare against. Kept rather than reverted, on a smaller and honestly
+      stated benefit: strictly less work per value for one boolean and one guarded loop.* **All four designs were measured before choosing,
       and both rewrite-shaped candidates were slower than the simple one** *— a precomputed closure
       70.4 µs (a closure call is still a call), the general pipeline inlined behind locals 74.5 µs.
       The more readable one-loop ternary lost by 7.4 µs, recorded so the trade can be revisited
@@ -1055,8 +1062,10 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       `native_function_invocation` is absent from `.php-cs-fixer.dist.php`. The decision is whether
       to enable that rule repo-wide (risky-rule class, touches every file, and `@PSR12:risky` is
       already on) or to record the cost as accepted; a per-file prefix is explicitly **not** an
-      option — it cannot be held. Measure the aggregate effect on the bench suite before deciding,
-      since 10.11's figure is one method's hot loop and consumers running OPcache see less of it —
+      option — it cannot be held. **Measure on CI before deciding, not locally**: item 10.11's own
+      CI run showed the dev box overstating this class of per-call cost by ~8× (a component the local
+      decomposition put at 27% of NFR-09's overhead is 4.6% there), so the 13.6 µs figure is an upper
+      bound from the wrong machine; consumers running OPcache see less of it again —
       route: standard / medium (adr, step:optimize)
 
 ---

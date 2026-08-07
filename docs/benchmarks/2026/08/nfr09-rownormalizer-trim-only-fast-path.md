@@ -69,6 +69,49 @@ bodies, same namespace, one calling `is_string()`/`trim()` and the other `\is_st
 | the per-*row* `normalize()` call itself (100 calls, ~87 ns each) | **8.7** |
 | **total residual** | **22.3** |
 
+## CI's numbers — and the correction they force
+
+The PR's benchmark job ran on the reference-class Linux runner (NFR-06's environment, OPcache and
+JIT asserted off by `tools/assert_bench_env.php`). It measured:
+
+| Subject (CI, `RowNormalizerBench`) | µs / 100 rows | Spread |
+|---|---|---|
+| `benchNormalizeHundredRows` (the class, after this change) | **22.423** | ±1.69% |
+| `benchInlineTrimHundredRows` (the floor) | **19.663** | ±0.72% |
+| **remaining overhead** | **+2.760** | — |
+
+| NFR-09 on CI | Value |
+|---|---|
+| `benchGatewayFetchNormalizeHydrate` | 141.754 µs |
+| `benchHandWrittenPdoLoop` | 82.098 µs |
+| **ratio** | **1.73× (budget 2.5×) — unchanged from `master`** |
+
+**Two claims made earlier in this report are wrong, and this section is the correction.**
+
+1. **"NFR-09 should improve from 1.73× toward ~1.6×" did not happen.** The ratio is 1.73×, the same
+   figure `master` measured. It is not a rounding artifact: ADR-0046 recorded this ratio five times
+   at **1.71–1.85×** on CI, so a ~2.8 µs change in a 141.75 µs subject sits **inside the gate's own
+   noise band** and cannot be resolved by it.
+2. **The component was never 27% of NFR-09's overhead on this hardware.** That proportion came from
+   item 10.10's decomposition, which — checked now — was measured on the same Windows development
+   box as this report's before/after. On CI the normalizer's *remaining* overhead is 2.760 µs of the
+   gateway path's 59.656 µs of overhead: **4.6%**. Even doubling it to guess at the pre-change
+   figure leaves the component well under 10% of the overhead, not 27%.
+
+**What is therefore known, and what is not.** Known: the class does strictly less work per string
+value, the local saving is 30.0 µs per 100 rows, and the post-change overhead on CI is +2.760 µs.
+**Not known: the saving on CI hardware.** `RowNormalizerBench` is new, so the same-runner harness
+had nothing to compare against — it printed `new` for both subjects, correctly — and NFR-09's
+ratio, the one instrument that would have shown the saving indirectly, cannot resolve a change this
+small. Obtaining that number would take a throwaway PR carrying the benchmark against the old
+implementation; it was not done, and the gap is named here rather than filled with an estimate.
+
+The local figures below are kept exactly as measured, because they are what the decision was made
+on. They are Windows numbers: the class costs **2.22× the inline loop before / 1.52× after** on this
+box, against **1.14×** on CI. Function-call and property-read overhead is simply a larger share of
+this workload here — which is the same effect that made the local `RowNormalizer` look like 27% of a
+budget it is responsible for 4.6% of.
+
 ## Interpretation
 
 The cost item 10.10 attributed was **dispatch, not work**: 281 ns per string value for a policy
@@ -92,9 +135,9 @@ is one method's hot loop, not a project-wide extrapolation. It is filed as roadm
 rather than fixed here, because the honest fix is the repo-wide `native_function_invocation`
 CS-Fixer rule — a risky-rule decision touching every file, and the maintainer's call.
 
-**Caveats.** Absolute numbers are this machine's, not the reference CPU's; CI's Linux run is
-authoritative for NFR-09's ratio, and the expectation that it improves from 1.73× toward ~1.6× is
-an **estimate**, not a measurement — the PR's CI run is what settles it. Spread ran 7–18% between
+**Caveats.** Absolute numbers in this section are this machine's, not the reference CPU's. The
+extrapolation this report originally made from them — NFR-09 improving toward ~1.6× — was measured
+and **refuted**; *CI's numbers* above supersede it. Spread ran 7–18% between
 the fastest and slowest sample within a process, so the 7.4 µs gap between the top two candidates
 is above noise on medians-of-three but not by a wide margin.
 

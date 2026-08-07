@@ -46,8 +46,11 @@ ADR-0042's explicitness" was a legitimate outcome the item named up front.
 each string value and returns, skipping the per-value dispatch entirely. The general pipeline is
 untouched and still handles every other policy.
 
-Measured, real class, three passes: **95.7 µs → 65.2 µs per 100 rows**, overhead **+52.9 µs →
-+22.3 µs — 58% of the normalizer's overhead removed**, semantics unchanged.
+Measured, real class, three passes on the development machine: **95.2 µs → 65.2 µs per 100 rows**,
+overhead **+52.3 µs → +22.3 µs — 58% of the normalizer's overhead removed**, semantics unchanged.
+On CI, the authoritative environment, the same subject's remaining overhead is **+2.760 µs** and
+NFR-09's ratio is **unchanged at 1.73×** — see Consequences, which corrects the proportion this
+item was filed on.
 
 Four candidate designs were measured before choosing, not after:
 
@@ -110,10 +113,27 @@ dropped); all five were caught.
 
 ## Consequences
 
-**Faster on the path everyone takes.** `TableGateway` and `Repository` configure the default
-policy unless a consumer says otherwise, so every gateway read gets this. NFR-09's ratio should
-improve from 1.73× toward ~1.6× (CI is authoritative — the number in the benchmark record is the
-one CI reports, not this estimate).
+**Faster on the path everyone takes** — but by much less than the local decomposition implied, and
+that correction is part of this decision's record rather than a footnote to it. `TableGateway` and
+`Repository` configure the default policy unless a consumer says otherwise, so every gateway read
+gets the change. On CI (NFR-06's environment) the class measures **22.423 µs against the inline
+floor's 19.663** — a remaining overhead of **+2.760 µs per 100 rows**, and **NFR-09's ratio did not
+move: 1.73×, the same figure `master` reports.**
+
+Two consequences follow, both stated because they weaken the case for this change:
+
+- The ratio *cannot* see it. ADR-0046 recorded NFR-09 five times at 1.71–1.85× on CI, so ~2.8 µs
+  out of 141.75 µs is inside the gate's noise band.
+- **Item 10.10's "27% of NFR-09's overhead" was a Windows figure.** On CI the normalizer's
+  remaining overhead is 2.760 of the gateway path's 59.656 µs of overhead — **4.6%**. The
+  proportion that justified prioritizing this item does not reproduce on the reference
+  environment.
+
+The saving on CI hardware is **unmeasured**: `RowNormalizerBench` is new, so the same-runner
+harness had nothing to compare against, and NFR-09 cannot resolve a change this small. What
+remains certain is that the class does strictly less work per string value, at a complexity cost
+of one boolean and one guarded loop — which is why the change is kept rather than reverted, on a
+smaller and honestly-stated benefit than the item was filed on.
 
 **One more thing to keep true.** The class now has two paths that must agree. The cost is bounded
 by construction — the fast path is four lines and calls one function — and the differential matrix

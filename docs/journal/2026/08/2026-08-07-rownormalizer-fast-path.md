@@ -63,9 +63,38 @@ mechanism assertion guards the *existence of the optimization* (ADR-0027's rule,
 failure class as item 10.8's mutation gate that ran on nothing and item 2.7's coverage gate with no
 driver). Five defects planted, five caught.
 
+## Then CI refuted the premise
+
+All fifteen checks passed, and the benchmark job's numbers said something I had not expected:
+`benchNormalizeHundredRows` **22.423 µs** against the inline floor's **19.663** — a remaining
+overhead of **+2.760 µs**, not the +22.3 this box measures — and **NFR-09's ratio unchanged at
+1.73×**, exactly what `master` reports.
+
+My PR body had predicted 1.73× → ~1.6×. That was wrong, and it was wrong for a reason worth more
+than the item: **item 10.10's "+55.8 µs / 27% of NFR-09's overhead" was measured on this Windows
+development machine**, and on CI the same component accounts for **4.6%** of the gateway overhead.
+The proportion that made this item worth prioritizing does not reproduce in the environment the
+budget is defined in. ADR-0046 had already recorded NFR-09 five times at 1.71–1.85× on CI, so a
+2.8 µs change in a 141.75 µs subject was never resolvable by that gate — the noise band is wider
+than the whole component.
+
+I kept the change: it does strictly less work per value, it costs one boolean and one guarded loop,
+and it is on the path of every gateway read. But the justification in the record is now the small
+honest number, not the large local one. And the saving on CI hardware is **unmeasured** — the
+subject is new, so the same-runner harness had nothing to compare against; getting that number
+would need a throwaway PR carrying the benchmark against the old implementation, which I did not
+open. Named, not filled with an estimate.
+
 ## Lesson
 
-**Measure the candidate in its real home.** A variant benchmarked in a scratch file and the same
+**Measure the candidate in its real home** — twice over, and the second one is the expensive
+lesson. A variant in a scratch file and the same code inside its namespace differed by 26%. And a
+component measured on the dev box looked six times more important than it is on the runner where
+the budget lives. Item 10.10's lesson was that a decomposition is itself a benchmark; the turn
+after that is that **an attribution inherits the machine it was taken on**, so a proportion used to
+prioritize work has to be re-taken in the reference environment before it is trusted.
+
+The original lesson still stands as written: A variant benchmarked in a scratch file and the same
 code inside its namespace differed by 26%, and the gap was not noise — it was a language feature
 the scratch file did not exercise. Item 10.10's lesson was that a decomposition is itself a
 benchmark; this is the next turn of the same screw: a *candidate* is itself a benchmark, and the
