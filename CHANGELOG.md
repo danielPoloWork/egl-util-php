@@ -12,6 +12,30 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **phpbench benchmark for NFR-09** (spec §3, RFC-0002; roadmap item **10.6**): `GatewayBench`
+  under `src/bench/php/d4np/utils/`, wired into the `bench_ratio_gate.py` cross-subject
+  comparison ADR-0011 established (`benchGatewayFetchNormalizeHydrate` /
+  `benchHandWrittenPdoLoop` ≤ 1.5×). No new ADR and no production code change: ADR-0011's
+  standing decision (a same-invocation ratio, since PHPBench's own `@Assert` cannot compare two
+  subjects in one run) already covers a new pair. Both subjects share one `PDO` connection and
+  a 100-row table seeded once, so the comparison is `TableGateway::all()` (select, normalize via
+  `RowNormalizer`, hydrate through the warmed reflection cache) against a hand-written loop over
+  the identical read and the identical `trim()`-only normalization, applied by hand. **CI's
+  measured ratio is 1.85×, over the spec's <= 1.5× budget** — profiled honestly rather than
+  massaged; the gap traces to hydration's own already-optimized cost (item 7.1's accepted 2.40×
+  vs. manual construction, ADR-0013), diluted by shared fetch+normalize work both sides pay
+  equally. Filed as roadmap item **10.10** rather than decided unilaterally (a spec-budget or
+  hydration-optimization call, either of which is out of this item's `fast/medium` route).
+
+### Fixed
+
+- **`TableGateway::query()` no longer rebuilds its base query on every call** (found while
+  investigating NFR-09, above) — the table name and projected columns were re-run through
+  `Identifier`'s allowlist on every read even though neither can change after construction. Cached
+  per instance, the same shape as the existing projection cache and ADR-0020's driver-lookup fix.
+  A real, safe reduction in the gateway's own bookkeeping cost; not the fix for NFR-09's gap (see
+  above), and not a behavior change for any caller.
+
 - **Spec §7's T-13 suite** (roadmap item **10.5**; spec **r12**) — 578 tests proving, at the PDO
   boundary, that every `TableGateway`/`Repository`/`MutationBuilder` path sends **placeholders
   only**, with the payload appearing solely in the bound-parameter array. Two legs: the value

@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-06 — The corpus that protected the older builder](docs/journal/2026/08/2026-08-06-t13-gateway-injection.md).
+  [2026-08-06 — Measuring the overhead a gateway is honest about](docs/journal/2026/08/2026-08-06-gateway-bench.md).
 
 ## Model & effort routing (advisory)
 
@@ -843,8 +843,49 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       writes the criterion into the column. 7 planted defects, 7 caught, including one aimed at
       the suite's own vacuity guard; the restore step worked this time because item 10.4's lesson
       (stage the files first) was applied.*
-- [ ] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
-      ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium
+- [x] 10.6 phpbench: NFR-09 gateway-vs-hand-written-PDO ratio (`bench_ratio_gate` pattern,
+      ADR-0011 precedent) (RFC-0002) (step:optimize) — size: S · route: fast / medium ·
+      **no new ADR** — the ratio-gate mechanism is ADR-0011's, applied to a new pair of
+      subjects, same as item 9.6 applied ADR-0030's harness rather than re-arguing it.
+      *`GatewayBench` measures `TableGateway::all()` (fetch + normalize-via-`RowNormalizer` +
+      hydrate, 100 rows) against a hand-written loop over the same shared `PDO` connection and
+      table — the identical `SELECT`, the identical `trim()`-only normalization applied by
+      hand under the same `is_string()` guard `RowNormalizer` itself uses, and a direct
+      `new GatewayRow(...)` with no reflection. Both subjects share one connection (SQLite
+      `:memory:` cannot be reopened) and one 100-row table, seeded once outside every timed
+      iteration — item 3.5's warm-cache convention, applied to a warmed `ReflectionCache` and
+      one discarded warm-up call so the gateway's own lazily-cached column projection is paid
+      for before the clock starts, exactly as NFR-01's benchmark warms reflection first.
+      **The comparison choice worth stating:** the manual loop reads via `$pdo->query()`
+      rather than `DatabaseConnection::select()`, because the statement has no bound value at
+      all — nobody hand-rolling this read would reach for a prepared statement over a literal
+      `SELECT`, and the gateway is not exempt from real prepares (ADR-0014) just because this
+      benchmark exists. That asymmetry is the overhead NFR-09 is measuring, not a thumb on the
+      scale. **Local timing is informative only** (this machine's `vendor/bin/phpbench` fails
+      its own environment-detection capture before any subject runs — the pre-existing,
+      documented quirk items 4.5/4.6/9.6 all hit); CI's `ubuntu-24.04` run is what the ≤ 1.5×
+      gate is wired against. **CI's own numbers: 160.591 µs / 86.767 µs = 1.85× — the gate
+      FAILS, and item 10.10 is filed rather than the number massaged.** Profiling in-process
+      (real `Hydrator`/`RowNormalizer`, no benchmark harness, `hrtime`) before accepting the
+      miss found one real, safe win — `TableGateway::query()` re-ran `Identifier`'s allowlist
+      on the table name and every projected column on **every call**, though neither can
+      change after construction; cached per instance (perf commit, no ADR — the same
+      resolve-once shape as the existing `$projection` cache and ADR-0020's driver lookup).
+      It moved the ratio from **1.82× to 1.85×** — within run-to-run noise, because it was
+      never the dominant cost: of the ~416 µs total, `select()` alone costs ~114 µs,
+      `RowNormalizer::normalize()` adds ~98 µs, and **hydration adds ~184 µs — 44% of the
+      total, and the whole gap.** Both `select()` and `normalize()` cost the manual loop
+      roughly the same (it replicates the identical read and the identical `trim()`), so they
+      wash out of the ratio; hydration does not, because the manual side pays a direct
+      constructor call for the equivalent step. **The arithmetic that makes 1.5× very likely
+      unreachable as specified:** item 7.1 measured hydration itself, already through
+      ADR-0013's compiled-closure fast path (which `GatewayRow` qualifies for — builtin,
+      non-variadic, no-default constructor parameters), at **2.40× a manual constructor
+      call** — a floor this project spent a whole `standard/high` item (3.7) reaching and has
+      not since beaten. Diluted by the shared fetch+normalize cost, that floor propagates to
+      almost exactly the 1.82-1.85× measured here. Closing the remaining gap would mean
+      re-opening item 3.7's own optimization, which is out of this item's `fast/medium`
+      route — filed as item 10.10 instead of attempted here.*
 - [x] 10.7 Make FR-33's guarantee **mechanical** instead of organizational: annotate
       `SqlStatement::__construct()`'s `$sql` as `@param literal-string`, so PHPStan at max
       level — a gate this project already runs — *refuses* a value interpolated or
@@ -925,6 +966,24 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
       documented protocol. Whichever is picked, **a gate that cries wolf on a docs-and-tests PR
       teaches people to re-run until green**, which is the failure mode worth spending an item on
       — route: standard / medium (adr)
+- [ ] 10.10 Decide what to do about NFR-09's `bench_ratio_gate` step being **red on `master`**:
+      `TableGateway::all()` measures **1.85×** a hand-written PDO loop (item 10.6) against the
+      spec's ≤ 1.5× budget, and one safe, real optimization (caching the gateway's base
+      `QueryBuilder` per instance, landed in the same PR) moved it from 1.82× to 1.85× — noise,
+      not progress, because the dominant cost was never there. Profiled before filing rather
+      than guessed: of ~416 µs total, `select()` costs ~114 µs and `RowNormalizer::normalize()`
+      ~98 µs — both paid roughly equally by the manual loop too, so they wash out of the
+      ratio — and **hydration adds ~184 µs, the entire gap**. Item 7.1 already measured
+      hydration itself (through ADR-0013's compiled-closure fast path, which `GatewayRow`
+      qualifies for) at **2.40× a manual constructor call**, a floor a whole `standard/high`
+      item was spent reaching; diluted by the shared fetch+normalize cost, that floor
+      arithmetically propagates to almost exactly 1.8×. Two honest paths, not one: **(a)**
+      revisit whether 1.5× was ever reachable given NFR-01's own accepted floor — a spec-scope
+      question (ADR-0040's rule: the spec owns its own numbers, not an agent unilaterally), or
+      **(b)** a further hydration investigation beyond item 3.7's — which would mean re-opening
+      a `standard/high` decision from a `fast/medium` item, the same over-reach item 10.9
+      already named as the wrong move. Filed rather than either decided here — route: standard
+      / medium (adr)
 
 ---
 
