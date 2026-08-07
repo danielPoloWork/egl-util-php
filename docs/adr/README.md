@@ -66,3 +66,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0048](0048-prefix-internal-calls-by-rule-because-a-hot-loop-cannot-be-tuned-by-hand.md) | Prefix internal calls by rule, because a hot loop cannot be tuned by hand | Accepted |
 | [0049](0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md) | State the transport policy explicitly, and bound the whole request (amends 0004) | Accepted |
 | [0050](0050-classify-the-miss-and-keep-the-router-a-table.md) | Classify the miss, and keep the router a table | Accepted |
+| [0051](0051-one-envelope-shape-and-a-reference-instead-of-the-exception.md) | One envelope shape, and a reference instead of the exception | Accepted |

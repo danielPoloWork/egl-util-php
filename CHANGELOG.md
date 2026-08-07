@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Http\ApiEnvelope` + `Http\Outcome`** — one JSON shape for every answer an API
+  gives (spec r3 FR-39, RFC-0002; roadmap item **11.3**; **ADR-0051**). `{"status", "code",
+  "messages", "data"}`, **all four keys on every outcome** — `data: null` is serialized as `null`
+  rather than omitted, so a client may read `payload.data` without a guard, and `messages` encodes
+  as `[]` rather than `{}`. The nine outcomes are an enum, each case owning its HTTP status, so
+  the mapping exists once. Message strings are caller-supplied; the library ships no catalogue and
+  writes exactly one English string (the fallback for a `caught()` with no wording).
+  **`caught()` takes a correlation reference, not a `Throwable`** — an envelope built from an
+  exception would put `getMessage()` on the wire, and a message names schemas and paths as readily
+  as a stack trace does (ADR-0029's stance, applied at the payload boundary). Two status choices
+  worth knowing: `invalid` is **422** (well-formed but rejected), `empty` is **200** (a search with
+  no results is a successful search). Mapping an `Errors\Result` to an envelope stays in the
+  application — an `Http`→`Errors` import would breach the layering rule — and is written out in
+  [`docs/patterns/endpoint-kernel.md`](docs/patterns/endpoint-kernel.md).
+
 - **`D4np\Utils\Http\Router`** — a minimal front-controller router (spec r3 FR-38, RFC-0002;
   roadmap item **11.2**; **ADR-0050**), with `MatchedRoute` and two new failures,
   `Support\RouteNotFoundException` (404) and `Support\MethodNotAllowedException` (405). **The two

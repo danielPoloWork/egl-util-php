@@ -85,11 +85,57 @@ test for whether something belongs here:
 | Autoloading | One path, not thirty-seven relative ones |
 | The 404 / 405 classification | The distinction is the router's; the *status codes* are the application's policy |
 | The `Allow` header on a 405 | Mandatory per RFC 9110; a per-endpoint copy is a per-endpoint omission |
-| Response encoding | One envelope shape for the whole surface (item 11.3's `ApiEnvelope`) |
+| Response encoding | One envelope shape for the whole surface — [`ApiEnvelope`](../../src/main/php/d4np/utils/Http/ApiEnvelope.php) ([ADR-0051](../adr/0051-one-envelope-shape-and-a-reference-instead-of-the-exception.md)) |
 | The error boundary | `Errors\ExceptionHandler` decides what a production build reveals (ADR-0029) |
 
 And what does **not** belong: anything specific to one endpoint. If a `catch` in the kernel
 names a domain exception, that exception is being handled in the wrong place.
+
+## Mapping a `Result` to an envelope — the three lines that stay in your application
+
+`Errors\Result` and `Http\ApiEnvelope` are in different groups, and RFC-0001's layering rule
+forbids `Http` importing `Errors` ([ADR-0051](../adr/0051-one-envelope-shape-and-a-reference-instead-of-the-exception.md)).
+That is not an omission to work around — the mapping is *policy*, and only the application knows
+which failure deserves which outcome. It belongs here:
+
+```php
+<?php // src/Http/EnvelopeMapper.php — yours, not the library's
+
+use D4np\Utils\Errors\Result;
+use D4np\Utils\Http\ApiEnvelope;
+
+final class EnvelopeMapper
+{
+    public function __construct(private readonly LoggerInterface $log) {}
+
+    /** @param Result<mixed> $result */
+    public function map(Result $result): ApiEnvelope
+    {
+        if ($result->isSuccess()) {
+            // Cannot throw on this branch — `Result` has no unguarded value reader, and
+            // `orElseThrow()` is how you say "I have already checked".
+            return ApiEnvelope::ok($result->orElseThrow());
+        }
+
+        $failure = $result->error();
+
+        // Anticipated refusals become `failed`/`invalid` with wording your locale owns …
+        if ($failure instanceof DomainRefusal) {
+            return ApiEnvelope::failed($this->translate($failure));
+        }
+
+        // … and anything else is a defect: log it, and hand the client the reference only.
+        $reference = \bin2hex(\random_bytes(8));
+        $this->log->error('unhandled failure', ['reference' => $reference, 'exception' => $failure]);
+
+        return ApiEnvelope::caught($reference);
+    }
+}
+```
+
+The last branch is why `ApiEnvelope::caught()` takes a **reference and not the throwable**: the
+exception reaches the log, the client reaches a support ticket, and no schema name or file path
+travels over HTTP (ADR-0029's stance at the payload boundary).
 
 ## Notes worth carrying
 
