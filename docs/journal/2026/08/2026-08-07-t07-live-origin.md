@@ -68,6 +68,21 @@ Two of these are the reason the item carried the security floor:
 the redirect fix fails the status assertion, and keeping the status fix while retaining the hops'
 headers fails the leaked-`Location` one.
 
+## A postscript from CI, which is its own kind of evidence
+
+The `benchmark` job went red on this PR: `benchSequenceNext` at **208.768 µs** against NFR-10's
+**≤ 200 µs**. My `src/main` diff is one file in the `Http` group, and that subject exercises
+`Support\FileSequence` and `Support\File` — checked with `git diff --name-only` rather than
+reasoned about, because item 10.5's lesson is that this is the first thing to check and the
+easiest to assume. **The same commit, re-run on the same runner, passed.**
+
+Across CI runs on code paths nobody had changed, this subject has read **75.5 · 105.8 · 164.4 ·
+169.3 · 183.0 · 208.8 µs** — a 2.8× spread against a ceiling the top of it clears by 4%.
+ADR-0045 had already found it too noisy for the *relative* gate and excluded it there, while
+keeping the absolute one; item 9.6 recorded the ~9% headroom as the thinnest in the project and
+said to watch it. It has now been watched. Filed as item **11.6** rather than fixed here: the
+budget is a spec number, and ADR-0040 reserves those for the maintainer.
+
 ## Lesson
 
 A value that describes a refusal is not a refusal. Every guarantee this client makes about TLS
