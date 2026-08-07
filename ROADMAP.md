@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — Three envelopes become one, and the exception stays home](docs/journal/2026/08/2026-08-07-api-envelope.md).
+  [2026-08-07 — The first real origin, and what it said about the client](docs/journal/2026/08/2026-08-07-t07-live-origin.md).
 
 ## Model & effort routing (advisory)
 
@@ -1175,9 +1175,35 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       *The* `Result`*→envelope mapping stayed* **out** *of the library (an* `Http`*→*`Errors` *edge
       the layering rule forbids) and is now written out in the endpoint-kernel pattern doc. 2525
       tests (+28), 5 planted defects, 5 caught.*
-- [ ] 11.4 T-07 `HttpClient` behavioural suite against a live `php -S` origin (timeout,
+- [x] 11.4 T-07 `HttpClient` behavioural suite against a live `php -S` origin (timeout,
       refusal and error-taxonomy paths; T-03's process discipline) (RFC-0002 T-07)
-      (security) — size: M · route: frontier-reasoning / extra
+      (security) — size: M · route: frontier-reasoning / extra *(run at standard tier, Opus 5;
+      mismatch recorded)* · **ADR-0052**, **spec r15**. *14 tests against a real origin, and the
+      first one written found a defect.* **A followed redirect reported the wrong response:**
+      *`wrapper_data` holds the* **whole chain** *when the wrapper follows a `Location`, and the
+      transport read the first status line out of it — so a successful fetch came back as `302`
+      with the target's body (`isSuccessful()` false for a request that had succeeded), a chain
+      ending in `404` reported `302` with the failure invisible, and the two hops' headers were
+      merged under one name, first value winning: `header('Set-Cookie')` answered from the hop
+      that had been left behind. Fixed here rather than documented as expected (§10), with the
+      regression test asserting both directions.* **Two guarantees existed only as values until
+      now:** *the client refuses a self-signed certificate — proved against a generated one, with
+      a control read in the same test so a refusal cannot pass by the origin being broken — and it
+      still refuses after `stream_context_set_default()` has switched verification off
+      process-wide, which is the exact hijack ADR-0049 was written around. Also live for the first
+      time: the wall-clock ceiling ending a dripping origin (the per-phase timeout provably cannot
+      — every window re-arms it), a refused redirect proved by a target that records its own
+      visits, 40 KiB of binary body across five read chunks, and repeated `Set-Cookie` headers
+      surviving as separate values.* **The suite name had to be reclaimed:** *`T-07` was already a
+      group tag on `RequestTest`/`ResponseTest` from item 6.1 — chosen when the spec defined only
+      T-01…T-05 — so `--group T-07` returned 86 tests across three classes and the spec's named
+      suite was no longer countable. Tag removed there, ADR-0025 annotated rather than rewritten.*
+      **Process finding:** *`git checkout -- <file>` restores from the* **index**, *so planting a
+      defect in a file whose own fix is unstaged deletes the fix, not the plant — stage first. 8
+      planted defects, 8 caught. A ~40% flake in the TLS fixture was root-caused rather than
+      retried away: closing a socket that still holds unread inbound bytes resets the connection
+      and destroys the response, so the origin now drains the request before answering (6/6 green
+      after, 3/5 before).*
 - [ ] 11.5 phpbench: NFR-11 (router dispatch at 50 routes; envelope build) (RFC-0002)
       (step:optimize) — size: XS · route: fast / medium
 

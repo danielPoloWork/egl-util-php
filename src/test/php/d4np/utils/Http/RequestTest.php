@@ -6,7 +6,6 @@ namespace D4np\Utils\Tests\Http;
 
 use D4np\Utils\Http\Request;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -16,7 +15,6 @@ use PHPUnit\Framework\TestCase;
  * type it names — because that shape is chosen by whoever wrote the query string, not by the
  * application.
  */
-#[Group('T-07')]
 final class RequestTest extends TestCase
 {
     public function testTypedQueryReaders(): void

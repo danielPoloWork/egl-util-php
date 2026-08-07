@@ -22,7 +22,8 @@ use D4np\Utils\Support\HttpClientException;
  *    `stream_get_meta_data($handle)['wrapper_data']` with exactly what `$http_response_header`
  *    would have held — status line first, then the headers — so nothing is lost by not using
  *    the magic variable, and the value is a local rather than a variable PHP injects into
- *    scope.
+ *    scope. **When redirects are followed, that array holds the whole chain**, one status line
+ *    per hop, and the response reported is the last of them (ADR-0052).
  * 3. **A 4xx/5xx body is read, not discarded.** `ignore_errors` is set by {@see HttpClient};
  *    without it the wrapper returns `false` for any error status and the response is gone.
  */
@@ -64,13 +65,13 @@ final class StreamTransport implements Transport
                 ));
             }
 
-            $status = self::parseStatus(\array_shift($wrapperData), $url);
+            [$status, $headers] = self::lastExchangeIn($wrapperData, $url);
             $body = $this->readWithin($handle, $deadline, $url);
         } finally {
             \fclose($handle);
         }
 
-        return new HttpResponse($status, $wrapperData, $body);
+        return new HttpResponse($status, $headers, $body);
     }
 
     /**
@@ -112,16 +113,63 @@ final class StreamTransport implements Transport
     }
 
     /**
-     * @throws HttpClientException if the status line is not one
+     * The **last** response in `wrapper_data`, with only its own headers.
+     *
+     * A single exchange puts one status line first and its headers after it. A *followed*
+     * redirect puts every hop in the same flat array — `302`, its headers, `200`, its headers —
+     * and the body belongs to the last one. Reading the first status line therefore described a
+     * response that no longer existed: item 11.4's live suite measured a chain reporting **302
+     * with the target's body**, so `isSuccessful()` was `false` for a fetch that had succeeded,
+     * and a chain ending in `404` reported `302` — the failure invisible. Merging the hops'
+     * headers is the same error in a more dangerous place: `header('Set-Cookie')` returned the
+     * *intermediate* hop's cookie, and `header('Location')` a redirect already followed.
+     *
+     * The first line must still be a status line — that strictness is what catches a stream
+     * which is not an HTTP response at all, and it is unchanged (ADR-0052).
+     *
+     * @param list<string> $wrapperData
+     *
+     * @return array{int, list<string>} the final status and the headers belonging to it
+     *
+     * @throws HttpClientException if the first line is not a status line
      */
-    private static function parseStatus(string $statusLine, string $url): int
+    private static function lastExchangeIn(array $wrapperData, string $url): array
     {
-        if (\preg_match('#^HTTP/\d(?:\.\d)? (\d{3})\b#', $statusLine, $matches) !== 1) {
+        $status = self::statusIn($wrapperData[0]);
+
+        if ($status === null) {
             throw new HttpClientException(\sprintf(
                 'Request to "%s" returned an unreadable status line: "%s".',
                 $url,
-                $statusLine,
+                $wrapperData[0],
             ));
+        }
+
+        $headers = [];
+
+        foreach (\array_slice($wrapperData, 1) as $line) {
+            $hop = self::statusIn($line);
+
+            if ($hop === null) {
+                $headers[] = $line;
+
+                continue;
+            }
+
+            // A new response begins here, so everything collected so far belonged to a hop
+            // that has been left behind.
+            $status = $hop;
+            $headers = [];
+        }
+
+        return [$status, $headers];
+    }
+
+    /** The status code a line carries, or `null` when the line is not a status line. */
+    private static function statusIn(string $line): ?int
+    {
+        if (\preg_match('#^HTTP/\d(?:\.\d)? (\d{3})\b#', $line, $matches) !== 1) {
+            return null;
         }
 
         return (int) $matches[1];
