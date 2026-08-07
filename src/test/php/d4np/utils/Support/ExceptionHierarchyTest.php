@@ -7,6 +7,7 @@ namespace D4np\Utils\Tests\Support;
 use D4np\Utils\Support\CsvException;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Support\FileException;
+use D4np\Utils\Support\HttpClientException;
 use D4np\Utils\Support\HttpException;
 use D4np\Utils\Support\HydrationException;
 use D4np\Utils\Support\InvalidUrlException;
@@ -91,6 +92,7 @@ final class ExceptionHierarchyTest extends TestCase
                 CsvException::class,
                 DatabaseException::class,
                 FileException::class,
+                HttpClientException::class,
                 HttpException::class,
                 HydrationException::class,
                 InvalidUrlException::class,
@@ -156,7 +158,10 @@ final class ExceptionHierarchyTest extends TestCase
     public function testConcreteLeavesAreFinalAndBasesAreExtensible(): void
     {
         // ADR-0004's extension-point contract, asserted so a later edit cannot flip it quietly.
-        foreach ([UtilsException::class, HydrationException::class] as $base) {
+        // HttpException joined the list at ADR-0049: the group grew a second failure kind
+        // (a transport failure, which is not a caller's shape error), and both must stay
+        // catchable as HttpException.
+        foreach ([UtilsException::class, HydrationException::class, HttpException::class] as $base) {
             self::assertFalse(
                 (new ReflectionClass($base))->isFinal(),
                 \sprintf('%s is a documented extension point and must stay non-final', $base),
@@ -166,7 +171,7 @@ final class ExceptionHierarchyTest extends TestCase
             CsvException::class,
             DatabaseException::class,
             FileException::class,
-            HttpException::class,
+            HttpClientException::class,
             InvalidUrlException::class,
             JsonException::class,
             MissingKeyException::class,

@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — The control group is what made the number believable](docs/journal/2026/08/2026-08-07-native-function-invocation.md).
+  [2026-08-07 — The default that is not ours to trust](docs/journal/2026/08/2026-08-07-http-client.md).
 
 ## Model & effort routing (advisory)
 
@@ -1099,10 +1099,33 @@ First two named cross-group deptrac edges (RFC-0002 P-1).
 
 The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
 
-- [ ] 11.1 `HttpClient`: stream-context transport (no ext-curl), JSON/raw bodies, **TLS
+- [x] 11.1 `HttpClient`: stream-context transport (no ext-curl), JSON/raw bodies, **TLS
       verification on by default**, explicit connect/read timeouts, typed
       `HttpClientException`; deliberately not PSR-18 (RFC-0002 FR-37) (security) — size: M ·
-      route: frontier-reasoning / extra · ADR (transport TLS/timeout policy)
+      route: frontier-reasoning / extra *(run at standard tier, Opus 5; mismatch recorded)* ·
+      ADR (transport TLS/timeout policy) · **ADR-0049**, **spec r14**. ***Opens Milestone 11.***
+      *Four probes ran before any code, and two of them changed the item.* **"TLS verification on
+      by default" was the wrong guarantee to ship:** *a freshly created stream context carries*
+      **no `ssl` options at all**, *so verification is whatever the process default holds — and
+      `stream_context_set_default(['ssl' => ['verify_peer' => false]])` in any host bootstrap
+      silently becomes this client's policy. Measured that an explicit option* **wins** *over that
+      default, so every context states its TLS policy rather than inheriting it.* **"Explicit
+      connect/read timeouts" was not implementable** *— PHP's wrapper has one `timeout` covering
+      connect and each read (probed: a 2 s value cut a hanging connect at 2.01 s with
+      `default_socket_timeout` at 5 s), and it re-arms per phase, so an origin dripping one byte
+      per window outlasts it forever. Shipped instead: the per-phase timeout* **and** *a wall-clock
+      ceiling enforced by a read loop (verified against a server that answers then stalls — the
+      deadline fired, the received bytes survived); neither can be omitted at construction. Spec
+      §2 amended to what the wrapper can deliver.* **Also decided:** *a response is a* **result**
+      *(any status returns an `HttpResponse`; the exception is for no response at all), redirects
+      are* **off** *by default, `http`/`https` only, and outbound header injection is refused
+      (ADR-0025's stance, outbound). `HttpException` became an* **extension point** *(amending
+      ADR-0004) so `HttpClientException` is catchable as either. Policy exposed as a pure value +
+      a `Transport` seam (ADR-0026's shape), which is what makes any of this assertable without a
+      network — the live-origin half is T-07, item 11.4. 7 planted defects, 7 caught; 2468 tests
+      (+44).* **Process finding:** *the first CRLF plant silently failed to match the file and the
+      suite went green — a fake plant is indistinguishable from a passing campaign, so the plant is
+      now confirmed present before the result is believed.*
 - [ ] 11.2 `Router`: method+path matcher with `{param}` extraction, **404-vs-405 with
       `Allow`**, callable handlers; stated non-goals (no middleware, no cache, no attribute
       discovery) + T-11 matrix + Front Controller catalogue adoption + the endpoint-kernel
