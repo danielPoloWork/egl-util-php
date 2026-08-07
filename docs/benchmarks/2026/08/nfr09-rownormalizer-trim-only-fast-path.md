@@ -74,17 +74,24 @@ bodies, same namespace, one calling `is_string()`/`trim()` and the other `\is_st
 The PR's benchmark job ran on the reference-class Linux runner (NFR-06's environment, OPcache and
 JIT asserted off by `tools/assert_bench_env.php`). It measured:
 
-| Subject (CI, `RowNormalizerBench`) | µs / 100 rows | Spread |
-|---|---|---|
-| `benchNormalizeHundredRows` (the class, after this change) | **22.423** | ±1.69% |
-| `benchInlineTrimHundredRows` (the floor) | **19.663** | ±0.72% |
-| **remaining overhead** | **+2.760** | — |
+**Two runs**, because a single sample is exactly what this report got wrong the first time:
 
-| NFR-09 on CI | Value |
-|---|---|
-| `benchGatewayFetchNormalizeHydrate` | 141.754 µs |
-| `benchHandWrittenPdoLoop` | 82.098 µs |
-| **ratio** | **1.73× (budget 2.5×) — unchanged from `master`** |
+| Subject (CI, `RowNormalizerBench`) | run 1 | run 2 |
+|---|---|---|
+| `benchNormalizeHundredRows` (the class, after this change) | **22.423 µs** (±1.69%) | **21.654 µs** (±2.28%) |
+| `benchInlineTrimHundredRows` (the floor) | **19.663 µs** (±0.72%) | **19.094 µs** (±1.08%) |
+| **remaining overhead** | **+2.760 µs** | **+2.560 µs** |
+| class / floor | 1.14× | 1.13× |
+
+| NFR-09 on CI | run 1 | run 2 |
+|---|---|---|
+| `benchGatewayFetchNormalizeHydrate` | 141.754 µs | 151.245 µs |
+| `benchHandWrittenPdoLoop` | 82.098 µs | 86.820 µs |
+| **ratio** | **1.73×** | **1.74×** |
+
+Budget 2.5×; `master`'s own figure is 1.73×, and ADR-0046 recorded it five times at 1.71–1.85×. The
+overhead reproduces at 2.56–2.76 µs and the ratio does not move outside the band it already
+occupied.
 
 **Two claims made earlier in this report are wrong, and this section is the correction.**
 
@@ -94,12 +101,13 @@ JIT asserted off by `tools/assert_bench_env.php`). It measured:
    noise band** and cannot be resolved by it.
 2. **The component was never 27% of NFR-09's overhead on this hardware.** That proportion came from
    item 10.10's decomposition, which — checked now — was measured on the same Windows development
-   box as this report's before/after. On CI the normalizer's *remaining* overhead is 2.760 µs of the
-   gateway path's 59.656 µs of overhead: **4.6%**. Even doubling it to guess at the pre-change
-   figure leaves the component well under 10% of the overhead, not 27%.
+   box as this report's before/after. On CI the normalizer's *remaining* overhead is 2.56–2.76 µs
+   against the gateway path's ~59.7–64.4 µs of overhead: **4.0–4.6%**. Even doubling it to guess at
+   the pre-change figure leaves the component well under 10% of the overhead, not 27%.
 
 **What is therefore known, and what is not.** Known: the class does strictly less work per string
-value, the local saving is 30.0 µs per 100 rows, and the post-change overhead on CI is +2.760 µs.
+value, the local saving is 30.0 µs per 100 rows, and the post-change overhead on CI is 2.56–2.76 µs
+across two runs.
 **Not known: the saving on CI hardware.** `RowNormalizerBench` is new, so the same-runner harness
 had nothing to compare against — it printed `new` for both subjects, correctly — and NFR-09's
 ratio, the one instrument that would have shown the saving indirectly, cannot resolve a change this
