@@ -1263,7 +1263,16 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       (**0.901–0.929 µs**) confirms the cost scales with the 49 failed `preg_match()` attempts a
       worst-case dispatch pays, which is exactly the shape a linear, uncached scan produces
       (ADR-0050's stated non-goal — no index, no cache). Unlike 11.6, this is not a noisy-runner
-      question; it is a real cost with a known cause. Options, none taken unilaterally
+      question; it is a real cost with a known cause. **Evidence added at item 12.4** (2026-08-08),
+      which qualifies the "40% over" figure without changing the diagnosis: across five CI runs on
+      **unmodified** `Router` code the subject has measured **6.874–7.145 · 5.188 · 5.673 · 4.735 ·
+      7.021 µs** — once *inside* the ceiling. The two runs of the *same commit* that bracket that
+      range came from runners differing by 27–103% on **every** subject (`benchWriteTenThousandByTen`
+      9 691 → 19 660 µs), so the spread is the runner's, not the router's. What this changes for the
+      decision: the mean sits clearly over budget and the cause is understood, so option (a) or (b)
+      is still the question — but a ceiling this close to the runner's own variance makes the gate
+      **flap** rather than fail, and whichever option is chosen should leave headroom against that
+      variance rather than against the measured mean. Options, none taken unilaterally
       ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
       reserves spec numbers for the maintainer): **(a)** raise NFR-11's router budget to a value
       the current linear scan clears (the measured number, with headroom, e.g. ≤ 10 µs); **(b)**
@@ -1410,6 +1419,29 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       slicing then lower-casing.*
 - [ ] 12.5 phpbench: NFR-13 (crypto 1 KiB round-trip) (RFC-0002) (step:optimize) — size: XS ·
       route: fast / medium
+- [ ] 12.6 Decide how the **relative** benchmark gate should treat a run-wide slowdown. Filed from
+      item 12.4's CI, where the *same commit* failed **two different gates on two runs** and neither
+      failure was attributable to the diff (a new `Mail` group nothing else imports). Run 1: the
+      relative gate failed with five subjects at **+11.19% … +19.44%**, among them
+      `RowNormalizerBench::benchInlineTrimHundredRows` — **the control**, a hand-written inline
+      `trim()` loop that calls no library code and therefore cannot regress. Run 2: the relative gate
+      passed (both halves measured on the same slow runner) and the **absolute** ceiling tripped
+      instead, on item 11.7's router. Every subject in run 2 was **27–103% slower** than in run 1.
+      So ADR-0030's same-runner A/B is sound and has an unhandled failure mode: base and head are
+      measured **sequentially**, so a runner that changes speed *between the halves* moves every
+      subject in one direction, and the gate reports it as a regression in whichever half came second.
+      ADR-0045's exclusions do not cover it — those name three subjects for *cross-run* noise, while
+      this hits everything, control included. The instrument that detects it already exists: **a
+      control subject moving beyond the threshold is proof the run is invalid**, not proof the code
+      regressed (the method item 10.12 introduced). Options, none taken unilaterally: **(a)** name
+      the control subjects in `bench_regression_gate.py` and have the gate **invalidate the run**
+      (exit distinctly, ask for a re-run) when one of them moves past the threshold; **(b)** compare
+      each subject against the control's own delta rather than against zero, so a run-wide shift
+      cancels; **(c)** interleave the base and head measurements instead of running them in
+      sequence; **(d)** accept the flapping and re-run by hand, as this item's own PR did. (b) is
+      the most precise and the easiest to get subtly wrong; (a) is the smallest change that stops a
+      false failure being indistinguishable from a real one — size: S · route: standard / medium ·
+      ADR (it revises ADR-0030/ADR-0045's gate design)
 
 ---
 
