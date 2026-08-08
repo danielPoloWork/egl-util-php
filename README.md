@@ -56,7 +56,7 @@ setup.
 | 8 | PSR-7 bridge (`packages/utils-psr7-bridge`) | ✅ done |
 | 9 | Support & values | ✅ done |
 | 10 | Persistence | ✅ done |
-| 11 | Http application layer | ⏳ planned |
+| 11 | Http application layer | ✅ done |
 | 12 | Security & channels | ✅ done |
 
 

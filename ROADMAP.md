@@ -23,8 +23,9 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-08 — Closing the milestone by fixing the tool that kept flagging it as open](docs/journal/2026/08/2026-08-08-benchmark-run-invalidation.md).
+  [2026-08-08 — Two open decisions, one table, and the number I nearly picked](docs/journal/2026/08/2026-08-08-nfr-ceiling-decisions.md).
   Previous:
+  [2026-08-08 — Closing the milestone by fixing the tool that kept flagging it as open](docs/journal/2026/08/2026-08-08-benchmark-run-invalidation.md),
   [2026-08-08 — The last planned item, and the milestone that still doesn't close](docs/journal/2026/08/2026-08-08-crypto-benchmark.md),
   [2026-08-08 — Three answers to the same bytes, and a corpus that could not fail](docs/journal/2026/08/2026-08-08-mail-group.md),
   [2026-08-08 — The idiomatic enum was too slow, and one of my own arguments was dead](docs/journal/2026/08/2026-08-08-logging-channels.md),
@@ -1236,7 +1237,7 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       the maintainer. **Milestone 11 stays open on two decision items (11.6, 11.7); README's row
       stays "planned" until both resolve** — `consistency_lint`'s `milestones` check enforces
       exactly this (a milestone marked done in README needs every ROADMAP item checked).*
-- [ ] 11.6 Decide what NFR-10's **absolute** budget should be, now that the subject it guards
+- [x] 11.6 Decide what NFR-10's **absolute** budget should be, now that the subject it guards
       has crossed it on unmodified code. Filed from item 11.4's CI, whose `src/main` diff is a
       single file in the `Http` group — `benchSequenceNext` exercises `Support\FileSequence` and
       `Support\File`, neither of which the diff touches (verified with
@@ -1256,7 +1257,30 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       unenforced), or keep it and accept a job that fails a few runs in twenty. **A gate that
       fails on unchanged code teaches people to re-run it**, which is the failure mode worth
       pricing here — size: S · route: frontier-reasoning / extra (adr, decision-heavy)
-- [ ] 11.7 Decide what to do about NFR-11's **router dispatch** budget, measured **not met** on
+      *(session model Opus 5 — `standard` tier against a `frontier-reasoning` route; the maintainer
+      switched to Opus and delegated the decision in the same breath, mismatch recorded)* ·
+      **ADR-0058**, **spec r16**. ***Decided together with 11.7 on the maintainer's explicit
+      delegation*** — "decidi tu su 11.6 e 11.7", which is the only thing that made writing these
+      numbers legal at all, since ADR-0040 had reserved them. **The decision: the 200 µs target
+      stays, and a separate CI ceiling of 450 µs is what shared runners are asked to prove.** The
+      two items turned out to have *different diagnoses of the same complaint*, which is why one ADR
+      settles both: the router's ceiling was **wrong about the code**, this one is **right about the
+      code and unenforceable on this hardware**. Evidence: typical readings are 75–190 µs,
+      comfortably inside 200, and exactly **one of seventeen** crossed it (208.768, +4%) — a reading
+      whose own commit passed on re-run. Re-derived, not recalled: the ten gated budgets were
+      tabulated against their worst observed readings, and **there is a gap with nothing in it** —
+      two subjects at 0.70× and 0.96× (the two that have fired), then nothing until 2.66×, so a
+      ceiling within ~2× of a subject's worst reading sits inside this repository's demonstrated
+      noise envelope. 450 µs is 2.16×. **Rejected: excluding it from the absolute gate too** — the
+      item required that option be paired with saying plainly that NFR-10 would then be unenforced,
+      and that is exactly the argument against it: after ADR-0045 already removed this subject's
+      *relative* gate, dropping the absolute one leaves the component whose cost **is** its lock
+      contention with no performance check at all, and an added `fsync` or lock-retry loop is a
+      several-hundred-µs change a 450 µs ceiling still catches. **Rejected: median-of-N** — the
+      absolute gate reads one report, so a median across runs means N benchmark jobs per PR, the
+      same cost ground ADR-0045 rejected best-of-N on. **Rejected: keep 200 and accept occasional
+      failures** — the failure mode this item filed itself to price.*
+- [x] 11.7 Decide what to do about NFR-11's **router dispatch** budget, measured **not met** on
       unmodified `Router` code. Filed from item 11.5's own CI run
       ([ADR-0053](docs/adr/0053-benchmark-the-last-route-and-construction-not-serialization.md)):
       `benchDispatchLastOfFiftyRoutes` measured **6.874–7.145 µs (mean 6.984)** on
@@ -1296,7 +1320,29 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       measurement corrects; **(c)** accept the gap and ship the benchmark job red until (a) or
       (b) is chosen, per items 3.5/3.7's precedent (measure honestly, file the gap, do not tune
       the benchmark to pass) — size: S · route: standard / medium (a benchmark-methodology
-      decision with a known, bounded cause, unlike 11.6's open-ended noise question)
+      decision with a known, bounded cause, unlike 11.6's open-ended noise question) *(session
+      model matched the route — Opus 5)* · **ADR-0058**, **spec r16**. ***Decided with 11.6 on the
+      maintainer's explicit delegation.*** **Chose (a): the target is corrected 5 → 10 µs and the CI
+      ceiling set at 15 µs.** The 5 µs figure was never measured; the subject's median across
+      **eleven** readings is ~5.6 µs (4.735–7.145), and its cost scales exactly as ADR-0050's
+      deliberate linear scan predicts — **0.674 µs** for the first of fifty routes against **5.581**
+      for the last, ≈0.10 µs per failed `preg_match()` across the 49 misses. So the ceiling was
+      wrong about the code, not the other way round. ***(b) rejected, and this is the load-bearing
+      call:*** the item's own framing said a cache would reverse ADR-0050's non-goal "which named
+      'a 50-route table matches in microseconds' … a claim this measurement corrects." **It does not
+      correct it — it confirms it.** 5.6 µs *is* microseconds, and it is ~0.1% of a millisecond-scale
+      HTTP request; an index would add a build step, a cache-invalidation question and a second code
+      path to test, to reclaim a tenth of a percent. Stated plainly because it is the uncomfortable
+      half: raising a breached ceiling is what tuning-to-pass looks like from outside, and the
+      distinction is that the code's cost was measured **first**, found to be a documented design
+      property, and judged acceptable on its own merits — had the router measured 500 µs this would
+      have gone the other way. **(c) rejected on evidence this session produced**: with the job red
+      at its absolute-budget step, GitHub Actions skipped every later step, so item 12.6's
+      regression-gate logic **never executed on CI at all**. A permanently red gate does not merely
+      annoy — it silently disables everything downstream of it in the same job. **15 µs, not 10**:
+      10 is 1.40× the worst reading, still inside the noise envelope; 15 is 2.10×, and under
+      ADR-0058 D2 catching a single doubling is the *relative* gate's job — it does that with
+      **±0.60%** within-run precision, sixteen times finer than the 10% threshold it enforces.*
 
 ---
 
@@ -1521,9 +1567,9 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
 | §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | 🚧 |
 | §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | 🚧 |
-| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5, 12.3, 12.5 | 🚧 |
+| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14; r16 splits target from CI ceiling | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5–11.7, 12.3, 12.5–12.6 | ✅ |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | 🚧 |
 | §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | 🚧 |
 | §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
-| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 12.1, 12.3–12.4 | 🚧 |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6 | ✅ |
