@@ -23,8 +23,9 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-08 — The idiomatic enum was too slow, and one of my own arguments was dead](docs/journal/2026/08/2026-08-08-logging-channels.md).
+  [2026-08-08 — Three answers to the same bytes, and a corpus that could not fail](docs/journal/2026/08/2026-08-08-mail-group.md).
   Previous:
+  [2026-08-08 — The idiomatic enum was too slow, and one of my own arguments was dead](docs/journal/2026/08/2026-08-08-logging-channels.md),
   [2026-08-07 — A tag that shrinks, a key nobody checks, and a guard that never fired](docs/journal/2026/08/2026-08-07-crypto.md).
 
 ## Model & effort routing (advisory)
@@ -1262,7 +1263,16 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       (**0.901–0.929 µs**) confirms the cost scales with the 49 failed `preg_match()` attempts a
       worst-case dispatch pays, which is exactly the shape a linear, uncached scan produces
       (ADR-0050's stated non-goal — no index, no cache). Unlike 11.6, this is not a noisy-runner
-      question; it is a real cost with a known cause. Options, none taken unilaterally
+      question; it is a real cost with a known cause. **Evidence added at item 12.4** (2026-08-08),
+      which qualifies the "40% over" figure without changing the diagnosis: across five CI runs on
+      **unmodified** `Router` code the subject has measured **6.874–7.145 · 5.188 · 5.673 · 4.735 ·
+      7.021 µs** — once *inside* the ceiling. The two runs of the *same commit* that bracket that
+      range came from runners differing by 27–103% on **every** subject (`benchWriteTenThousandByTen`
+      9 691 → 19 660 µs), so the spread is the runner's, not the router's. What this changes for the
+      decision: the mean sits clearly over budget and the cause is understood, so option (a) or (b)
+      is still the question — but a ceiling this close to the runner's own variance makes the gate
+      **flap** rather than fail, and whichever option is chosen should leave headroom against that
+      variance rather than against the measured mean. Options, none taken unilaterally
       ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
       reserves spec numbers for the maintainer): **(a)** raise NFR-11's router budget to a value
       the current linear scan clears (the measured number, with headroom, e.g. ≤ 10 µs); **(b)**
@@ -1373,14 +1383,65 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       read as "the dispatch or the runner moved" first. The benchmark job is red on
       `benchDispatchLastOfFiftyRoutes` (5.188 vs 5) — **item 11.7, pre-existing on master**, not
       this item's code.*
-- [ ] 12.4 `Mail` group: `EmailAddress` (validated), `MailMessage` (**CR/LF/NUL in
+- [x] 12.4 `Mail` group: `EmailAddress` (validated), `MailMessage` (**CR/LF/NUL in
       header-bound values refused at construction**), `Mailer` + `NativeMailer` (explicit
       constructor config, no global `ini_set`), `MailException`, the Mail deptrac layer
       (Support-only edge) + T-10 header-injection corpus (RFC-0002 FR-43/FR-44; T-10)
-      (security) — size: M · route: frontier-reasoning / extra · ADR (header-injection
-      refusal + transport non-goals)
+      (security) — size: M · route: frontier-reasoning / extra *(run at standard tier / Opus 5;
+      mismatch accepted by the maintainer and recorded)* · **ADR-0056**. *2831 tests (+119 under
+      `--group T-10`). **No spec amendment — the second item in a row**, after four of the
+      previous six needed one. **The probe that shaped everything:** `mail()` returning `false` on
+      a host with no MTA says nothing about whether a payload was accepted, so the item was probed
+      against a **real SMTP sink** on `127.0.0.1`. PHP does three different things with the same
+      bytes: `CRLF` in `$subject` is **flattened to spaces** (`Subject: a subject  Bcc: victim@…`
+      reached the wire), `CRLF` in an **array** header value throws `ValueError`, and `CRLF` in a
+      **string** header block is **honoured** — a second `RCPT TO:<victim@…>` was issued, a working
+      Bcc injection. So the refusal is at construction (ADR-0025's stance on the other protocol),
+      the transport hands `mail()` an **array** as defence in depth, and the array form is asserted
+      as a **mechanism** through a `MailApi` seam because both shapes send a working email and no
+      behavioural test can tell them apart (ADR-0027, ADR-0026's seam). Also probed: PHP issues a
+      `RCPT TO` for an array `Bcc` **and omits the header** from what it sends, which is why that is
+      not done by hand. Subjects become hand-rolled RFC 2047 encoded-words (no `mbstring`, ADR-0019)
+      folded at 75 characters; bodies are base64 with `chunk_split(…, 76)`; two bodies become
+      `multipart/alternative` with a 128-bit boundary. **A boundary-collision check was written and
+      then removed as unreachable** — the boundary is drawn after the bodies exist, so placing it in
+      one means guessing 128 unborn bits (ADR-0022 / item 12.1's precedent for inert defences). New
+      `Mail` deptrac layer, **Support-only and deliberately not reaching `Errors`** (a transport that
+      logged its own failures would invert ADR-0029); proved by planting a `Mail → Errors` type
+      dependency (2 violations → 0). ***15 defects planted, 14 caught — and the one real miss is
+      worth the item's weight:*** splitting the subject on **bytes** instead of characters passed the
+      suite, because the multi-byte test used only three-byte characters and an encoded-word's
+      payload here is **45 bytes, a multiple of three**, so every split landed on a character
+      boundary by arithmetic. Test widened to two-byte, four-byte and mixed subjects; plant now
+      caught. **A corpus whose members all share one width cannot test a boundary computed in that
+      width** — the same failure class as a benchmark measuring the wrong shape (ADR-0018/0020). The
+      15th "miss" was not a defect: lower-casing before slicing the domain is byte-equivalent to
+      slicing then lower-casing.*
 - [ ] 12.5 phpbench: NFR-13 (crypto 1 KiB round-trip) (RFC-0002) (step:optimize) — size: XS ·
       route: fast / medium
+- [ ] 12.6 Decide how the **relative** benchmark gate should treat a run-wide slowdown. Filed from
+      item 12.4's CI, where the *same commit* failed **two different gates on two runs** and neither
+      failure was attributable to the diff (a new `Mail` group nothing else imports). Run 1: the
+      relative gate failed with five subjects at **+11.19% … +19.44%**, among them
+      `RowNormalizerBench::benchInlineTrimHundredRows` — **the control**, a hand-written inline
+      `trim()` loop that calls no library code and therefore cannot regress. Run 2: the relative gate
+      passed (both halves measured on the same slow runner) and the **absolute** ceiling tripped
+      instead, on item 11.7's router. Every subject in run 2 was **27–103% slower** than in run 1.
+      So ADR-0030's same-runner A/B is sound and has an unhandled failure mode: base and head are
+      measured **sequentially**, so a runner that changes speed *between the halves* moves every
+      subject in one direction, and the gate reports it as a regression in whichever half came second.
+      ADR-0045's exclusions do not cover it — those name three subjects for *cross-run* noise, while
+      this hits everything, control included. The instrument that detects it already exists: **a
+      control subject moving beyond the threshold is proof the run is invalid**, not proof the code
+      regressed (the method item 10.12 introduced). Options, none taken unilaterally: **(a)** name
+      the control subjects in `bench_regression_gate.py` and have the gate **invalidate the run**
+      (exit distinctly, ask for a re-run) when one of them moves past the threshold; **(b)** compare
+      each subject against the control's own delta rather than against zero, so a run-wide shift
+      cancels; **(c)** interleave the base and head measurements instead of running them in
+      sequence; **(d)** accept the flapping and re-run by hand, as this item's own PR did. (b) is
+      the most precise and the easiest to get subtly wrong; (a) is the smallest change that stops a
+      false failure being indistinguishable from a real one — size: S · route: standard / medium ·
+      ADR (it revises ADR-0030/ADR-0045's gate design)
 
 ---
 
@@ -1397,7 +1458,7 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | 🚧 |
 | §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5, 12.3, 12.5 | 🚧 |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | 🚧 |
-| §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3 | 🚧 |
-| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.3 | 🚧 |
+| §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | 🚧 |
+| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
 | §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 12.1, 12.3–12.4 | 🚧 |
