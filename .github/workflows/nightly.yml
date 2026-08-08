@@ -64,7 +64,9 @@ jobs:
             --budget benchWarmSingletonResolve=2 \
             --budget benchFirstAutowiredResolve=30 \
             --budget benchSequenceNext=200 \
-            --budget benchWriteTenThousandByTen=150000
+            --budget benchWriteTenThousandByTen=150000 \
+            --budget benchDispatchLastOfFiftyRoutes=5 \
+            --budget benchEnvelopeBuild=2
 
       - name: NFR-01 ratio — hydration vs manual construction
         run: |

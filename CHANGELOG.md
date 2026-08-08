@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **phpbench benchmarks for NFR-11** (spec §4, RFC-0002; roadmap item **11.5**): `HttpBench`
+  under `src/bench/php/d4np/utils/`, wired into `bench_budget_gate.py` in both `ci.yml` and
+  `nightly.yml`. Two decisions, both **ADR-0053**: `Router` dispatch is measured against the
+  *last* of 50 registered routes — the worst case its uncached, unindexed linear scan produces
+  (ADR-0050) — with the first-of-50 best case kept visible, unbudgeted; `ApiEnvelope` construction
+  is measured through `ok()` alone, never `jsonSerialize()`, since NFR-11 budgets building the
+  object, not the serialization `Response` performs later. **CI's measured envelope figure is
+  0.366–0.395 µs against the ≤ 2 µs budget — met, with headroom.** **CI's measured router figure
+  is 6.874–7.145 µs against the ≤ 5 µs budget — not met, profiled honestly rather than massaged**:
+  the gap traces to the 49 failed pattern attempts a worst-case dispatch pays in a router with no
+  index, a cost ADR-0050 assumed away without a number behind it. Filed as roadmap item **11.7**
+  rather than decided unilaterally (raising the budget or adding an index are both out of this
+  item's `fast/medium` route, and ADR-0040 reserves spec numbers for the maintainer). Milestone
+  11 stays open on this and item 11.6 until both resolve.
+
 - **`D4np\Utils\Http\ApiEnvelope` + `Http\Outcome`** — one JSON shape for every answer an API
   gives (spec r3 FR-39, RFC-0002; roadmap item **11.3**; **ADR-0051**). `{"status", "code",
   "messages", "data"}`, **all four keys on every outcome** — `data: null` is serialized as `null`
