@@ -23,6 +23,8 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
+  [2026-08-08 — The idiomatic enum was too slow, and one of my own arguments was dead](docs/journal/2026/08/2026-08-08-logging-channels.md).
+  Previous:
   [2026-08-07 — A tag that shrinks, a key nobody checks, and a guard that never fired](docs/journal/2026/08/2026-08-07-crypto.md).
 
 ## Model & effort routing (advisory)
@@ -1331,10 +1333,35 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       minimum-length check removed, `SecretKey`'s length check removed, and a redundant
       alphabet pre-check removed — plus one campaign that found a genuine simplification rather
       than a gap: see item 12.1's own entry.*
-- [ ] 12.3 Logging channels: `Level` enum (PSR-3 mapping + ordering), `LevelFilteredLogger`,
+- [x] 12.3 Logging channels: `Level` enum (PSR-3 mapping + ordering), `LevelFilteredLogger`,
       `MultiLogger`, `LoggerFactory` (one config array → channel map), PSR-3-pure (no
       Monolog dependency, NFR-08) + T-12 routing matrix + NFR-14 bench
       (RFC-0002 FR-41/FR-42; T-12) (severity:medium) — size: M · route: standard / medium
+      *(session model matched the route)* · **ADR-0055**, patterns catalogue **#3 Decorator**
+      and **#4 Composite**. ***No spec amendment — the first item in six without one*** (FR-35's
+      SELECT-only builder at 10.4, FR-37's unbounded timeout at 11.1, NFR-09's unsatisfiable ratio
+      at 10.10 and T-07's tag collision at 11.4 all needed the spec corrected in the same PR);
+      FR-41, FR-42, T-12 and NFR-14 were implementable exactly as written, which is worth stating
+      rather than leaving as an absence. **Two measurements decided the design before it was
+      written.** `match ($this)` over the eight cases costs **0.564 µs** against **0.246 µs** for a
+      const-map lookup through the backing value — with OPcache off, as NFR-06 pins it — and NFR-14
+      budgets an entire suppressed record at 0.5 µs, so the idiomatic enum shape would have spent
+      most of the budget on its own severity lookup; end to end through a real decorator the
+      enum-hydrating shape measured **1.089 µs (218% of budget)** against **0.435 µs** for the
+      rank-comparing one. Hence `Level::rankOf()`, which answers *"is this a level"* and *"how
+      severe"* in one array lookup and never hydrates a case on the hot path. **The enum's cases are
+      PSR-3's own `LogLevel` constants** (verified legal on the 8.1 floor), so a literal cannot
+      drift from the vocabulary it copies. **`Logger`'s private severity map is gone** — it would
+      have become the second copy of one rule the moment the decorator arrived, which is item 10.5's
+      finding; its constructor widened to `Level|string`, additive. **10 of 11 planted defects
+      caught. The 11th is the interesting one:** substituting PSR-3's `NullLogger` for the empty
+      `MultiLogger` behind a disabled channel left the suite **green**, because the
+      `LevelFilteredLogger` above it validates first — so that half of the ADR's reasoning was
+      *dead*, and the ADR now says so and keeps the empty composite on the smaller claim
+      (readability), the way item 12.1 removed a guard a probe proved inert. NFR-14 measured on CI;
+      recorded honestly, the **control subject — a bare `AbstractLogger::debug()` on a no-op sink —
+      is ~60% of the subject's time locally**, so most of what the budget bounds is PHP's own
+      dispatch rather than this library's filtering.*
 - [ ] 12.4 `Mail` group: `EmailAddress` (validated), `MailMessage` (**CR/LF/NUL in
       header-bound values refused at construction**), `Mailer` + `NativeMailer` (explicit
       constructor config, no global `ini_set`), `MailException`, the Mail deptrac layer
@@ -1357,9 +1384,9 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
 | §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | 🚧 |
 | §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | 🚧 |
-| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5, 12.5 | 🚧 |
+| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5, 12.3, 12.5 | 🚧 |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | 🚧 |
 | §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3 | 🚧 |
 | §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.3 | 🚧 |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
-| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 12.1, 12.4 | 🚧 |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 12.1, 12.3–12.4 | 🚧 |

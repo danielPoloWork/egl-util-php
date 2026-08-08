@@ -8,7 +8,6 @@ use D4np\Utils\Support\Json;
 use D4np\Utils\Support\UtilsException;
 use Psr\Log\AbstractLogger;
 use Psr\Log\InvalidArgumentException;
-use Psr\Log\LogLevel;
 use Throwable;
 
 /**
@@ -26,6 +25,11 @@ use Throwable;
  * throwable passed through untouched encodes to `{}` — verified. Not an error, not a warning: every
  * detail silently gone, in the one record anybody would want to read.
  *
+ * **The severity ordering is {@see Level}'s, and only Level's.** It used to be a private map here,
+ * which was right while nothing else needed it — and would have become two copies of one rule the
+ * moment {@see LevelFilteredLogger} arrived. That is the failure item 10.5 found in the identifier
+ * allowlist, where the second copy was the weaker one.
+ *
  * **The destination is validated at construction; writing never throws.** PSR-3 permits a throw only
  * for a bad level, and for good reason — a logger that throws while an exception handler is using it
  * turns a handled failure into a fatal one. So an unwritable destination is refused at wiring time,
@@ -34,23 +38,6 @@ use Throwable;
  */
 final class Logger extends AbstractLogger
 {
-    /**
-     * PSR-3's levels, most severe first. PSR-3 defines the names but not an order, and filtering
-     * needs one.
-     *
-     * @var array<string, int>
-     */
-    private const SEVERITY = [
-        LogLevel::EMERGENCY => 0,
-        LogLevel::ALERT => 1,
-        LogLevel::CRITICAL => 2,
-        LogLevel::ERROR => 3,
-        LogLevel::WARNING => 4,
-        LogLevel::NOTICE => 5,
-        LogLevel::INFO => 6,
-        LogLevel::DEBUG => 7,
-    ];
-
     private readonly int $threshold;
 
     /**
@@ -61,17 +48,22 @@ final class Logger extends AbstractLogger
     private readonly bool $isStream;
 
     /**
-     * @param string $destination a file path, or a stream like `php://stdout`
-     * @param string $minimumLevel records less severe than this are dropped
+     * @param string      $destination  a file path, or a stream like `php://stdout`
+     * @param Level|string $minimumLevel records less severe than this are dropped
      *
-     * @throws UtilsException        if the destination cannot be written to
+     * @throws UtilsException           if the destination cannot be written to
      * @throws InvalidArgumentException if `$minimumLevel` is not a PSR-3 level
      */
     public function __construct(
         private readonly string $destination,
-        string $minimumLevel = LogLevel::DEBUG,
+        Level|string $minimumLevel = Level::Debug,
     ) {
-        $this->threshold = self::SEVERITY[self::validLevel($minimumLevel)];
+        // Level|string rather than string: the enum is the vocabulary this library now speaks
+        // (item 12.3), and widening is additive — every existing `new Logger($path, 'warning')`
+        // call keeps working, since a PSR-3 level string is still accepted.
+        $this->threshold = $minimumLevel instanceof Level
+            ? $minimumLevel->rank()
+            : Level::rankOf($minimumLevel) ?? throw Level::invalid($minimumLevel);
         $this->isStream = \str_contains($destination, '://');
 
         if (!$this->isStream && !self::isWritable($destination)) {
@@ -92,11 +84,28 @@ final class Logger extends AbstractLogger
      */
     public function log($level, string|\Stringable $message, array $context = []): void
     {
-        // Validated into a string here rather than re-cast below, so the level's type is narrowed
-        // once and the rest of the method cannot be wrong about it.
-        $name = self::validLevel($level);
+        // Normalised, then ranked-and-validated in one lookup — so the severity is known before
+        // anything else reads the level, and an unknown one cannot reach the filter. Written as
+        // three narrowing steps rather than a cast: PHPStan max is right that a `mixed` reaching
+        // `strtoupper()` is unproven, and the proof belongs in the code, not in a suppression.
+        $name = $level instanceof Level ? $level->value : $level;
 
-        if (self::SEVERITY[$name] > $this->threshold) {
+        // PSR-3 requires exactly this: an unknown level throws, rather than being logged at some
+        // guessed severity where it would be filtered by a rule nobody wrote. Two checks rather
+        // than one condition, so the narrowing survives to `strtoupper()` below without a cast —
+        // PHPStan max is right that a `mixed` arriving there is unproven, and the proof belongs in
+        // the code rather than in a suppression.
+        if (!\is_string($name)) {
+            throw Level::invalid($level);
+        }
+
+        $rank = Level::rankOf($name);
+
+        if ($rank === null) {
+            throw Level::invalid($level);
+        }
+
+        if ($rank > $this->threshold) {
             return;
         }
 
@@ -186,25 +195,6 @@ final class Logger extends AbstractLogger
         ];
     }
 
-    /**
-     * @return key-of<self::SEVERITY>
-     *
-     * @throws InvalidArgumentException
-     */
-    private static function validLevel(mixed $level): string
-    {
-        if (\is_string($level) && isset(self::SEVERITY[$level])) {
-            return $level;
-        }
-
-        // PSR-3 requires exactly this: an unknown level throws, rather than being logged at some
-        // guessed severity where it would be filtered by a rule nobody wrote.
-        throw new InvalidArgumentException(\sprintf(
-            '"%s" is not a PSR-3 log level. Expected one of: %s.',
-            \is_scalar($level) || $level === null ? \var_export($level, true) : \get_debug_type($level),
-            \implode(', ', \array_keys(self::SEVERITY)),
-        ));
-    }
 
     private static function isWritable(string $path): bool
     {

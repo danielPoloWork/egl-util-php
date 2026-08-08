@@ -12,6 +12,39 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Errors\Level`, `LevelFilteredLogger`, `MultiLogger`, `LoggerFactory`** — PSR-3
+  logging channels: a level vocabulary with the ordering PSR-3 omits, a floor decorator that wraps
+  *any* `LoggerInterface`, a fan-out composite, and a factory that turns one configuration array
+  into a named set of channels (spec FR-41/FR-42, RFC-0002; roadmap item **12.3**; **ADR-0055**;
+  patterns catalogue **#3 Decorator**, **#4 Composite**). No Monolog dependency — NFR-08's
+  interface-only rule holds, and anyone wanting Monolog wires it *behind* PSR-3. Three behaviours
+  are worth knowing before wiring a channel:
+  - **An unknown level always throws, even when the floor would have dropped the record.** Filtering
+    first would make a typo's visibility a function of the floor — silent under a high one, fatal
+    under a low one — so it would surface the moment someone raised verbosity during an incident.
+  - **`MultiLogger` attempts every delegate and re-throws the first failure afterwards**, unlike
+    `Logger`, which deliberately never escalates its own write failures. The boundary is ownership
+    of a destination: a leaf has somewhere to fail quietly, a composite has none, and a swallow
+    there would make a fan-out where every delegate failed look like one that worked. Over this
+    library's own loggers nothing is thrown at all. Only the *first* failure survives — PHP has no
+    suppressed-exception mechanism.
+  - **A channel is built eagerly and a disabled one is still validated**: an unwritable path or an
+    unknown level fails where the channel is configured, not on the day `enabled` is flipped back
+    on. Unknown settings are refused rather than ignored, and a non-boolean `enabled` is refused
+    because the string `'false'` is truthy — a channel the operator believes is off, writing every
+    record.
+
+  NFR-14 (a level-suppressed record ≤ 0.5 µs) is measured by `LoggingBench` and gated by
+  `tools/bench_budget_gate.py` in CI and nightly.
+
+### Changed
+
+- **`D4np\Utils\Errors\Logger`'s second constructor argument accepts a `Level`** as well as a PSR-3
+  level string (`Level|string $minimumLevel`). Purely additive — every existing
+  `new Logger($path, 'warning')` call is unaffected. Internally the class no longer carries its own
+  severity map: the ordering now lives in `Level` and only there (roadmap item **12.3**,
+  **ADR-0055** D1).
+
 - **`D4np\Utils\Security\Crypto` + `Security\SecretKey`** — authenticated encryption for
   compact, URL-safe tokens (spec FR-40, RFC-0002; roadmap items **12.1** and **12.2**;
   **ADR-0054**). T-09's suite (item 12.2) is delivered inline with `CryptoTest` rather than as a
