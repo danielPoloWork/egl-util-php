@@ -10,4 +10,4 @@ README badge.
 
 | Version | Date | Highlights | Notes |
 |---------|------|------------|-------|
-| v0.11.0 | 2026-08-09 | The first release — every milestone M1–M12: DTOs, Database + Persistence, Security, Http, Errors, Mail, Support | [v0.11.0.md](v0.11.0.md) |
+| v1.0.0 | 2026-08-09 | The first release — every milestone M1–M12: DTOs, Database + Persistence, Security, Http, Errors, Mail, Support — and the API freeze (ADR-0059) | [v1.0.0.md](v1.0.0.md) |

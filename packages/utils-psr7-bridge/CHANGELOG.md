@@ -11,6 +11,13 @@ release does not imply a bridge release, or the reverse.
 
 ## [Unreleased]
 
+### Changed
+
+- **Core constraint widened to `egl/utils: ^1.0`** (was `^0.11`). The core's API-freeze review cut
+  its first release as `1.0.0` rather than `0.11.0` (**ADR-0059**), and a `0.x` caret does not
+  reach across a major — `^0.11` means `>=0.11.0 <0.12.0` and would have missed the only release
+  that exists. Caught in the core's release PR, before the first real install could fail on it.
+
 ### Added
 
 - Publication pipeline (roadmap item **8.3**, **ADR-0035**): this package is released from a signed

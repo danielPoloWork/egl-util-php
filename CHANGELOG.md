@@ -18,4 +18,4 @@ _Nothing yet._
 
 | Version | Date | Notes |
 |---------|------|-------|
-| [v0.11.0](docs/changelog/v0/v0.11.0.md) | 2026-08-09 | The first release — every milestone M1–M12. |
+| [v1.0.0](docs/changelog/v1/v1.0.0.md) | 2026-08-09 | The first release — every milestone M1–M12 — and the API freeze (ADR-0059). |

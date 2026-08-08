@@ -16,12 +16,16 @@ approved 2026-08-05 at PR #49) by the same three-role protocol — all roles wor
 session agent, per-artifact authority checked and recorded in the journal; scope = RFC-0002's
 decision in full, owner-confirmed by the RFC approval and the explicit plan instruction.
 **M9–M12 map to core versions `v0.8.0`–`v0.11.0`** (M8 was bridge-scoped and consumed no core
-minor); the standing post-M7 **1.0.0 API-freeze review** may re-map them to 1.x MINORs — the
-items are additive either way, so the mapping shifts without rework.
+minor). In the event none of those minors were published: with every milestone closed, the
+API-freeze review below settled the whole line into a single first release, **`v1.0.0`**.
 
 - **Versioning start:** pre-1.0 milestone-driven — one minor per milestone
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
-  API-freeze review**, not an automatic bump.
+  API-freeze review**, not an automatic bump. **Held 2026-08-09 and settled by
+  [ADR-0059](docs/adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md):**
+  the API is frozen at `v1.0.0`, with `@internal` symbols outside the frozen surface, and the
+  unpublished `v0.11.0` superseded. Post-1.0 versioning follows
+  [`maintenance.md`](docs/workflow/maintenance.md)'s decision tree, not the milestone mapping.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
   [2026-08-08 — Two open decisions, one table, and the number I nearly picked](docs/journal/2026/08/2026-08-08-nfr-ceiling-decisions.md).
   Previous:
@@ -436,8 +440,8 @@ The application-facing groups (RFC-0001).
 
 ## Milestone 7 — Release engineering & bridge (`v0.7.0`) · size: M
 
-Ship `egl/utils` and settle the bridge (RFC-0001). The **1.0.0 decision** follows as a
-dedicated post-M7 API-freeze review.
+Ship `egl/utils` and settle the bridge (RFC-0001). The **1.0.0 decision** followed as a
+dedicated post-M7 API-freeze review — held 2026-08-09, settled by **ADR-0059**.
 
 - [x] 7.1 phpbench nightly CI harness (NFR-06 methodology) with >10% regression failure
       (RFC-0001) (severity:medium) — route: standard / medium *(session model matched the route)* ·

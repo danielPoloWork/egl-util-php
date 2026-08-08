@@ -25,17 +25,20 @@ composer require egl/utils-psr7-bridge
 ```
 
 **Not yet possible — but for a narrower reason than before.** This package requires
-`egl/utils: ^0.11`, and the core's `v0.11.0` **is** its first release, so the dependency now names a
+`egl/utils: ^1.0`, and the core's `v1.0.0` **is** its first release, so the dependency now names a
 version that exists. What is still missing is *this* package's own publication: item 8.3's pipeline
 needs the split repository and its token configured (`docs/workflow/release.md` § *One-time
 maintainer prerequisites*), and no `utils-psr7-bridge-v*` tag has been cut. Until then the bridge is
 developed and tested inside the monorepo, where CI resolves the core from the working tree
 (spec 02 §7).
 
-The constraint was `^0.7` until the core's first release. Composer reads `^0.7` on a `0.x` package as
-`>=0.7.0 <0.8.0`, so once the core released as `0.11.0` that constraint named a version which would
-never exist — widened to `^0.11` in the release PR rather than left to fail at the first real
-install.
+This constraint has been corrected twice, both times in a release PR and both times because a
+`0.x` caret is narrower than it looks. It was `^0.7` while the core was pre-release; when the
+core's release was prepared as `0.11.0` that became `>=0.7.0 <0.8.0` against a version which would
+never exist, so it was widened to `^0.11`. The API-freeze review then cut the core's first release
+as **`1.0.0`** instead ([ADR-0059](../../docs/adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md)),
+and `^0.11` would have missed it for the same reason — corrected to `^1.0`, which is the first
+constraint here that a SemVer-stable core actually widens over time.
 
 You also need a PSR-17 factory implementation — any of them:
 
