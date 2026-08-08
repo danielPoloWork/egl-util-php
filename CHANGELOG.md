@@ -12,6 +12,32 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Mail\` — the `Mail` group**: `EmailAddress`, `MailMessage`, the `Mailer` interface
+  and `NativeMailer` over PHP's `mail()`, with `D4np\Utils\Support\MailException` joining the
+  exception hierarchy (spec FR-43/FR-44, RFC-0002; roadmap item **12.4**; **ADR-0056**). It replaces
+  the surveyed estate's mailer, which called `ini_set('SMTP', …)` immediately before `mail()` and
+  interpolated the recipient and subject from request data unchecked.
+
+  **`CR`, `LF` and NUL are refused at construction** — in an address and in a subject — rather than
+  stripped at send time. Probed against a real SMTP transport, PHP does three different things with
+  the same bytes: it **flattens** them to spaces in `mail()`'s `$subject` (so
+  `Subject: a subject  Bcc: victim@example.com` reaches the wire, safe and silently not what the
+  caller wrote), it throws a `ValueError` for an **array** header value, and it **honours** them in a
+  **string** header block — issuing a second `RCPT TO`. A refusal at construction is the only answer
+  that does not depend on which of those a given call and platform get.
+
+  Consequences worth knowing before wiring it up:
+  - Addresses are validated by `filter_var()`, which is **stricter than RFC 5321 in one visible
+    way**: a bare hostname with no dot (`user@example`) is refused.
+  - `NativeMailer` **mutates nothing global**. Where the MTA lives stays deployment configuration;
+    the only thing the constructor configures is the envelope sender, which is passed as a `sendmail`
+    option and is therefore **a no-op on the Windows SMTP transport**.
+  - Non-ASCII subjects become RFC 2047 encoded-words (folded at 75 characters, no `mbstring`
+    dependency), bodies are base64-encoded, and a message with both a text and an HTML body becomes
+    `multipart/alternative`.
+  - Declared non-goals: no SMTP client, no attachments, no custom headers, no display names.
+    `Mailer` is the seam a fuller mail library plugs into without touching calling code.
+
 - **`D4np\Utils\Errors\Level`, `LevelFilteredLogger`, `MultiLogger`, `LoggerFactory`** — PSR-3
   logging channels: a level vocabulary with the ordering PSR-3 omits, a floor decorator that wraps
   *any* `LoggerInterface`, a fan-out composite, and a factory that turns one configuration array

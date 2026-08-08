@@ -60,6 +60,17 @@ deptrac:
         - type: directory
           value: src/main/php/d4np/utils/Persistence/.*
 
+    # RFC-0002's eighth group (roadmap Milestone 12, item 12.4). Support-only, like every group
+    # except `Persistence`: `EmailAddress` and `MailMessage` consume the exception hierarchy and
+    # nothing else, and the transport reaches PHP's `mail()` rather than another group. In
+    # particular it does NOT reach `Errors` — a mailer that logged its own failures would be the
+    # inversion ADR-0029 keeps out, and a caller who wants the failure logged catches
+    # `MailException` and logs it where the decision belongs.
+    - name: Mail
+      collectors:
+        - type: directory
+          value: src/main/php/d4np/utils/Mail/.*
+
     # The layer every group is allowed to depend on, and which may depend on none of them.
     - name: Support
       collectors:
@@ -163,6 +174,10 @@ deptrac:
       - Support
       # `Logger` implements PSR-3 and `ExceptionHandler` accepts one (spec FR-17, FR-18).
       - Psr
+
+    # Support and nothing else — deliberately including no `Errors`: see the layer's comment above.
+    Mail:
+      - Support
 
     # Support is the bottom of the library: it depends on no group. An empty list here is the
     # load-bearing half of the rule — it is what makes a Support -> Dto import (the inversion

@@ -71,3 +71,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0053](0053-benchmark-the-last-route-and-construction-not-serialization.md) | Benchmark the last route, and construction, not serialization | Accepted |
 | [0054](0054-authenticated-encryption-with-fixed-lengths-and-a-key-only-secretkey-can-produce.md) | Authenticated encryption, with fixed lengths and a key only `SecretKey` can produce | Accepted |
 | [0055](0055-one-ordering-validation-before-filtering-and-a-swallow-only-at-the-leaf.md) | One ordering, validation before filtering, and a swallow only at the leaf | Accepted |
+| [0056](0056-refuse-the-terminator-at-construction-and-hand-mail-an-array.md) | Refuse the terminator at construction, and hand `mail()` an array | Accepted |
