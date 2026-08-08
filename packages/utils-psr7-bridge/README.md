@@ -24,11 +24,18 @@ crossing point, and the core never depends on it.
 composer require egl/utils-psr7-bridge
 ```
 
-**Not yet possible.** This package requires `egl/utils: ^0.7`, and the core has not cut its first
-release — `VERSION` is still `0.0.0` with no tag. That is a true statement of the dependency, not a
-placeholder: the package becomes installable when the core publishes `v0.7.0`, which is also when
-item 8.3 first publishes this one. Until then it is developed and tested inside the monorepo, where
-CI resolves the core from the working tree (spec 02 §7).
+**Not yet possible — but for a narrower reason than before.** This package requires
+`egl/utils: ^0.11`, and the core's `v0.11.0` **is** its first release, so the dependency now names a
+version that exists. What is still missing is *this* package's own publication: item 8.3's pipeline
+needs the split repository and its token configured (`docs/workflow/release.md` § *One-time
+maintainer prerequisites*), and no `utils-psr7-bridge-v*` tag has been cut. Until then the bridge is
+developed and tested inside the monorepo, where CI resolves the core from the working tree
+(spec 02 §7).
+
+The constraint was `^0.7` until the core's first release. Composer reads `^0.7` on a `0.x` package as
+`>=0.7.0 <0.8.0`, so once the core released as `0.11.0` that constraint named a version which would
+never exist — widened to `^0.11` in the release PR rather than left to fail at the first real
+install.
 
 You also need a PSR-17 factory implementation — any of them:
 

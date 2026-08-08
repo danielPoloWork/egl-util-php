@@ -2,7 +2,7 @@
 
 > General-purpose PHP utility helpers shared across EGL projects
 
-![Status](https://img.shields.io/badge/Status-v0.0.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.11.0-blue)
 
 A
 library written in **PHP 8.1+**, built and governed to an enterprise quality
