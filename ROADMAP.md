@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — The first real origin, and what it said about the client](docs/journal/2026/08/2026-08-07-t07-live-origin.md).
+  [2026-08-07 — Two subjects, one honest miss](docs/journal/2026/08/2026-08-07-nfr11-benchmarks.md).
 
 ## Model & effort routing (advisory)
 
@@ -1204,8 +1204,33 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       retried away: closing a socket that still holds unread inbound bytes resets the connection
       and destroys the response, so the origin now drains the request before answering (6/6 green
       after, 3/5 before).*
-- [ ] 11.5 phpbench: NFR-11 (router dispatch at 50 routes; envelope build) (RFC-0002)
-      (step:optimize) — size: XS · route: fast / medium
+- [x] 11.5 phpbench: NFR-11 (router dispatch at 50 routes; envelope build) (RFC-0002)
+      (step:optimize) — size: XS · route: fast / medium · **ADR-0053**. *`HttpBench.php`
+      (`ContainerBench`'s/`QueryBuilderBench`'s shape) measures both halves. **Which route to
+      dispatch was the scoping question** (`Router` has no cache and no index, ADR-0050's stated
+      non-goal, so dispatch is a linear scan with a real best/worst case): the **last** of 50
+      registered routes is the worst case that scan produces, and is the budgeted subject; the
+      **first** is kept alongside it, unbudgeted, so the best case is not silently dropped. The
+      same question on the envelope side: `ok()` construction alone is budgeted, never
+      `jsonSerialize()` — NFR-11 budgets building the object, not the serialization
+      `Response` performs later — with the multi-message `invalid()` path kept visible,
+      unbudgeted, beside it.
+      **NFR-11 CI measurement (reference: `ubuntu-24.04`, this PR's own run — not spec NFR-06's
+      named machine): envelope half MET comfortably** — `benchEnvelopeBuild` **0.366–0.395 µs**
+      (mean 0.381) against ≤ 2 µs, more than 5× headroom; `benchEnvelopeBuildWithMessages`
+      **0.354–0.368 µs**, no measurable cost for the extra messages.
+      **Router half NOT met: `benchDispatchLastOfFiftyRoutes` measured 6.874–7.145 µs
+      (mean 6.984) against the ≤ 5 µs budget — about 40% over.** `benchDispatchFirstOfFiftyRoutes`
+      measured **0.901–0.929 µs**, confirming the gap is the scan itself and not fixed per-call
+      overhead: dispatching the 50th route costs roughly 7.6× dispatching the 1st, in line with
+      49 extra failed `preg_match()` attempts. Shipped **as measured, not tuned to pass** — the
+      spec's own gate, `bench_budget_gate.py --budget benchDispatchLastOfFiftyRoutes=5`, is wired
+      into CI red-and-honest, following items 3.5/3.7's and 10.6/10.10's precedent rather than
+      softening the gate or narrowing the workload until it clears. The gap is filed as item
+      **11.7**, not decided here — the budget is a spec number and ADR-0040 reserves those for
+      the maintainer. **Milestone 11 stays open on two decision items (11.6, 11.7); README's row
+      stays "planned" until both resolve** — `consistency_lint`'s `milestones` check enforces
+      exactly this (a milestone marked done in README needs every ROADMAP item checked).*
 - [ ] 11.6 Decide what NFR-10's **absolute** budget should be, now that the subject it guards
       has crossed it on unmodified code. Filed from item 11.4's CI, whose `src/main` diff is a
       single file in the `Http` group — `benchSequenceNext` exercises `Support\FileSequence` and
@@ -1226,6 +1251,25 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       unenforced), or keep it and accept a job that fails a few runs in twenty. **A gate that
       fails on unchanged code teaches people to re-run it**, which is the failure mode worth
       pricing here — size: S · route: frontier-reasoning / extra (adr, decision-heavy)
+- [ ] 11.7 Decide what to do about NFR-11's **router dispatch** budget, measured **not met** on
+      unmodified `Router` code. Filed from item 11.5's own CI run
+      ([ADR-0053](docs/adr/0053-benchmark-the-last-route-and-construction-not-serialization.md)):
+      `benchDispatchLastOfFiftyRoutes` measured **6.874–7.145 µs (mean 6.984)** on
+      `ubuntu-24.04` against the ≤ 5 µs ceiling — roughly 40% over, and (unlike item 11.6's
+      subject) with no history of noisy runs to suggest measurement error; the first-of-50 figure
+      (**0.901–0.929 µs**) confirms the cost scales with the 49 failed `preg_match()` attempts a
+      worst-case dispatch pays, which is exactly the shape a linear, uncached scan produces
+      (ADR-0050's stated non-goal — no index, no cache). Unlike 11.6, this is not a noisy-runner
+      question; it is a real cost with a known cause. Options, none taken unilaterally
+      ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
+      reserves spec numbers for the maintainer): **(a)** raise NFR-11's router budget to a value
+      the current linear scan clears (the measured number, with headroom, e.g. ≤ 10 µs); **(b)**
+      add a cache or an index to `Router` — reversing ADR-0050's stated non-goal, which named "a
+      50-route table matches in microseconds" as the reason no cache was needed, a claim this
+      measurement corrects; **(c)** accept the gap and ship the benchmark job red until (a) or
+      (b) is chosen, per items 3.5/3.7's precedent (measure honestly, file the gap, do not tune
+      the benchmark to pass) — size: S · route: standard / medium (a benchmark-methodology
+      decision with a known, bounded cause, unlike 11.6's open-ended noise question)
 
 ---
 
