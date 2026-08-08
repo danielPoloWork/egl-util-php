@@ -1274,7 +1274,20 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       decision: the mean sits clearly over budget and the cause is understood, so option (a) or (b)
       is still the question — but a ceiling this close to the runner's own variance makes the gate
       **flap** rather than fail, and whichever option is chosen should leave headroom against that
-      variance rather than against the measured mean. Options, none taken unilaterally
+      variance rather than against the measured mean. **A seventh measurement and a new
+      consequence, added at item 12.6** (2026-08-08): `benchDispatchLastOfFiftyRoutes` measured
+      **7.069 µs** on PR #79's CI, breaching the ceiling again — the running set is now
+      6.874–7.145 · 5.188 · 5.673 · 4.735 · 7.021 · **7.069** µs, still centered clearly over
+      budget. More consequential than the number itself: **this breach is a `bench_budget_gate.py`
+      failure at step 8 of the `benchmark` job, and GitHub Actions stops a job at its first failed
+      step by default** — steps 9–13, including the **regression gate** where item 12.6's new
+      `--control` invalidation logic lives, were all reported `skipped`, not run. This is the same
+      structural shape item 10.10's journal named when NFR-09 blocked the regression gate's
+      `--exclude` step from ever executing in CI: as long as 11.7 stays open, **any** downstream
+      benchmark diagnostic added to this job — 12.6's included — is untested on real CI until a PR
+      happens to avoid tripping this ceiling. Resolving 11.7 removes that side effect as well as
+      the router's own gap; left open, the cost of leaving it open keeps compounding onto whatever
+      is added next. Options, none taken unilaterally
       ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
       reserves spec numbers for the maintainer): **(a)** raise NFR-11's router budget to a value
       the current linear scan clears (the measured number, with headroom, e.g. ≤ 10 µs); **(b)**

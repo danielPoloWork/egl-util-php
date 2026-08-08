@@ -98,6 +98,28 @@ maintainer decisions remain across the whole plan: 11.6 (a noisy budget with no 
 11.7 (the router's NFR-11 ceiling, now six measurements deep), and — filed by this item's own
 predecessor — none from 12.6, since this item is the decision, not another deferral.
 
+## Postscript — the mechanism has never run on real CI
+
+The PR carrying this change failed `ci.yml`'s `benchmark` job — at the absolute-budget step, on
+item 11.7's already-known router regression (`benchDispatchLastOfFiftyRoutes` 7.069 µs, a seventh
+data point for that open decision). GitHub Actions stops a job at its first failed step by
+default, so every step after it — steps 9 through 13, including the regression gate this item's
+own `--control` logic lives in — was reported `skipped`, not run.
+
+I had already lived this exact shape once, from the other side: item 10.10's journal recorded that
+its own new regression-gate step "never actually executes in CI, only locally," blocked by NFR-09
+staying red. That entry did not stop the same structure from repeating — this time 11.7 sits in
+NFR-09's old seat, and item 12.6 sits where 10.9's `--exclude` sat, untested in production for the
+same reason. Recognizing a pattern once is not the same as having fixed it; the fix was never in
+scope for either item, since a step-ordering change is a job-wide decision neither item's own
+subject warranted making unilaterally.
+
+So this item's correctness rests entirely on the eight synthetic-fixture cases above, not on a
+live confirmation — worth saying plainly rather than letting a green PR checklist imply more than
+the evidence supports. Noted on item 11.7 rather than patched here, for the same reason ADR-0057
+does not reorder `ci.yml`'s steps: that fix belongs to whoever resolves 11.7, since it is a
+property of the job, not of this one gate's logic.
+
 ## Lesson
 
 A gate that cannot tell its own noise from a real signal will eventually be trusted less than no
@@ -105,3 +127,8 @@ gate at all — the same fate item 10.5 nearly gave `--exclude`'s two subjects b
 the criterion. The fix here is not a bigger threshold or a longer retry list; it is a second,
 independent measurement — the control — whose only job is answering the question the primary
 measurement cannot ask of itself: *is this run even trustworthy?*
+
+And a second lesson, sharper for having now happened twice: naming a recurring structural problem
+in a journal does not fix it for the next item that walks into the same trap. If a pattern is
+worth writing down twice, it is worth turning into a decision someone can act on — which is what
+the note on item 11.7 now is, rather than a third journal entry waiting to happen.

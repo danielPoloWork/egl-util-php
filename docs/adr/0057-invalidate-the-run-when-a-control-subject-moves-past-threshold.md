@@ -171,6 +171,18 @@ premise.
 gotten less stable since ADR-0030's baseline measurement, and the same-runner A/B's own premise
 should be re-measured, not silently worked around with a wider threshold.
 
+**Not yet exercised on real CI, and that is itself evidence of a second problem.** The PR that
+introduced this mechanism failed `ci.yml`'s `benchmark` job at the *absolute-budget* step (item
+11.7's router regression, unrelated to this change), and GitHub Actions stops a job at its first
+failed step by default — every step after it, including the regression gate this ADR's own logic
+lives in, was reported `skipped`. This repeats the exact shape item 10.10's journal already named
+once, with NFR-09 in the blocking role that 11.7 plays here: as long as any absolute-budget item
+stays open, every diagnostic added downstream of it in the same job — this one included — ships
+untested against real CI until a PR happens not to trip that ceiling. Correctness here rests on
+the eight synthetic-fixture cases in Verification, not on a live CI run; the note is recorded on
+item 11.7 rather than fixed here, on the same restraint item 10.10 held to (a step-ordering fix is
+a different, job-wide decision from this ADR's subject).
+
 ## References
 
 - ROADMAP item 12.4 (the evidence), item 10.11 (`benchInlineTrimHundredRows`'s origin as a
