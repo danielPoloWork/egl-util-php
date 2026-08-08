@@ -100,6 +100,11 @@ final class LoggingBench
      * The control: the sink on its own. Unaffected by anything item 12.3 changed, so its movement
      * between runs is the runner's noise floor, and no claim below that spread is worth making
      * (item 10.12's standing rule on this harness).
+     *
+     * **Wired as `ci.yml`'s regression-gate `--control` alongside `RowNormalizerBench::
+     * benchInlineTrimHundredRows`** (roadmap item 12.6, ADR-0057) — a second, independent
+     * runner-noise sentinel in the same CI job, so a run-wide slowdown localized to one part of
+     * the suite is still caught if the other control happens to sit inside the threshold.
      */
     #[Bench\Subject]
     public function benchSinkDirectly(): void

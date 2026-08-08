@@ -57,7 +57,7 @@ setup.
 | 9 | Support & values | ✅ done |
 | 10 | Persistence | ✅ done |
 | 11 | Http application layer | ⏳ planned |
-| 12 | Security & channels | ⏳ planned |
+| 12 | Security & channels | ✅ done |
 
 
 ## License

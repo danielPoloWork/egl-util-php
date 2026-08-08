@@ -23,8 +23,9 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-08 — The last planned item, and the milestone that still doesn't close](docs/journal/2026/08/2026-08-08-crypto-benchmark.md).
+  [2026-08-08 — Closing the milestone by fixing the tool that kept flagging it as open](docs/journal/2026/08/2026-08-08-benchmark-run-invalidation.md).
   Previous:
+  [2026-08-08 — The last planned item, and the milestone that still doesn't close](docs/journal/2026/08/2026-08-08-crypto-benchmark.md),
   [2026-08-08 — Three answers to the same bytes, and a corpus that could not fail](docs/journal/2026/08/2026-08-08-mail-group.md),
   [2026-08-08 — The idiomatic enum was too slow, and one of my own arguments was dead](docs/journal/2026/08/2026-08-08-logging-channels.md),
   [2026-08-07 — A tag that shrinks, a key nobody checks, and a guard that never fired](docs/journal/2026/08/2026-08-07-crypto.md).
@@ -1273,7 +1274,20 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       decision: the mean sits clearly over budget and the cause is understood, so option (a) or (b)
       is still the question — but a ceiling this close to the runner's own variance makes the gate
       **flap** rather than fail, and whichever option is chosen should leave headroom against that
-      variance rather than against the measured mean. Options, none taken unilaterally
+      variance rather than against the measured mean. **A seventh measurement and a new
+      consequence, added at item 12.6** (2026-08-08): `benchDispatchLastOfFiftyRoutes` measured
+      **7.069 µs** on PR #79's CI, breaching the ceiling again — the running set is now
+      6.874–7.145 · 5.188 · 5.673 · 4.735 · 7.021 · **7.069** µs, still centered clearly over
+      budget. More consequential than the number itself: **this breach is a `bench_budget_gate.py`
+      failure at step 8 of the `benchmark` job, and GitHub Actions stops a job at its first failed
+      step by default** — steps 9–13, including the **regression gate** where item 12.6's new
+      `--control` invalidation logic lives, were all reported `skipped`, not run. This is the same
+      structural shape item 10.10's journal named when NFR-09 blocked the regression gate's
+      `--exclude` step from ever executing in CI: as long as 11.7 stays open, **any** downstream
+      benchmark diagnostic added to this job — 12.6's included — is untested on real CI until a PR
+      happens to avoid tripping this ceiling. Resolving 11.7 removes that side effect as well as
+      the router's own gap; left open, the cost of leaving it open keeps compounding onto whatever
+      is added next. Options, none taken unilaterally
       ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
       reserves spec numbers for the maintainer): **(a)** raise NFR-11's router budget to a value
       the current linear scan clears (the measured number, with headroom, e.g. ≤ 10 µs); **(b)**
@@ -1441,7 +1455,7 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       work while 11.6/11.7 stayed open — except M11's two open items are both maintainer decisions
       on numbers, while 12.6 is a decision on the **gate's own design** (does a control-subject
       breach invalidate a run, and if so, how).*
-- [ ] 12.6 Decide how the **relative** benchmark gate should treat a run-wide slowdown. Filed from
+- [x] 12.6 Decide how the **relative** benchmark gate should treat a run-wide slowdown. Filed from
       item 12.4's CI, where the *same commit* failed **two different gates on two runs** and neither
       failure was attributable to the diff (a new `Mail` group nothing else imports). Run 1: the
       relative gate failed with five subjects at **+11.19% … +19.44%**, among them
@@ -1462,8 +1476,37 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       cancels; **(c)** interleave the base and head measurements instead of running them in
       sequence; **(d)** accept the flapping and re-run by hand, as this item's own PR did. (b) is
       the most precise and the easiest to get subtly wrong; (a) is the smallest change that stops a
-      false failure being indistinguishable from a real one — size: S · route: standard / medium ·
-      ADR (it revises ADR-0030/ADR-0045's gate design)
+      false failure being indistinguishable from a real one — size: S · route: standard / medium
+      *(session model was Sonnet 5 — `fast` tier, kept from the user's explicit `/model` switch
+      before item 12.5 — against a filed `standard` route; mismatch recorded, not glossed)* ·
+      **ADR-0057**. *The choice among (a)–(d) is an engineering call about the gate's own
+      mechanism, not a spec or budget number — ADR-0040 reserves the latter for the maintainer;
+      ADR-0045 made the same kind of call unilaterally when it added `--exclude`. Proceeded on the
+      maintainer's explicit "procedi con M12.6." Chose **(a)**:
+      `bench_regression_gate.py` gains a repeatable `--control Benchmark::subject` flag; when a
+      control's delta exceeds `--max-regression` **in either direction** (a runner speeding up
+      is the same broken comparison as one slowing down, and could hide a real regression under
+      an apparent improvement), the gate prints `INVALID`, names the breaching control(s), states
+      that no other subject's number from that run can be trusted, and exits **`2`** — distinct
+      from `0` (pass) and `1` (a trustworthy failure) — rather than reporting individual
+      regressions a compromised A/B cannot vouch for. **(b)** (net each subject against the
+      control's own delta) was rejected for now, not dismissed: run 2's subjects moved
+      27–103%, not by one consistent factor, so a naive subtraction risks manufacturing a false
+      pass or fail from real per-subject drift; filed as a follow-up if plain invalidation proves
+      too coarse. **Two controls wired into `ci.yml`** (not `nightly.yml`, which never ran the
+      relative comparison per ADR-0030 §3): `RowNormalizerBench::benchInlineTrimHundredRows`
+      (item 10.11's origin) and `LoggingBench::benchSinkDirectly` (item 12.3's) — two rather than
+      one, so a slowdown localized to one part of the job's timeline cannot land entirely outside
+      a single sentinel's measurement window. **A name may not appear in both `--control` and
+      `--exclude`**, refused loudly at parse time: a control's value is being a clean signal,
+      and excluding it would silently defeat the property the flag depends on. **Verified against
+      8 synthetic `phpbench --dump-file` fixtures** (no permanent pytest suite exists for
+      `tools/*.py`, the standing method from items 10.5/10.9), including an exact reproduction of
+      item 12.4's run-1 numbers (`benchInlineTrimHundredRows` +19.44%, `benchNormalizeHundredRows`
+      +13.82%) now producing `INVALID`/exit 2 with **no** old-style `FAIL — 2 subject(s)` block,
+      and the identical numbers with no `--control` given reproducing the pre-existing `FAIL`
+      output byte-for-byte — proving the change is additive, not a behavior change for anyone not
+      opting into a control.*
 
 ---
 

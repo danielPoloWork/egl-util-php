@@ -77,6 +77,13 @@ final class RowNormalizerBench
      * The floor the overhead is measured against: the same guard and the same `trim()`, written
      * inline with no policy object at all — the loop the surveyed estate hand-wrote seventeen
      * times, and the one {@see GatewayBench::benchHandWrittenPdoLoop()} keeps.
+     *
+     * **Wired as `ci.yml`'s regression-gate `--control` (roadmap item 12.6, ADR-0057).** It calls
+     * no code this project owns, so it cannot regress; if it ever moves past the 10% threshold in
+     * CI, that is a runner-wide slowdown, not a code change, and the gate reports the whole run
+     * invalid rather than trusting any subject's number from it. Item 12.4's CI is the case this
+     * was written for: this exact subject moved +19.44% on a PR that never touched
+     * `RowNormalizerBench` or `RowNormalizer`.
      */
     public function benchInlineTrimHundredRows(): void
     {
