@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Tests\Support;
 
+use D4np\Utils\Support\CryptoException;
 use D4np\Utils\Support\CsvException;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Support\FileException;
@@ -91,6 +92,7 @@ final class ExceptionHierarchyTest extends TestCase
         // or removing a member is a decision, not an edit that should slip through green.
         self::assertSame(
             [
+                CryptoException::class,
                 CsvException::class,
                 DatabaseException::class,
                 FileException::class,
@@ -172,6 +174,7 @@ final class ExceptionHierarchyTest extends TestCase
             );
         }
         $leaves = [
+            CryptoException::class,
             CsvException::class,
             DatabaseException::class,
             FileException::class,

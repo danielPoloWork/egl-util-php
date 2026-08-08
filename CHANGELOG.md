@@ -12,6 +12,29 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Security\Crypto` + `Security\SecretKey`** — authenticated encryption for
+  compact, URL-safe tokens (spec FR-40, RFC-0002; roadmap items **12.1** and **12.2**;
+  **ADR-0054**). T-09's suite (item 12.2) is delivered inline with `CryptoTest` rather than as a
+  separate item: spec T-09 names exactly the vectors GCM's authentication tag already is the
+  mechanism for, so a second suite restating them would have been ceremony, not verification. AES-256-GCM
+  replaces the surveyed estate's AES-256-CBC helper, which carried no authentication tag and
+  returned `bool|string` from `decrypt()`. The token is `"v1." . base64url(nonce ‖ ciphertext ‖
+  tag)`, with the 12-byte nonce and 16-byte tag **sliced from fixed offsets, never a length the
+  token states** — probed first: `openssl_decrypt()` accepts a correct *prefix* of a real tag at
+  any length down to one byte, so a format that let the tag's length vary would hand back the
+  exact lever GCM's authentication exists to remove. `SecretKey` is the only way key material can
+  exist (`generate()`, `fromBytes()`, `fromBase64()`) and the only place its 32-byte length is
+  checked — `openssl_encrypt()` itself does not validate this at all, silently accepting 8, 16,
+  24 and 40-byte keys in the same probe. `decrypt()` throws `D4np\Utils\Support\CryptoException`
+  on every failure — wrong key, tampered nonce/ciphertext/tag, truncation, a malformed or
+  unrecognised token — never a boolean a caller could ignore; wrong-key and tampered are not
+  distinguished, which is GCM's own guarantee rather than a gap. `ext-openssl` is suggested, not
+  required (NFR-08): refused at construction following `Hash`'s precedent, probe-verified rather
+  than test-executed since the extension is core and present on every runner this project
+  targets (ADR-0021's precedent for exactly this shape of gap). First use of
+  `#[\SensitiveParameter]` in this codebase — verified redacting key material from an uncaught
+  exception's trace on 8.3.1; inert by PHP's own attribute semantics on the 8.1 floor.
+
 - **phpbench benchmarks for NFR-11** (spec §4, RFC-0002; roadmap item **11.5**): `HttpBench`
   under `src/bench/php/d4np/utils/`, wired into `bench_budget_gate.py` in both `ci.yml` and
   `nightly.yml`. Two decisions, both **ADR-0053**: `Router` dispatch is measured against the

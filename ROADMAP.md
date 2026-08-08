@@ -23,7 +23,7 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-07 — Two subjects, one honest miss](docs/journal/2026/08/2026-08-07-nfr11-benchmarks.md).
+  [2026-08-07 — A tag that shrinks, a key nobody checks, and a guard that never fired](docs/journal/2026/08/2026-08-07-crypto.md).
 
 ## Model & effort routing (advisory)
 
@@ -1277,15 +1277,60 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
 
 AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-44).
 
-- [ ] 12.1 `Crypto` + `SecretKey`: AES-256-GCM, versioned `v1.` base64url token, `decrypt()`
+- [x] 12.1 `Crypto` + `SecretKey`: AES-256-GCM, versioned `v1.` base64url token, `decrypt()`
       **throws** `CryptoException` on any failure (wrong key, tamper, malformed token);
       ext-openssl suggested with constructor refusal when absent (ADR-0021/ADR-0022
       pattern); `#[SensitiveParameter]` on secret-bearing signatures (RFC-0002 FR-40)
-      (security) — size: M · route: frontier-reasoning / extra · ADR (AEAD replaces
-      unauthenticated CBC)
-- [ ] 12.2 T-09 crypto suite: tamper/wrong-key/truncation vectors, nonce uniqueness across
+      (security) — size: M · route: frontier-reasoning / extra *(run at fast tier, Sonnet 5, on
+      the maintainer's explicit `/model` switch — a two-tier mismatch against
+      frontier-reasoning, recorded rather than silently accepted)* · **ADR-0054**. *Opens Milestone 12. **Two probes changed the design before any
+      class existed.** `openssl_decrypt()`'s tag check is only as strong as the tag length it
+      is given — a **correct prefix** of a real tag, at any length down to one byte, is
+      accepted; a forged one is rejected at every length. A token format that let the tag's
+      length vary would hand an attacker exactly the lever GCM's authentication exists to
+      remove, so nonce and tag are **fixed-length constants sliced from fixed offsets** — 12 and
+      16 bytes — never a length the token states. Separately, **`openssl_encrypt()` does not
+      validate key length for `aes-256-gcm` at all**: 8, 16, 24 and 40-byte keys were all
+      accepted silently, with no warning, and a 16-byte key does not silently become
+      `aes-128-gcm` (checked directly) — it is simply unchecked. `SecretKey` is therefore the
+      **only** way a key can exist (`generate()`, `fromBytes()`, `fromBase64()`), and it is the
+      one place the 32-byte length is ever verified, rather than a discipline every call site
+      would have to remember.* **`decrypt()` cannot distinguish wrong-key from tampered**: both
+      reach the same `openssl_decrypt() === false` and the same `CryptoException`, which is
+      GCM's own guarantee rather than a missed opportunity — telling them apart would require
+      authenticating first to find out, and by then the answer is already no. **`ext-openssl`'s
+      refusal is probed, not tested** (ADR-0021's precedent for `Sanitizer::richText()`'s own
+      missing-package branch): the extension is core, present on every runner this project
+      targets, so the branch cannot be executed by the suite — verified `true` directly rather
+      than left unstated. `#[\SensitiveParameter]` verified on 8.3.1 (an uncaught trace redacts
+      the argument); inert on the 8.1 floor per PHP's own lazy attribute resolution, not
+      independently re-verifiable on this session's toolchain. First use of the attribute
+      anywhere in this codebase. No deptrac change: `ext-openssl` is a core extension, not a
+      namespaced dependency, so `Security`'s existing `Support`-only edge already covers it.*
+      **A seventh plant found genuine dead code, not a gap**: `base64UrlDecode()` shipped with a
+      `preg_match()` alphabet guard ahead of `base64_decode(..., true)`; removing it changed
+      nothing — probed against ten malformed shapes, strict-mode `base64_decode()` already
+      rejects every one. Removed rather than kept as belt-and-suspenders, the same call ADR-0022
+      made for a `password_hash()` guard PHPStan proved unreachable. **A test-design bug found
+      along the way**: the version-prefix tests originally encrypted and decrypted with two
+      *different* `SecretKey`s, so a dropped/altered prefix and a wrong key threw for the same
+      reason and the prefix check's own removal went uncaught — fixed to share one instance,
+      which is what makes `"v2."` (exactly as long as `"v1."`) a meaningful case.*
+- [x] 12.2 T-09 crypto suite: tamper/wrong-key/truncation vectors, nonce uniqueness across
       10⁵ tokens, version-prefix handling (RFC-0002 T-09) (security) — size: S ·
-      route: frontier-reasoning / extra
+      route: frontier-reasoning / extra *(run at fast tier, Sonnet 5; mismatch recorded)*.
+      *Delivered inline with item 12.1's `CryptoTest`, not as a separate suite. Unlike item
+      4.4's T-02 (a materially different verification technique — the query-log assertion at
+      the PDO boundary — layered on top of the round-trip tests items 4.1-4.3 already shipped),
+      spec T-09's own wording names exactly the vectors GCM's authentication tag already is the
+      mechanism for: tamper, wrong key, truncation, nonce uniqueness, version-prefix handling.
+      Building a second suite restating them would have been filing something to have something
+      to file, which §8 already forbids for patterns and applies here just as well to tests.
+      **Six planted defects, six caught** by this suite — decrypt() swallowing
+      `openssl_decrypt()`'s failure, a fixed nonce, the version-prefix check removed, the
+      minimum-length check removed, `SecretKey`'s length check removed, and a redundant
+      alphabet pre-check removed — plus one campaign that found a genuine simplification rather
+      than a gap: see item 12.1's own entry.*
 - [ ] 12.3 Logging channels: `Level` enum (PSR-3 mapping + ordering), `LevelFilteredLogger`,
       `MultiLogger`, `LoggerFactory` (one config array → channel map), PSR-3-pure (no
       Monolog dependency, NFR-08) + T-12 routing matrix + NFR-14 bench
