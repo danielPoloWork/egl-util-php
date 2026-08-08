@@ -1670,6 +1670,17 @@ the release process around it.
       has never run once. Either wire it (publishing the output would also serve 13.2's reference
       need) or strike the claim: a documented gate nobody executes is the L-0011 failure class this
       repository already named once — size: M · route: standard / medium
+- [ ] 13.8 Apply the GitHub-side configuration `docs/workflow/github-setup.md` describes, which has
+      never been run. **Labels:** `.github/labels.yml` defines the ten Conventional-Commit type
+      labels (`feat`, `fix`, `docs`, `perf`, `ci`, `security`, …) and the repository still carries
+      GitHub's stock set (`bug`, `enhancement`, `good first issue`, …) — **not one type label
+      exists**, so AGENTS.md §6.4's "exactly one type label matching the lead commit's type" cannot
+      be satisfied on any PR, including item 7.5's own. **Milestones:** eleven exist, named
+      `v0.1.0`…`v0.11.0` rather than §6.4's `MN — name`, none for M12/M13, none for the `v1.0.0`
+      that actually shipped, and **all eleven still open** although M1–M11 closed. So the required
+      `--milestone` argument names nothing real either. Reconcile the naming convention first —
+      §6.4 and the live repository disagree, and the contract does not automatically win over a
+      convention the maintainer has been using for eleven milestones — size: S · route: fast / low
 
 ---
 
