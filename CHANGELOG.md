@@ -10,6 +10,30 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **NFR-10 and NFR-11's absolute budgets are each stated as a design target plus a separate CI
+  ceiling** (spec **r16**; roadmap items **11.6** and **11.7**, decided together on the
+  maintainer's explicit delegation; **ADR-0058**). Both ceilings had been firing on code nobody had
+  changed, and the two items turned out to have different diagnoses of the same complaint:
+  - **NFR-11 (router dispatch): the ceiling was wrong about the code.** Target corrected
+    **≤ 5 → ≤ 10 µs**; CI ceiling **≤ 15 µs**. The 5 µs figure was never measured; the subject's
+    median across eleven readings is ~5.6 µs, and its cost scales exactly as `Router`'s deliberate
+    linear scan predicts (0.674 µs for the first of fifty routes, 5.581 for the last). **`Router` is
+    unchanged** — ADR-0050's no-index/no-cache non-goal is *confirmed* by the measurement, not
+    reversed: 5.6 µs is ~0.1% of a millisecond-scale HTTP request.
+  - **NFR-10 (`FileSequence::next()`): the ceiling is right about the code and unenforceable on
+    shared hardware.** Target **≤ 200 µs unchanged** (typical readings 75–190 µs); CI ceiling
+    **≤ 450 µs**. Exactly one of seventeen readings crossed 200 (208.768, +4%), and that commit
+    passed on re-run.
+
+  Both ceilings are set at **≥ 2× each subject's worst observed reading** — a floor derived from
+  this repository's own budget table, where every ceiling that has never fired sits at ≥ 2.66× and
+  nothing exists between 1× and 2.66×. Under ADR-0058 the absolute ceiling's job is **accumulated
+  drift**, not single-step regressions: the relative gate catches those with ±0.60% within-run
+  precision, and since ADR-0057 it also knows when to disqualify itself. **No library code
+  changed.**
+
 ### Added
 
 - **`tools/bench_regression_gate.py` gains `--control Benchmark::subject`** (spec NFR-06; roadmap

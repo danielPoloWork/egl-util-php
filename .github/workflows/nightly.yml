@@ -63,9 +63,9 @@ jobs:
             --budget benchBuildFiveConditionSelect=10 \
             --budget benchWarmSingletonResolve=2 \
             --budget benchFirstAutowiredResolve=30 \
-            --budget benchSequenceNext=200 \
+            --budget benchSequenceNext=450 \
             --budget benchWriteTenThousandByTen=150000 \
-            --budget benchDispatchLastOfFiftyRoutes=5 \
+            --budget benchDispatchLastOfFiftyRoutes=15 \
             --budget benchEnvelopeBuild=2 \
             --budget benchSuppressedRecord=0.5 \
             --budget benchCryptoRoundTrip=60
