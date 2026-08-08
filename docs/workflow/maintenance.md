@@ -43,11 +43,39 @@ the PR, and add the `CHANGELOG` `Fixed` (or `Security`) line.
 
 A hotfix is always the smallest change that fixes the defect — no refactors ride along.
 
+## Supported versions
+
+[`SECURITY.md`](../../SECURITY.md) defers here for the window, and this is it. **Supported = the
+latest release of the current MAJOR line.** A fix reaches consumers by their upgrading to that
+release; older releases are not patched in place. Post-1.0 that upgrade is safe to take by
+construction — within a MAJOR, SemVer plus the 1.x freeze
+([ADR-0059](../adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md))
+forbid the break that would otherwise make "just upgrade" a real cost.
+
+When a new MAJOR opens, the **previous** MAJOR's final release receives **security fixes only**
+until the new line has shipped one full MINOR (`X+1.1.0`). The window is measured in *published
+releases*, not in calendar time — the same reasoning the deprecation policy below uses, and for
+the same reason: a window nobody shipped through gave no consumer a chance to move.
+
+| Line | Bug fixes | Security fixes |
+|---|---|---|
+| latest release, current MAJOR | ✅ | ✅ |
+| older releases, current MAJOR | ❌ | ❌ — upgrade within the MAJOR |
+| previous MAJOR, final release | ❌ | ✅ until `X+1.1.0` ships |
+| older MAJOR lines | ❌ | ❌ |
+
+Two honest limits. This is a **solo-maintained** library: the table says which line a fix lands on,
+not how fast it arrives. [`SECURITY.md`](../../SECURITY.md) § *What to expect* sets out the
+sequence a report goes through and deliberately commits to no timeframe — there is no response-time
+SLA here, and none is implied. And the previous-MAJOR row has **never been exercised**: `1.x` is the
+only line that has ever existed, so that row is a commitment made in advance, not a described
+practice. Recorded in **ADR-0060**.
+
 ## Security fixes
 
 Report privately (see [`SECURITY.md`](../../SECURITY.md)); triage & fix under embargo;
 coordinated release then advisory; record under a `Security` changelog entry with the
-advisory/CVE; backport to every supported line.
+advisory/CVE; backport to every supported line — which the section above defines.
 
 ## Deprecation policy
 

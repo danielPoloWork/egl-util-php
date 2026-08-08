@@ -27,8 +27,9 @@ API-freeze review below settled the whole line into a single first release, **`v
   unpublished `v0.11.0` superseded. Post-1.0 versioning follows
   [`maintenance.md`](docs/workflow/maintenance.md)'s decision tree, not the milestone mapping.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-08 — Two open decisions, one table, and the number I nearly picked](docs/journal/2026/08/2026-08-08-nfr-ceiling-decisions.md).
+  [2026-08-09 — The section SECURITY.md had been pointing at for its whole life](docs/journal/2026/08/2026-08-09-finish-v1-transition.md).
   Previous:
+  [2026-08-08 — Two open decisions, one table, and the number I nearly picked](docs/journal/2026/08/2026-08-08-nfr-ceiling-decisions.md),
   [2026-08-08 — Closing the milestone by fixing the tool that kept flagging it as open](docs/journal/2026/08/2026-08-08-benchmark-run-invalidation.md),
   [2026-08-08 — The last planned item, and the milestone that still doesn't close](docs/journal/2026/08/2026-08-08-crypto-benchmark.md),
   [2026-08-08 — Three answers to the same bytes, and a corpus that could not fail](docs/journal/2026/08/2026-08-08-mail-group.md),
@@ -513,6 +514,35 @@ dedicated post-M7 API-freeze review — held 2026-08-09, settled by **ADR-0059**
       uploaded files cross the `$_FILES` ↔ stream boundary with no stream access on a failed
       upload. **A decision, not an implementation** — the ADR-002 contract *tests* move to item
       8.2, which is why the Spec Coverage Map's §7 row reopens. Milestone 8 carries the build.*
+- [x] 7.5 Finish the `v1.0.0` transition in the prose the release left behind. A six-persona
+      documentation review (2026-08-09) found the release had updated every version-bearing artifact
+      and none of the text describing them: `docs/releases/v1.0.0.md` announced the freeze and then,
+      four sections later, still said *"The **1.0.0 API-freeze review** has not happened. This is a
+      `0.x` release"* — carried verbatim from the `v0.11.0` notes, with its own document as the
+      refutation; the same file recorded the bridge's core constraint as `^0.11` where
+      `packages/utils-psr7-bridge/composer.json` says `^1.0`; `SECURITY.md`'s table offered only
+      `latest released 0.x` / `older 0.x`, leaving **no row applicable at a `1.0.0` HEAD**; and the
+      bridge README still opened *"Status: scaffold … the converters land in **8.2**"* over a Usage
+      section saying they had not arrived — contradicted by its own contract section, its CHANGELOG,
+      and the shipped `Psr7Bridge` — size: S · route: fast / low · **ADR-0060**. ***The load-bearing
+      find was not a stale sentence but a dangling promise:*** *`SECURITY.md` deferred the post-1.0
+      support window to `maintenance.md`, and `maintenance.md` had never contained one — a
+      cross-reference naming a definition that did not exist. It survived the entire pre-1.0 line
+      because the clause above it still applied, so nobody had cause to follow the pointer;
+      `maintenance.md` §Security fixes compounded it, saying "backport to every supported line" with
+      `supported` undefined. Defined in **ADR-0060** on ADR-0031's instrument — count the window in
+      **published releases, not calendar time**, since a time window can elapse with no release in
+      it — and stated with its limit rather than without: the previous-MAJOR row has **never been
+      exercised**, `1.x` being the only line that has ever existed. **No lint could have caught
+      this**: `consistency_lint.py` checks version lockstep, the ADR index, pattern rows, the spec
+      coverage map, milestone agreement and bug-ledger integrity, and nothing asserts that a
+      document referenced for a definition contains one — filed as item 13.4, a tool change rather
+      than a policy decision. **Deliberately not decided here:** the notes' claim that this is "the
+      one the gate approved". The `v1.0.0` tag is **unsigned**; the gate's `The tag must be signed`
+      step failed (run 31283673519), skipping both the tagged-tree test matrix and the draft job;
+      the Release was then published by hand 13 minutes later. Re-sign-and-re-run versus
+      record-the-bypass is a maintainer call on release provenance (AGENTS.md §6.1), so it is filed
+      as item 13.1 and left untouched rather than quietly rewritten to match what happened.*
 
 ---
 
@@ -1255,7 +1285,7 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       **deliberately keeping its absolute ceiling**; that decision is the one now under question,
       and item 9.6 flagged the margin (~9% headroom, the thinnest of any gated NFR here) as worth
       watching for exactly this. Options, none taken unilaterally because the number belongs to
-      the spec ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)):
+      the spec ([ADR-0040](docs/adr/0040-install-the-mutation-tester-outside-the-graph-and-keep-nfr07s-own-number.md)):
       raise NFR-10 to a value CI can actually hold, measure the subject as a *median of N runs*
       rather than one, exclude it from the absolute gate too (and say plainly that NFR-10 is then
       unenforced), or keep it and accept a job that fails a few runs in twenty. **A gate that
@@ -1316,7 +1346,7 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       happens to avoid tripping this ceiling. Resolving 11.7 removes that side effect as well as
       the router's own gap; left open, the cost of leaving it open keeps compounding onto whatever
       is added next. Options, none taken unilaterally
-      ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
+      ([ADR-0040](docs/adr/0040-install-the-mutation-tester-outside-the-graph-and-keep-nfr07s-own-number.md)
       reserves spec numbers for the maintainer): **(a)** raise NFR-11's router budget to a value
       the current linear scan clears (the measured number, with headroom, e.g. ≤ 10 µs); **(b)**
       add a cache or an index to `Router` — reversing ADR-0050's stated non-goal, which named "a
@@ -1557,6 +1587,89 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       and the identical numbers with no `--control` given reproducing the pre-existing `FAIL`
       output byte-for-byte — proving the change is additive, not a behavior change for anyone not
       opting into a control.*
+
+---
+
+## Milestone 13 — Documentation & release hygiene (post-1.0) · size: M
+
+Filed 2026-08-09 from a six-persona review of `README.md` and the consumer-facing documentation
+(Google developer-documentation style; onboarding/first-call; DevDiv claim verification against the
+tree; Diátaxis information architecture; editorial coherence; and an OSPO compliance audit) — six
+independent reports, **unanimous** on 13.2. Item 7.5 shipped the corrections that were unambiguous;
+this milestone holds what needs a maintainer decision, a tool, or more than a prose edit. **Not spec
+work:** RFC-0001/0002 scope is closed, and every item here concerns the documentation surface and
+the release process around it.
+
+- [ ] 13.1 Settle the `v1.0.0` tag's provenance. The tag is **unsigned**, so the release gate's
+      `The tag must be signed` step failed (run 31283673519) and both the tagged-tree test matrix
+      and the draft-Release job were **skipped**; the GitHub Release was published by hand 13
+      minutes later. Two consequences, neither reflected in the docs: `docs/releases/v1.0.0.md`
+      says this release is *"the one the gate approved"* — it is not — and **the tagged tree never
+      ran through the 8.1/8.2/8.3 release matrix**, which is the check that catches a tag pointing
+      at a commit CI never exercised (ADR-0032's whole purpose). **A maintainer decision, not an
+      agent's** (AGENTS.md §6.1 — agents never rewrite release provenance): either re-cut the tag
+      signed and let the gate run green, which makes the existing sentence true *and* produces the
+      matrix evidence, or keep the release as published and amend the notes to record the bypass
+      and the unverified matrix. `v0.11.0` failed the identical step first, so this is a **repeat**,
+      not a one-off — the signing key ADR-0032 names as a one-time prerequisite is the likely root
+      cause — size: S · route: standard / medium
+- [ ] 13.2 Give `README.md` a consumer on-ramp. All six reviewers independently found no path from
+      landing on the repository to a first working call: no `composer require egl/utils` anywhere a
+      consumer looks (it appears only in `docs/releases/v1.0.0.md`, which the README does not link),
+      no statement of whether the package resolves from Packagist or needs a VCS entry, and **zero
+      runnable examples** — line 28's `use D4np\Utils\Dto\DataTransferObject;` is an import
+      fragment, not usage, for a library of this surface. Also in scope, all verified: the opening
+      paragraph renders as a **verbless fragment** (line 7 is an orphaned "A"); the quality-bar list
+      claims "sanitizers", which names no CI job here and collides with the library's own
+      `Security\Sanitizer`; and the `egl-util-php` / `egl/utils` / `D4np\Utils` naming system is
+      never reconciled for the reader, although `docs/specs/01_spec_utils.md` requires it be stated
+      in the README. Every example added must be verified against the frozen 1.0 signatures — item
+      13.3 is why that is not a formality — size: M · route: standard / medium
+- [ ] 13.3 Fix `docs/patterns/endpoint-kernel.md`'s flagship example, which **cannot run** against
+      the API it documents: `new Response()` (line 45) hits a **private** constructor — the entry
+      points are `Response::create/text/html/json/redirect` — `setHeader()` (line 56) does not exist
+      (the API is `withHeader()`), and line 61 calls the static `json()` through an instance,
+      discarding the `Allow` header the example built two lines earlier. Verified against
+      `src/main/php/d4np/utils/Http/Response.php` at 1.0.0. Then sweep the remaining doc examples
+      for the same rot, since nothing has ever executed them — size: S · route: standard / medium
+- [ ] 13.4 Make documentation cross-references checkable. Item 7.5's load-bearing defect was
+      `SECURITY.md` deferring a definition to `maintenance.md`, to a section that did not exist —
+      invisible for the entire pre-1.0 line, because the clause above the pointer still applied.
+      `consistency_lint.py` covers version lockstep, the ADR index, pattern rows, the spec coverage
+      map, milestone agreement and bug-ledger integrity, and none of it resolves a link. Minimum:
+      every relative link in tracked Markdown resolves to a file that exists, and a reference naming
+      a section (`§ Foo`, `#anchor`) finds that heading in the target. Prove the check can fail
+      before trusting it — the standing method (items 1.11, 2.7). **Not speculative:** a throwaway
+      resolver run over the 142 relative links in item 7.5's touched files found **two already
+      broken on `master`** — both `ROADMAP.md` pointing at `0040-run-infection-outside-the-
+      dependency-graph-…md`, an ADR filename that has not existed since the file was renamed to
+      `0040-install-the-mutation-tester-outside-the-graph-…md`. Repaired under 7.5 as mechanical
+      rot; the point is that eleven files were enough to surface two, and nothing was looking —
+      size: M · route: standard / medium
+- [ ] 13.5 Pick one home for release notes. `CHANGELOG.md`'s header directs readers to
+      `docs/changelog/v<MAJOR>/`; `docs/README.md` documents `docs/releases/`. **Both exist and both
+      hold a v1.0.0 file**, so a maintainer updating "the" release notes has even odds of editing
+      the copy nobody reads. Choose the canonical location, reduce the other to a pointer, and
+      complete the `docs/README.md` layout table, which omits `docs/rfc/` and `docs/changelog/`
+      entirely. **Backfill the journal index in the same pass:** `docs/journal/README.md` states its
+      own procedure — *"adds a link row to this index"* at every state-changing session — and holds
+      **28 rows against 69 files on disk**, so 40 checkpoints are unreachable except by listing the
+      directory; it silently stopped being maintained after 2026-08-05 — size: S · route: fast /
+      low
+- [ ] 13.6 Add the community files a public repository is expected to carry. `CONTRIBUTING.md` and
+      `CODE_OF_CONDUCT.md` are both absent: `AGENTS.md` encodes the contribution contract for
+      **agents**, leaving an outside human contributor with no front door and no statement of what a
+      PR must clear. Also absent: `packages/utils-psr7-bridge/` ships no `LICENSE`, and the split
+      pipeline (ADR-0033) publishes exactly that directory — so the generated public package would
+      carry an MIT claim in `composer.json` with no licence text beside it — size: S · route: fast /
+      low
+- [ ] 13.7 Settle the `phpDocumentor` API-docs gate. `AGENTS.md` §10 lists "**API docs** —
+      `phpDocumentor` builds without warnings" as a mandatory per-PR gate and
+      `docs/workflow/documentation.md` repeats it, but there is **no phpDocumentor config, no CI
+      job and no published API reference** anywhere in the repository — a gate in the contract that
+      has never run once. Either wire it (publishing the output would also serve 13.2's reference
+      need) or strike the claim: a documented gate nobody executes is the L-0011 failure class this
+      repository already named once — size: M · route: standard / medium
 
 ---
 
