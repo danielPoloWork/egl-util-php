@@ -1206,6 +1206,26 @@ The console-side trio: client, router, envelope (RFC-0002 FR-37…FR-39).
       after, 3/5 before).*
 - [ ] 11.5 phpbench: NFR-11 (router dispatch at 50 routes; envelope build) (RFC-0002)
       (step:optimize) — size: XS · route: fast / medium
+- [ ] 11.6 Decide what NFR-10's **absolute** budget should be, now that the subject it guards
+      has crossed it on unmodified code. Filed from item 11.4's CI, whose `src/main` diff is a
+      single file in the `Http` group — `benchSequenceNext` exercises `Support\FileSequence` and
+      `Support\File`, neither of which the diff touches (verified with
+      `git diff origin/master...HEAD --name-only`, not assumed). The `Absolute NFR budgets` step
+      measured **208.768 µs against the ≤ 200 µs budget** and failed the job; **the same commit
+      re-run on the same runner measured inside budget and passed**, which is the evidence that
+      settles what it was. The recorded history of this one subject across CI runs on code paths
+      nobody had changed: **75.503 · 105.779 · 164.355 · 169.252 · 182.981 · 208.768 µs** — a
+      **2.8× spread against a budget the highest reading exceeds by 4%**. [ADR-0045](docs/adr/0045-exclude-io-bound-and-memory-hard-subjects-from-the-relative-gate.md)
+      already found this subject too noisy for the *relative* gate and excluded it there while
+      **deliberately keeping its absolute ceiling**; that decision is the one now under question,
+      and item 9.6 flagged the margin (~9% headroom, the thinnest of any gated NFR here) as worth
+      watching for exactly this. Options, none taken unilaterally because the number belongs to
+      the spec ([ADR-0040](docs/adr/0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)):
+      raise NFR-10 to a value CI can actually hold, measure the subject as a *median of N runs*
+      rather than one, exclude it from the absolute gate too (and say plainly that NFR-10 is then
+      unenforced), or keep it and accept a job that fails a few runs in twenty. **A gate that
+      fails on unchanged code teaches people to re-run it**, which is the failure mode worth
+      pricing here — size: S · route: frontier-reasoning / extra (adr, decision-heavy)
 
 ---
 
