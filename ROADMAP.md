@@ -1349,19 +1349,30 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       most of the budget on its own severity lookup; end to end through a real decorator the
       enum-hydrating shape measured **1.089 µs (218% of budget)** against **0.435 µs** for the
       rank-comparing one. Hence `Level::rankOf()`, which answers *"is this a level"* and *"how
-      severe"* in one array lookup and never hydrates a case on the hot path. **The enum's cases are
-      PSR-3's own `LogLevel` constants** (verified legal on the 8.1 floor), so a literal cannot
-      drift from the vocabulary it copies. **`Logger`'s private severity map is gone** — it would
+      severe"* in one array lookup and never hydrates a case on the hot path. **NFR-14 measured on
+      CI: 0.081 µs against the 0.5 µs ceiling** (6.2× headroom; this dev box overstated it ~5×), and
+      the fan-out shape measures identically, confirming the filter returns before the composite.
+      ***The 8.1 cell caught a claim I had no right to make:*** the cases were first backed by
+      PSR-3's own `LogLevel` constants — impossible to drift — and **PHP 8.1 refuses a class constant
+      as an enum case value** while 8.2/8.3 accept it. The probe that pronounced it legal ran on 8.3,
+      the only runtime on this machine, and the ADR's first draft said "verified on the 8.1 floor",
+      which the probe had never established. Cases are literals now, with `LevelTest` asserting them
+      equal to PSR-3's in both directions; same failure class as items 10.10/10.11 (a figure taken on
+      the wrong machine), and the matrix cell that exists for exactly this did its job in 16 seconds.
+      **`Logger`'s private severity map is gone** — it would
       have become the second copy of one rule the moment the decorator arrived, which is item 10.5's
       finding; its constructor widened to `Level|string`, additive. **10 of 11 planted defects
       caught. The 11th is the interesting one:** substituting PSR-3's `NullLogger` for the empty
       `MultiLogger` behind a disabled channel left the suite **green**, because the
       `LevelFilteredLogger` above it validates first — so that half of the ADR's reasoning was
       *dead*, and the ADR now says so and keeps the empty composite on the smaller claim
-      (readability), the way item 12.1 removed a guard a probe proved inert. NFR-14 measured on CI;
-      recorded honestly, the **control subject — a bare `AbstractLogger::debug()` on a no-op sink —
-      is ~60% of the subject's time locally**, so most of what the budget bounds is PHP's own
-      dispatch rather than this library's filtering.*
+      (readability), the way item 12.1 removed a guard a probe proved inert. Recorded honestly, the
+      **control subject — a bare `AbstractLogger::debug()` on a no-op sink — measures 0.046 µs, 57%
+      of the subject on CI** (60% locally, so the proportion reproduces): most of what NFR-14 bounds
+      is PHP's own method dispatch rather than this library's filtering, and a future breach should be
+      read as "the dispatch or the runner moved" first. The benchmark job is red on
+      `benchDispatchLastOfFiftyRoutes` (5.188 vs 5) — **item 11.7, pre-existing on master**, not
+      this item's code.*
 - [ ] 12.4 `Mail` group: `EmailAddress` (validated), `MailMessage` (**CR/LF/NUL in
       header-bound values refused at construction**), `Mailer` + `NativeMailer` (explicit
       constructor config, no global `ini_set`), `MailException`, the Mail deptrac layer

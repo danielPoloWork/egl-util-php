@@ -22,10 +22,34 @@ whatever PSR-3 handed `log()` and answering *"is this a level"* and *"how severe
 lookup. `AbstractLogger::debug()` passes a **string**, so a decorator that hydrated a case would be
 paying `tryFrom()` for a value it only wants an integer from.
 
-The enum is still the vocabulary — it is just not in the hot path. And its cases are PSR-3's own
-`LogLevel::*` constants rather than copies of their text (verified legal on the 8.1 floor), so the
-two cannot drift; a literal would drift silently, because a wrong level string is still a valid
-string.
+The enum is still the vocabulary — it is just not in the hot path. On CI the suppressed record
+measures **0.081 µs against the 0.5 µs ceiling**, and this box had said 0.404 µs: a ~5× overstatement,
+worse than the 2–3× I have come to expect from it.
+
+## The 8.1 cell caught a claim I had no right to make
+
+I wanted the cases backed by PSR-3's own constants, so the enum and PSR-3 could not disagree at all:
+
+```php
+case Emergency = LogLevel::EMERGENCY;
+```
+
+I probed it, it worked, and I wrote *"verified legal on the 8.1 floor"* — in the ADR, the class
+docblock and the commit message. **PHP 8.1 refuses it**: *"Enum case value must be compile-time
+evaluatable."* 8.2 and 8.3 accept it, and 8.3 is the only runtime on this machine, so the probe had
+established something about 8.3 and I had reported it about 8.1. The matrix cell rejected the file in
+sixteen seconds.
+
+Same failure class as item 10.10's attribution and item 10.11's µs figures, both taken on the wrong
+machine, and now with a sharper edge: those were *quantitative* errors, where the number was wrong but
+the direction survived. This one was **categorical** — the feature does not exist on the floor, and no
+amount of margin would have saved it. **A probe inherits the runtime it ran on. A claim about a
+version floor can only be made by something that runs on that floor.**
+
+The cases are literals now, and `LevelTest`'s both-directions assertion is the whole drift guarantee
+— weaker in timing (a test run rather than a compile), identical in effect. The `RANK` map still
+references `LogLevel::*`, because an ordinary class constant is evaluated on first access rather than
+at compile time, which is the distinction the restriction turns on.
 
 ## The duplicate that would have happened
 
@@ -97,15 +121,28 @@ where the spec needed no correction in the same PR — 10.4's SELECT-only builde
 timeout, 10.10's unsatisfiable ratio and 11.4's tag collision all did. Worth writing down, because
 an absence leaves no trace otherwise.
 
-One honest note on the budget being gated: locally the **control subject** — a bare
-`AbstractLogger::debug()` on a do-nothing sink, included in the benchmark on item 10.12's method —
-is about **60% of the measured subject**. Most of what NFR-14 bounds is PHP's own method dispatch,
-not this library's filtering. It is still the right number to gate, because it is what a consumer
-pays; but a future breach should be read as "the dispatch or the runner moved" before "the filter
-got slower".
+One honest note on the budget being gated. The **control subject** — a bare `AbstractLogger::debug()`
+on a do-nothing sink, included on item 10.12's method — measures **0.046 µs against the subject's
+0.081**, so **57% of what NFR-14 bounds is PHP's own method dispatch**, not this library's filtering.
+Locally the proportion was 60%, so unlike the absolute numbers it reproduced. It is still the right
+number to gate, because it is what a consumer pays; but a future breach should be read as "the dispatch
+or the runner moved" before "the filter got slower". The control earned its place twice over here: it
+is also what let me state that proportion at all.
+
+The benchmark job is red, and not on my subject: `benchDispatchLastOfFiftyRoutes` at 5.188 µs against
+NFR-11's 5 µs — **item 11.7, already open on master**. Worth one note beyond "not mine": item 11.5
+measured that same subject at 6.874–7.145 µs, and it is 5.188 here on unchanged code. The overage is
+real and the *size* of it is not stable, which is the kind of evidence 11.7's decision will want.
 
 ## Lesson
 
-A planted defect that leaves the suite green is not always a hole in the tests. Sometimes the
-implementation is fine, the tests are fine, and the thing that is wrong is the *reason* recorded for
-the implementation — which no gate can catch, and which only planting the alternative reveals.
+Two, and they are the same shape from opposite ends.
+
+A planted defect that leaves the suite green is not always a hole in the tests: sometimes the code and
+the tests are both right, and what is wrong is the *reason* recorded for the code — which no gate can
+catch and only planting the alternative reveals.
+
+And a probe that passes is not evidence about a runtime it did not run on. I have written that lesson
+twice before, about numbers taken on this machine. This time it was not a number but a language
+feature, where being wrong is not an overstatement but a build failure — which is the cheaper way to
+be wrong, and only because the matrix cell was there to say so.

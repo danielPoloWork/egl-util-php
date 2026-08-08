@@ -46,16 +46,27 @@ it, and one copy away from the failure this project has already paid for: ADR-00
 allowlist lived in two builders until item 10.5 found that the newer copy was the weaker one, with
 both suites green. So `Level` owns the ordering, and `Logger` now reads it instead of its own map.
 
-Each case is backed by `LogLevel::*` rather than by a literal:
+The cases were first backed by `LogLevel::*` rather than by literals, so that the enum and PSR-3
+could not disagree at all:
 
 ```php
-case Emergency = LogLevel::EMERGENCY;
+case Emergency = LogLevel::EMERGENCY;   // rejected by PHP 8.1
 ```
 
-Verified legal on the 8.1 floor. A literal `'emergency'` would be a second spelling of someone
-else's vocabulary, and drift would be silent — a wrong level string is still a valid string.
-`LevelTest` additionally pins the two sets equal in both directions, so PSR-3 adding a level, or
-this enum inventing one, fails a test rather than a consumer.
+**PHP 8.1 refuses this** — *"Enum case value must be compile-time evaluatable"* — while 8.2 and 8.3
+accept it. So the compile-time guarantee is simply unavailable on this library's floor, and the cases
+are literals with `LevelTest` asserting the two sets equal in both directions instead: PSR-3 adding a
+level, or this enum inventing one, fails a test rather than a consumer. The `RANK` map below still
+references `LogLevel::*`, because an ordinary class constant is evaluated on first access rather than
+at compile time — which is exactly the distinction the 8.1 restriction turns on.
+
+**How this was found is the part worth carrying.** The probe that pronounced the constant-backed
+version legal ran on **PHP 8.3**, the only runtime on this development machine, and the ADR's first
+draft said "verified legal on the 8.1 floor" — a claim the probe had not made. The 8.1 CI cell
+rejected the file in 16 seconds. This is the same failure class as item 10.10's attribution and item
+10.11's µs figures, both taken on the wrong machine: **a probe inherits the runtime it ran on, and a
+compatibility claim about a floor can only be made by something that runs on that floor.** The
+matrix's 8.1 cell exists for this, and it worked.
 
 **`rank()` reads a const map instead of running a `match`, and that is measured.** With OPcache
 off — which is how NFR-06 pins every benchmark — `match ($this)` over the eight cases cost
@@ -168,7 +179,10 @@ operator believes is off and which is writing every record.
    channels** — rejected: it would give a channel two places where "below the floor" is decided,
    only one of which is visible where the channel is configured. Every channel gets the same shape,
    which is also the shape NFR-14 measures.
-9. **An in-class `Bench\Assert` for NFR-14** — rejected: `tools/bench_budget_gate.py` already owns
+9. **Back the enum cases with `LogLevel::` constants** — *chosen first, then withdrawn under
+   compulsion*: PHP 8.1 rejects it (D1). Recorded as an alternative rather than deleted, so the next
+   person to have the same good idea finds out from this file instead of from a red 8.1 cell.
+10. **An in-class `Bench\Assert` for NFR-14** — rejected: `tools/bench_budget_gate.py` already owns
    the absolute ceilings in CI and nightly, prints the measured value, and fails on an absent
    report. A second home for the number is the drift D1 exists to avoid.
 
@@ -182,11 +196,23 @@ breadth (`count()`) without emitting a record and reading a file.
 **Harder / accepted costs:** `MultiLogger` can throw, which `Logger` cannot — the boundary is
 documented but it *is* an asymmetry a reader must learn. Later delegate failures are lost. A
 disabled channel still validates its destinations, so `enabled: false` is not a way to defer a
-path problem. And NFR-14's ceiling is tight in a specific sense worth recording: measured locally,
-the **control subject — a bare `AbstractLogger::debug()` on a do-nothing sink — is ~60% of the
-subject's time**, so most of what NFR-14 bounds is PHP's own method dispatch rather than this
-library's filtering. The number is still the right one to gate (it is what a consumer pays), but a
-future breach should be read as "the dispatch or the runner moved" before "the filter got slower".
+path problem. The level vocabulary is spelled twice (the enum's literals and `RANK`'s
+`LogLevel::` keys), held together by a test rather than by the compiler — the 8.1 floor's price.
+
+**NFR-14, measured on CI** (the reference runner, not this development box, which overstated the
+subject by ~5×):
+
+| subject | CI | note |
+|---|---|---|
+| `benchSuppressedRecord` | **0.081 µs** (±1.69%) | against the 0.5 µs ceiling — 6.2× headroom |
+| `benchFanOutSuppressed` | 0.081 µs (±1.57%) | identical: the filter returns before the composite is touched |
+| `benchSinkDirectly` (control) | 0.046 µs (±2.63%) | **57% of the subject** |
+| `benchPassedRecord` | 0.090 µs | a passing record adds ~0.009 µs before a destination is involved |
+
+The control reproduces on CI what was seen locally: **most of what NFR-14 bounds is PHP's own method
+dispatch**, not this library's filtering. The number is still the right one to gate — it is what a
+consumer pays — but a future breach should be read as "the dispatch or the runner moved" before "the
+filter got slower".
 
 **Patterns:** `LevelFilteredLogger` is a **Decorator** and `MultiLogger` a **Composite** — both
 catalogued with this ADR (`docs/patterns/README.md` rows 3 and 4). Both were already in the

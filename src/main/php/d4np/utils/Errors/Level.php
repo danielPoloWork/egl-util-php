@@ -14,11 +14,17 @@ use Psr\Log\LogLevel;
  * filtering decision needs exactly that. The order below is RFC 5424's, which is where PSR-3's
  * names come from.
  *
- * **Each case is backed by PSR-3's own constant, not by a copy of its text.** A literal
- * `'emergency'` here would be a second spelling of someone else's vocabulary, free to drift the
- * day PSR-3 changed one — and drift would be silent, since a wrong string is still a valid string.
- * Referencing {@see LogLevel} makes the two impossible to disagree: verified that a class constant
- * is a legal enum backing value on the 8.1 floor.
+ * **The case values are literals, and `LevelTest` is what stops them drifting.** Backing each case
+ * with PSR-3's own `LogLevel::` constant would make the two impossible to disagree, and it is what
+ * this class did until CI rejected it: **PHP 8.1 refuses a class constant as an enum case value**
+ * (*"Enum case value must be compile-time evaluatable"*), while 8.2 and 8.3 accept it — so the
+ * elegant version is unavailable on this library's floor. A probe had said otherwise because the
+ * probe ran on 8.3; the constraint is recorded in ADR-0055 D1 as a measurement, not as a
+ * preference. The drift guarantee moved from the compiler to a test that asserts the two sets equal
+ * in both directions, which is weaker in timing (a test run, not a compile) and identical in effect.
+ *
+ * The `RANK` map below *does* reference {@see LogLevel}: an ordinary class constant is evaluated on
+ * first access rather than at compile time, which is the difference the 8.1 restriction turns on.
  *
  * **The ordering lives here once.** Before this enum, {@see Logger} carried a private severity map
  * of its own; a second copy in the filtering decorator would have been the failure this project
@@ -40,14 +46,16 @@ use Psr\Log\LogLevel;
  */
 enum Level: string
 {
-    case Emergency = LogLevel::EMERGENCY;
-    case Alert = LogLevel::ALERT;
-    case Critical = LogLevel::CRITICAL;
-    case Error = LogLevel::ERROR;
-    case Warning = LogLevel::WARNING;
-    case Notice = LogLevel::NOTICE;
-    case Info = LogLevel::INFO;
-    case Debug = LogLevel::DEBUG;
+    // Literals by necessity, not by choice — see the class docblock and ADR-0055 D1. Every value
+    // here is asserted equal to its `Psr\Log\LogLevel` counterpart by `LevelTest`.
+    case Emergency = 'emergency';
+    case Alert = 'alert';
+    case Critical = 'critical';
+    case Error = 'error';
+    case Warning = 'warning';
+    case Notice = 'notice';
+    case Info = 'info';
+    case Debug = 'debug';
 
     /**
      * Severity as a comparable integer, **most severe first** — so "passes a floor" is `<=`.

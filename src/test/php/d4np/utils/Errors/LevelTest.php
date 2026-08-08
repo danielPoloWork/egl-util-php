@@ -19,13 +19,19 @@ use Psr\Log\LogLevel;
 #[Group('T-12')]
 final class LevelTest extends TestCase
 {
+    /**
+     * **This is the whole drift guarantee, and it carries more weight than it looks like it does.**
+     * The cases would ideally be backed by `LogLevel::` constants, making disagreement impossible at
+     * compile time — PHP 8.1 refuses that (ADR-0055 D1), so the enum spells the eight values as
+     * literals and this assertion is the only thing standing between a typo and a level string other
+     * PSR-3 loggers reject. Both directions are checked: PSR-3 gaining a level we would not notice,
+     * and us inventing one it has never heard of.
+     */
     public function testEveryPsrLevelHasExactlyOneCase(): void
     {
         $psr = (new \ReflectionClass(LogLevel::class))->getConstants();
         $cases = \array_map(static fn (Level $l): string => $l->value, Level::cases());
 
-        // Both directions: PSR-3 gains a level and we would not notice, or we invent one it has
-        // never heard of and a consumer's `LogLevel::` constant stops resolving to a case.
         self::assertSame(\array_values($psr), $cases, 'the enum and PSR-3 must name the same levels');
         self::assertCount(8, $cases);
     }
