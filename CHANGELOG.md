@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **phpbench benchmark for NFR-13** (spec §4, RFC-0002; roadmap item **12.5**): `CryptoBench`
+  under `src/bench/php/d4np/utils/`, wired into `bench_budget_gate.py` in both `ci.yml` and
+  `nightly.yml` (`benchCryptoRoundTrip=60`). Measures `Crypto::encrypt()` immediately followed
+  by `decrypt()` on a 1 KiB payload — the round trip the spec names, since `decrypt()` cannot be
+  measured honestly without a real token a matching `encrypt()` call produced. No new control
+  subject: `RowNormalizerBench::benchInlineTrimHundredRows` already serves that role for this
+  benchmark job (one control per CI job, not one per file — item 12.4's finding, filed as item
+  **12.6**). This does not close Milestone 12: item 12.6 remains open.
+
 - **`D4np\Utils\Mail\` — the `Mail` group**: `EmailAddress`, `MailMessage`, the `Mailer` interface
   and `NativeMailer` over PHP's `mail()`, with `D4np\Utils\Support\MailException` joining the
   exception hierarchy (spec FR-43/FR-44, RFC-0002; roadmap item **12.4**; **ADR-0056**). It replaces
