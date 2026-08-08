@@ -68,3 +68,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0050](0050-classify-the-miss-and-keep-the-router-a-table.md) | Classify the miss, and keep the router a table | Accepted |
 | [0051](0051-one-envelope-shape-and-a-reference-instead-of-the-exception.md) | One envelope shape, and a reference instead of the exception | Accepted |
 | [0052](0052-a-followed-redirect-reports-the-last-hop-not-the-first.md) | A followed redirect reports the last hop, not the first (corrects 0049) | Accepted |
+| [0053](0053-benchmark-the-last-route-and-construction-not-serialization.md) | Benchmark the last route, and construction, not serialization | Accepted |
