@@ -67,7 +67,8 @@ jobs:
             --budget benchWriteTenThousandByTen=150000 \
             --budget benchDispatchLastOfFiftyRoutes=5 \
             --budget benchEnvelopeBuild=2 \
-            --budget benchSuppressedRecord=0.5
+            --budget benchSuppressedRecord=0.5 \
+            --budget benchCryptoRoundTrip=60
 
       - name: NFR-01 ratio — hydration vs manual construction
         run: |

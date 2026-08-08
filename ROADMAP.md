@@ -23,8 +23,9 @@ items are additive either way, so the mapping shifts without rework.
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-08 — Three answers to the same bytes, and a corpus that could not fail](docs/journal/2026/08/2026-08-08-mail-group.md).
+  [2026-08-08 — The last planned item, and the milestone that still doesn't close](docs/journal/2026/08/2026-08-08-crypto-benchmark.md).
   Previous:
+  [2026-08-08 — Three answers to the same bytes, and a corpus that could not fail](docs/journal/2026/08/2026-08-08-mail-group.md),
   [2026-08-08 — The idiomatic enum was too slow, and one of my own arguments was dead](docs/journal/2026/08/2026-08-08-logging-channels.md),
   [2026-08-07 — A tag that shrinks, a key nobody checks, and a guard that never fired](docs/journal/2026/08/2026-08-07-crypto.md).
 
@@ -1417,8 +1418,29 @@ AEAD crypto, PSR-3 channel composition, and the Mail group (RFC-0002 FR-40…FR-
       width** — the same failure class as a benchmark measuring the wrong shape (ADR-0018/0020). The
       15th "miss" was not a defect: lower-casing before slicing the domain is byte-equivalent to
       slicing then lower-casing.*
-- [ ] 12.5 phpbench: NFR-13 (crypto 1 KiB round-trip) (RFC-0002) (step:optimize) — size: XS ·
-      route: fast / medium
+- [x] 12.5 phpbench: NFR-13 (crypto 1 KiB round-trip) (RFC-0002) (step:optimize) — size: XS ·
+      route: fast / medium *(session model matched the route — Sonnet 5)*. *`CryptoBench::
+      benchCryptoRoundTrip()` measures `Crypto::encrypt()` immediately followed by `decrypt()` on a
+      1 KiB payload — the round trip the spec names, not either half alone: `decrypt()` cannot be
+      measured honestly without a real token (a hand-built or cached ciphertext would skip the nonce
+      generation and tag verification a real call pays for). Local sanity (informative only, this
+      box's own CLI capture is broken per the standing note — direct `hrtime()` timing instead):
+      **~14 µs**, comfortable headroom under the 60 µs ceiling and nowhere near NFR-11's
+      knife-edge. Budget wired into `ci.yml`/`nightly.yml`'s existing `bench_budget_gate.py`
+      invocation (`benchCryptoRoundTrip=60`), not a `Bench\Assert` — one home per number, the
+      pattern every prior bench item in this milestone kept. **No new control subject**: item
+      12.4's finding (filed as 12.6) is that a run-wide runner slowdown moves every subject in one
+      CI job together, and `RowNormalizerBench::benchInlineTrimHundredRows` already serves that
+      role for this benchmark job — one control per job, not one per file. No ADR: this item wires
+      an existing spec number into the existing harness, the same shape as items 9.6 and 11.5,
+      neither of which needed one either.*
+      ***M12's planned scope is now complete — but the milestone stays open.*** *README's M12 row
+      stays "⏳ planned" and `consistency_lint`'s milestone check enforces that structurally: item
+      12.6, filed at item 12.4, is unchecked, so the milestone cannot be marked done by mistake
+      even if someone tried. This is the same shape M11 closed in — 11.4/11.5 finished the planned
+      work while 11.6/11.7 stayed open — except M11's two open items are both maintainer decisions
+      on numbers, while 12.6 is a decision on the **gate's own design** (does a control-subject
+      breach invalidate a run, and if so, how).*
 - [ ] 12.6 Decide how the **relative** benchmark gate should treat a run-wide slowdown. Filed from
       item 12.4's CI, where the *same commit* failed **two different gates on two runs** and neither
       failure was attributable to the diff (a new `Mail` group nothing else imports). Run 1: the
