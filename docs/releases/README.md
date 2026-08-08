@@ -10,6 +10,4 @@ README badge.
 
 | Version | Date | Highlights | Notes |
 |---------|------|------------|-------|
-| —       | —    | —          | —     |
-
-_No releases yet — the first one lands when Milestone 1 ships._
+| v0.11.0 | 2026-08-09 | The first release — every milestone M1–M12: DTOs, Database + Persistence, Security, Http, Errors, Mail, Support | [v0.11.0.md](v0.11.0.md) |
