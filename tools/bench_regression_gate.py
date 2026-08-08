@@ -47,6 +47,28 @@ what NFR-10 and NFR-05 actually specify (a ceiling, or a range); the relative ch
 was demanding 10%-precision these two subjects' underlying mechanism cannot supply on a shared
 runner. ADR-0045 names the exact criterion for which subjects qualify, so this stays a rule, not
 a per-name carve-out.
+
+**`--control` (roadmap item 12.6, ADR-0057) — a different failure mode from `--exclude`'s.**
+`--exclude` answers "this one subject is too noisy to judge on its own." Item 12.4's CI produced
+a case `--exclude` cannot fix: the *same commit*, measured twice, failed **two different gates on
+two different runs**. Run 1 failed the relative gate on five subjects, +11.19%…+19.44%, one of
+them `RowNormalizerBench::benchInlineTrimHundredRows` — a hand-written inline loop that calls no
+library code and therefore cannot regress. Run 2 passed the relative gate and failed the absolute
+ceiling instead, with **every** subject 27–103% slower than run 1 on identical code. Both runs
+measured a **slow runner**, not a code change: ADR-0030's same-runner A/B measures base and head
+*sequentially*, so a runner that changes speed *between* the halves shifts every subject in one
+direction, and the gate reports it as a regression in whichever half ran second.
+
+A subject that calls no code this project owns cannot have regressed. If it moves anyway, the
+*comparison* is what broke, not the code — and every other subject's number in that same run is
+equally untrustworthy, because they were measured on the same compromised A/B. `--control
+Benchmark::subject` (repeatable) names such a subject; when its **absolute** delta — regression or
+improvement, since a runner change is directionally symmetric — exceeds `--max-regression`, the
+gate reports the run **invalid** rather than reporting individual regressions it cannot vouch for,
+and exits with a distinct code (`2`) so a human — or, eventually, CI automation — reads "re-run
+this" rather than "investigate this diff." A name may not appear in both `--control` and
+`--exclude`: a control's whole value is being a clean signal, and excluding it would silently
+defeat the one property this flag depends on.
 """
 
 import argparse
@@ -128,8 +150,28 @@ def main(argv=None):
         "absolute budget in bench_budget_gate.py is the real spec requirement and whose "
         "same-runner variance exceeds --max-regression on its own (ADR-0045)",
     )
+    ap.add_argument(
+        "--control",
+        action="append",
+        default=[],
+        metavar="Benchmark::subject",
+        help="a subject that calls no code this project owns (repeatable) — if its measured "
+        "delta, in EITHER direction, exceeds --max-regression, the run is reported INVALID "
+        "(exit 2) instead of reporting individual regressions a compromised A/B cannot "
+        "vouch for (ADR-0057)",
+    )
     args = ap.parse_args(argv)
     excluded = set(args.exclude)
+    controls = set(args.control)
+
+    overlap = sorted(excluded & controls)
+    if overlap:
+        print(
+            "bench-regression gate: FAIL\n\n  named as both --control and --exclude: "
+            f"{', '.join(overlap)}. A control's value is being a clean signal; excluding it "
+            "would silently defeat the property --control depends on."
+        )
+        return 1
 
     try:
         base = mode_times(args.baseline)
@@ -147,10 +189,21 @@ def main(argv=None):
         )
         return 1
 
+    unknown_controls = sorted(controls - set(head))
+    if unknown_controls:
+        print(
+            "bench-regression gate: FAIL\n\n  --control named a subject absent from "
+            f"{args.current}: {', '.join(unknown_controls)}. A control that does not exist "
+            "cannot detect anything, which is worse than not naming one at all — the run would "
+            "look protected when it is not."
+        )
+        return 1
+
     rows = []
     regressions = []
     new_subjects = []
     skipped = []
+    control_breaches = []
 
     for name in sorted(head):
         if name not in base:
@@ -168,6 +221,8 @@ def main(argv=None):
 
         delta = (after - before) / before * 100.0
         rows.append((name, before, after, delta))
+        if name in controls and abs(delta) > args.max_regression:
+            control_breaches.append((name, before, after, delta))
         if name in excluded:
             skipped.append((name, before, after, delta))
         elif delta > args.max_regression:
@@ -198,6 +253,23 @@ def main(argv=None):
             f"(ADR-0045); measured {delta:+.2f}% here. Its absolute budget in "
             "bench_budget_gate.py is what actually gates it."
         )
+
+    if control_breaches:
+        print(
+            f"\nbench-regression gate: INVALID — {len(control_breaches)} control subject(s) "
+            f"moved by more than {args.max_regression:g}% while calling no code this project "
+            "owns (ADR-0057):"
+        )
+        for name, before, after, delta in control_breaches:
+            print(f"  {name}: {before:.3f} -> {after:.3f} ({delta:+.2f}%)")
+        print(
+            "\n  This run's own A/B comparison is not trustworthy: a runner-wide slowdown (or "
+            "speed-up) moves every subject together, indistinguishably from a real regression. "
+            "Any subject above also flagged as a regression in this run may be a real one, or "
+            "may be this same noise — re-run the job on a fresh runner rather than investigating "
+            "the diff."
+        )
+        return 2
 
     if regressions:
         print(

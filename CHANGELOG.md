@@ -12,6 +12,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/bench_regression_gate.py` gains `--control Benchmark::subject`** (spec NFR-06; roadmap
+  item **12.6**; **ADR-0057**): a repeatable flag naming a subject that calls no code this
+  project owns. When such a subject's measured delta — in either direction — exceeds
+  `--max-regression`, the gate reports the whole run `INVALID` (exit `2`, distinct from `0` pass
+  and `1` fail) instead of reporting individual regressions a compromised same-runner A/B cannot
+  vouch for. Filed from item 12.4's CI, where the *same commit*, measured twice, failed **two
+  different gates on two different runs**: once the relative gate on five subjects including
+  `RowNormalizerBench::benchInlineTrimHundredRows` — a hand-written inline loop with no library
+  dependency, and therefore unable to regress — and once the absolute ceiling, with every subject
+  27–103% slower than the first run on identical code. Both were a runner-wide slowdown between
+  measurements, not a code change; `--exclude` (ADR-0045) does not catch this shape, since it
+  answers "this one subject is individually noisy," not "nothing in this run can be trusted."
+  Wired in `ci.yml` with two controls — `RowNormalizerBench::benchInlineTrimHundredRows` and
+  `LoggingBench::benchSinkDirectly` — so a slowdown localized to one part of the job cannot land
+  outside both sentinels' measurement windows. A name may not appear in both `--control` and
+  `--exclude`, refused at parse time.
+
 - **phpbench benchmark for NFR-13** (spec §4, RFC-0002; roadmap item **12.5**): `CryptoBench`
   under `src/bench/php/d4np/utils/`, wired into `bench_budget_gate.py` in both `ci.yml` and
   `nightly.yml` (`benchCryptoRoundTrip=60`). Measures `Crypto::encrypt()` immediately followed
