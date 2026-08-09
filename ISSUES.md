@@ -20,7 +20,7 @@ replacing it.
 
 ## Issues (newest → oldest)
 
-- [ ] [#122](https://github.com/danielPoloWork/egl-util-php/issues/122) **release: settle the v1.0.0 tag provenance and correct the gate-approved claim** — The flagship release notes assert the opposite of the repository's own audit trail — route: standard / medium
+- [x] [#122](https://github.com/danielPoloWork/egl-util-php/issues/122) **release: settle the v1.0.0 tag provenance and correct the gate-approved claim** — The flagship release notes assert the opposite of the repository's own audit trail — route: standard / medium
 - [ ] [#121](https://github.com/danielPoloWork/egl-util-php/issues/121) **build: register egl/utils on Packagist and verify the tag resolves** — Whether anyone can install the frozen 1.0 today is unverifiable from the repository — route: fast / low
 - [ ] [#120](https://github.com/danielPoloWork/egl-util-php/issues/120) **release: complete the utils-psr7-bridge publication (split repo, Packagist, first bridge tag)** — The library's entire interop story is implemented and contract-tested but not installable — route: standard / medium
 - [ ] [#119](https://github.com/danielPoloWork/egl-util-php/issues/119) **build: add export-ignore rules and cut a v1.0.1 dist-hygiene patch** — The Packagist dist ships 524 files / 3.6 MB of which 97 are production code — route: fast / medium

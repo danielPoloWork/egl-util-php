@@ -1600,7 +1600,7 @@ this milestone holds what needs a maintainer decision, a tool, or more than a pr
 work:** RFC-0001/0002 scope is closed, and every item here concerns the documentation surface and
 the release process around it.
 
-- [ ] 13.1 Settle the `v1.0.0` tag's provenance. The tag is **unsigned**, so the release gate's
+- [x] 13.1 Settle the `v1.0.0` tag's provenance. The tag is **unsigned**, so the release gate's
       `The tag must be signed` step failed (run 31283673519) and both the tagged-tree test matrix
       and the draft-Release job were **skipped**; the GitHub Release was published by hand 13
       minutes later. Two consequences, neither reflected in the docs: `docs/releases/v1.0.0.md`
@@ -1612,7 +1612,27 @@ the release process around it.
       matrix evidence, or keep the release as published and amend the notes to record the bypass
       and the unverified matrix. `v0.11.0` failed the identical step first, so this is a **repeat**,
       not a one-off — the signing key ADR-0032 names as a one-time prerequisite is the likely root
-      cause — size: S · route: standard / medium
+      cause — size: S · route: standard / medium *(issue #122; the fork was put to the maintainer
+      and answered: **record the bypass**, do not re-cut the tag)*. *The release stays as published
+      and the documents were corrected to match it. `docs/releases/v1.0.0.md` loses the
+      "the one the gate approved" clause, gains a lead-in warning above the fold and a
+      `How this release was published` section stating the failed signing step by run number, that
+      the tagged-tree 8.1/8.2/8.3 matrix and the draft-Release job were skipped, and that the
+      Release was hand-published 13 minutes later; the GitHub Release body carries the same
+      correction. **The signing decision itself was not reopened** — it was taken twice with the
+      outcome known, and only the documentation claim was ever the defect; completing the chain
+      stays issue #115, and the section says in as many words that a later signed re-cut replaces it
+      rather than being edited around. **Two things the correction found that the item had not
+      named.** First, the notes' verification paragraph needed a scope, not just a caveat: its
+      numbers were measured on the pull request for `be7f34e`, and what the skipped matrix would have
+      added is the independent re-run *at the tag* — so the paragraph now says which tree it speaks
+      for. Second, and the reason this item's own evidence had to be re-read rather than cited:
+      `quality / backward compatibility` passed on release PR #82 **in six seconds having compared
+      nothing** (`v0.11.0` was already deleted, so the job found no `v*.*.*` tag and self-skipped).
+      Counting it inside "fifteen checks green" would have reproduced, in the fix, the exact class of
+      claim the item exists to remove — item 10.8's "read the job, not the checks column", now with a
+      second instance. Named explicitly in the notes. The stale `0.x` text frozen inside the tagged
+      copy of the document is acknowledged at HEAD, since a tag cannot be edited.*
 - [ ] 13.2 Give `README.md` a consumer on-ramp. All six reviewers independently found no path from
       landing on the repository to a first working call: no `composer require egl/utils` anywhere a
       consumer looks (it appears only in `docs/releases/v1.0.0.md`, which the README does not link),
