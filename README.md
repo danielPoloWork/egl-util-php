@@ -36,6 +36,7 @@ setup.
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | How AI agents (and humans) work in this repo — the contract. |
 | [`ROADMAP.md`](ROADMAP.md) | The numbered plan and what is done. |
+| [`ISSUES.md`](ISSUES.md) | The GitHub issues, newest first, each with its advisory model/effort route. |
 | [`docs/adr/`](docs/adr/) | Why it is built the way it is (Architecture Decision Records). |
 | [`docs/patterns/`](docs/patterns/) | Design patterns adopted, rejected, or considered. |
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
