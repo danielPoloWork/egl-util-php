@@ -26,6 +26,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **`docs/releases/v1.0.0.md` no longer claims the release gate approved it.** The notes stated the
+  published tree was *"the one the gate approved"*; it is not. `v1.0.0`'s tag is unsigned, so
+  `release.yml`'s `The tag must be signed` step failed (run 31283673519), the tagged-tree 8.1/8.2/8.3
+  matrix and the draft-Release job were both **skipped**, and the GitHub Release was published by
+  hand 13 minutes later. The sentence is gone and a `How this release was published` section records
+  the bypass, what the missing matrix would have proved, that `quality / backward compatibility`
+  reported green on the release PR having compared nothing (no `v*.*.*` tag existed), and that the
+  copy of these notes *inside the tagged tree* still carries the stale `0.x` text a tag's
+  immutability puts out of reach. The GitHub Release body carries the same correction. The signing
+  decision itself stands and is not reopened here; completing the signing chain is issue #115
+  (ROADMAP item 13.1).
+- **The same claim removed from the two other places it had been copied to.**
+  `docs/changelog/v1/v1.0.0.md`'s *Superseded pre-release* section said the shipped tree "is the
+  one the gate approved" and now records the bypass instead; **ADR-0059**'s Decision point 4 said
+  it too, and carries a Status annotation correcting the fact while leaving the decision intact
+  (ADR-0041's annotate-don't-edit precedent). Both were written before the tag was pushed, which is
+  how a claim about the future ended up recorded as history.
 - **`docs/releases/v1.0.0.md` no longer contradicts itself.** Its closing section still declared
   that the 1.0.0 API-freeze review *"has not happened"* and that *"this is a `0.x` release"* — text
   carried over from the unpublished `v0.11.0` notes, inside the document announcing the freeze.

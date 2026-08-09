@@ -1,6 +1,15 @@
 # ADR-0059: Freeze the API at 1.0.0, with `@internal` symbols outside the frozen surface
 
-- **Status:** Accepted
+- **Status:** Accepted — **factual correction to Decision point 4** (2026-08-09, item 13.1 /
+  issue #122): that point closes "so the first installable version is the one the release gate
+  approved", which is **false**. `v1.0.0`'s tag was pushed unsigned as well, so `verify-tag`
+  refused it exactly as it had refused `v0.11.0` (run 31283673519), the tagged-tree matrix and the
+  draft-Release job were skipped, and the Release was published by hand. **Nothing decided here
+  changes** — superseding `v0.11.0` with `v1.0.0` and deleting its tag stand as recorded; only the
+  claim about how the replacement was published was wrong, and it was written before the tag was
+  pushed. The full account is in
+  [`docs/releases/v1.0.0.md`](../releases/v1.0.0.md) § "How this release was published".
+  Annotated rather than edited, per ADR-0041's precedent.
 - **Date:** 2026-08-09
 - **Deciders:** tech-lead (drafted), maintainer (decided — both questions below were put to
   them explicitly and answered before this record was written)
@@ -67,6 +76,9 @@ surface.
    the tag was unsigned, `verify-tag` refused it (ADR-0032), no Release was drafted, Packagist
    had no such package. Its tag is deleted and its changelog re-cut as `v1.0.0`, so the first
    installable version is the one the release gate approved. No code differs.
+   **[Correction, 2026-08-09 — see Status above: the closing clause is false.** `v1.0.0` was
+   pushed unsigned too and the gate refused it identically; the Release was hand-published. The
+   supersession and the tag deletion stand. **Only the last sentence of this point is wrong.]**
 
 ## Alternatives
 
