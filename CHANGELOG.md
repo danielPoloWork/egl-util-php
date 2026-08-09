@@ -17,6 +17,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   the latest release of the current MAJOR, with the previous MAJOR's final release on security
   fixes until `X+1.1.0` ships. `SECURITY.md` had deferred to that section since the repository was
   generated; the section had never existed (ADR-0060).
+- **[`ISSUES.md`](ISSUES.md), a reverse-chronological index of the issue tracker.** One bullet per
+  GitHub issue, newest first, each carrying the advisory `route: <tier> / <effort>` from
+  `ROADMAP.md`'s routing vocabulary; new issues are prepended, closed ones get their checkbox
+  flipped in place. Seeded with the 39 issues (#84–#122) consolidated from the 2026-08-09
+  seven-seat release review of `v1.0.0`; issues mirroring a `ROADMAP.md` M13 item cross-reference
+  it rather than replacing it. `README.md` gains the pointer row.
 
 ### Fixed
 
