@@ -3,9 +3,10 @@
 Bidirectional conversion between [`egl/utils`](https://github.com/danielPoloWork/egl-util-php)'
 HTTP values (`D4np\Utils\Http\Request`, `Response`) and PSR-7 messages, using any PSR-17 factory.
 
-> **Status: scaffold.** Roadmap item 8.1 laid down this package; the converters and their contract
-> suite land in **8.2**, and publication to Packagist in **8.3**. The package is not yet installable
-> standalone — see [Installing](#installing).
+> **Status: implemented and contract-tested; not yet published.** The converters and their
+> **BFR-01…BFR-22** contract suite landed in item 8.2, and the publication pipeline in item 8.3.
+> What is missing is the one-time maintainer setup the first publication needs, so the package is
+> not yet installable standalone — see [Installing](#installing).
 
 ## Why this package exists
 
@@ -48,10 +49,34 @@ composer require nyholm/psr7        # or guzzlehttp/psr7, or your framework's
 
 ## Usage
 
-The converters arrive in item 8.2. The shape is fixed by
+The shape is fixed by
 [`docs/specs/02_spec_psr7_bridge.md`](../../docs/specs/02_spec_psr7_bridge.md) §3: factories are
 **injected once at construction** — the bridge never discovers or defaults one — and the four
 conversions are `requestToPsr7`, `requestFromPsr7`, `responseToPsr7`, `responseFromPsr7`.
+
+```php
+use D4np\Utils\Bridge\Psr7\Psr7Bridge;
+use D4np\Utils\Http\Request;
+use D4np\Utils\Http\Response;
+use Nyholm\Psr7\Factory\Psr17Factory;
+
+// Psr7Bridge takes five PSR-17 factories: server-request, response, stream,
+// uploaded-file, URI. Nyholm's Psr17Factory implements all five, so it is passed
+// five times; with a vendor that splits them, pass each implementation in that order.
+$psr17  = new Psr17Factory();
+$bridge = new Psr7Bridge($psr17, $psr17, $psr17, $psr17, $psr17);
+
+// Core → PSR-7: hand superglobal-backed values to a PSR-15 stack.
+$psrRequest  = $bridge->requestToPsr7(Request::fromGlobals());
+$psrResponse = $bridge->responseToPsr7(Response::json(['ok' => true]));
+
+// PSR-7 → core: bring a stack's messages back into the core vocabulary.
+$request  = $bridge->requestFromPsr7($psrRequest);
+$response = $bridge->responseFromPsr7($psrResponse);
+```
+
+`requestFromPsr7()` and `responseFromPsr7()` throw `HttpException` rather than coercing when the
+PSR-7 message carries something the core's vocabulary refuses — see *Conversion contract* below.
 
 Note the deviation from imported ADR-002's literal `Request::toPsr7()`: PHP has no partial classes,
 so methods on the core `Request` would put PSR interfaces in the *core's* signatures and

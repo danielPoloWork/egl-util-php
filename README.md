@@ -58,6 +58,7 @@ setup.
 | 10 | Persistence | ✅ done |
 | 11 | Http application layer | ✅ done |
 | 12 | Security & channels | ✅ done |
+| 13 | Documentation & release hygiene (post-1.0) | ⏳ planned |
 
 
 ## License

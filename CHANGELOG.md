@@ -10,7 +10,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Supported-versions window for the post-1.0 line**, defined in
+  [`docs/workflow/maintenance.md`](docs/workflow/maintenance.md) and pointed to from `SECURITY.md`:
+  the latest release of the current MAJOR, with the previous MAJOR's final release on security
+  fixes until `X+1.1.0` ships. `SECURITY.md` had deferred to that section since the repository was
+  generated; the section had never existed (ADR-0060).
+
+### Fixed
+
+- **`docs/releases/v1.0.0.md` no longer contradicts itself.** Its closing section still declared
+  that the 1.0.0 API-freeze review *"has not happened"* and that *"this is a `0.x` release"* — text
+  carried over from the unpublished `v0.11.0` notes, inside the document announcing the freeze.
+  Removed. The same file recorded the bridge's constraint on the core as `^0.11`; corrected to the
+  `^1.0` that `packages/utils-psr7-bridge/composer.json` actually declares.
+- **`SECURITY.md`'s supported-versions table applies at a `1.0.0` HEAD.** It previously offered only
+  `latest released 0.x` and `older 0.x`, and no `0.x` was ever published — so the policy's table had
+  no row a consumer could be standing on.
+- **`packages/utils-psr7-bridge/README.md` no longer announces itself as a scaffold** whose
+  converters *"land in 8.2"*. The converters and their BFR-01…BFR-22 contract suite shipped in item
+  8.2 and the publication pipeline in 8.3; the banner now states the real remaining gap (the
+  one-time publication setup), and *Usage* carries a worked example verified against the frozen 1.0
+  signatures instead of a forward reference.
+- Two dead `ROADMAP.md` links to ADR-0040, which had pointed at the file's pre-rename name since it
+  was renamed.
 
 ---
 
