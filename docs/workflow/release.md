@@ -91,6 +91,9 @@ Both are the maintainer's, not the agent's, and the first release cannot succeed
    each tag push, which is why no Packagist token lives in this repository. The workflow prints the
    package URL to confirm after publishing; it deliberately does not call the Packagist API, since
    that would both duplicate the integration and cross the agent-vs-human line below.
+   **Done 2026-08-10** (issue #121): `egl/utils` is registered with the integration wired, and
+   `composer require egl/utils:^1.0` was verified in a clean throwaway project — it resolves
+   `v1.0.0` at source commit `be7f34e`, the exact commit the tag points at.
 3. **For the bridge only** — a **split repository** and a token that can write to it:
    - create the repository (e.g. `danielPoloWork/egl-utils-psr7-bridge`), empty, and treat it as
      **read-only**: it is generated, and accepts no commits or pull requests;
