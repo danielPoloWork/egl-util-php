@@ -16,6 +16,17 @@ Provide EGL PHP projects (framework-based and native/legacy) with a modern utili
 The frozen specification is in
 [`docs/specs/01_spec_utils.md`](docs/specs/01_spec_utils.md).
 
+## Install
+
+```bash
+composer require egl/utils:^1.0
+```
+
+Registered on [Packagist](https://packagist.org/packages/egl/utils); `^1.0` resolves `v1.0.0`.
+A full consumer on-ramp (runnable examples, the naming map, the rest of the surface) is tracked
+as [issue #118](https://github.com/danielPoloWork/egl-util-php/issues/118) — this line only
+states that the package installs.
+
 ## Build, test, run
 
 ```bash

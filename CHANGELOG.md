@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`egl/utils` registered on Packagist** (issue #121), with the GitHub integration wired so
+  future tags publish by webhook. Verified end to end: `composer require egl/utils:^1.0` in a
+  clean throwaway project resolves `v1.0.0` at source commit `be7f34e` — the exact commit the tag
+  points at — installs cleanly with no security advisories, and its autoloaded classes load.
+  `README.md` gains a minimal `## Install` section stating the fact; `docs/releases/v1.0.0.md`'s
+  "never been installed from Packagist" line is corrected without being rewritten to look
+  prescient; `docs/workflow/release.md`'s prerequisite is marked done with the evidence.
+  **Not closed by this**: the bridge vendor squat-protection this issue also names is blocked on
+  the split repository issue #120 creates — Packagist needs a `composer.json` at a repository
+  root, and the bridge's lives under `packages/` in this monorepo, not at one.
 - **Supported-versions window for the post-1.0 line**, defined in
   [`docs/workflow/maintenance.md`](docs/workflow/maintenance.md) and pointed to from `SECURITY.md`:
   the latest release of the current MAJOR, with the previous MAJOR's final release on security
