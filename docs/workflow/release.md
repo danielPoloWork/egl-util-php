@@ -94,6 +94,14 @@ Both are the maintainer's, not the agent's, and the first release cannot succeed
    **Done 2026-08-10** (issue #121): `egl/utils` is registered with the integration wired, and
    `composer require egl/utils:^1.0` was verified in a clean throwaway project — it resolves
    `v1.0.0` at source commit `be7f34e`, the exact commit the tag points at.
+
+   **This also protects every other `egl/` name, including the bridge's.** Packagist locks a
+   vendor namespace to the first publisher: a package cannot be published under an existing
+   vendor without permission, and publishing under one requires being maintainer of a package
+   already in it. So `egl/utils-psr7-bridge` cannot be squatted, and **name protection is not a
+   reason to hurry the split repository** — step 3 is about *publishing* the bridge, not about
+   defending its name. Do not conflate the two: the original issue did, and it made a solved
+   problem look blocked.
 3. **For the bridge only** — a **split repository** and a token that can write to it:
    - create the repository (e.g. `danielPoloWork/egl-utils-psr7-bridge`), empty, and treat it as
      **read-only**: it is generated, and accepts no commits or pull requests;

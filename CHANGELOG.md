@@ -19,9 +19,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `README.md` gains a minimal `## Install` section stating the fact; `docs/releases/v1.0.0.md`'s
   "never been installed from Packagist" line is corrected without being rewritten to look
   prescient; `docs/workflow/release.md`'s prerequisite is marked done with the evidence.
-  **Not closed by this**: the bridge vendor squat-protection this issue also names is blocked on
-  the split repository issue #120 creates — Packagist needs a `composer.json` at a repository
-  root, and the bridge's lives under `packages/` in this monorepo, not at one.
+  **This also closes the issue's squat-protection criterion, at no extra cost.** Packagist
+  protects a vendor namespace as soon as one package under it is published — *"you can not
+  publish packages with a vendor name that already exists on packagist without permission"*,
+  and publishing under an existing vendor requires being maintainer of a package already in it.
+  Registering `egl/utils` therefore locked the whole `egl/` namespace, so `egl/utils-psr7-bridge`
+  cannot be squatted by anyone else and no split repository is needed to defend the name. What
+  the split repository (issue #120) is still needed for is *publishing* the bridge, since
+  Packagist resolves a package from a repository with `composer.json` at its **root** and the
+  bridge's sits under `packages/`. The original acceptance criterion had fused protection and
+  publication into one line; they are independent, and only the second is still open.
 - **Supported-versions window for the post-1.0 line**, defined in
   [`docs/workflow/maintenance.md`](docs/workflow/maintenance.md) and pointed to from `SECURITY.md`:
   the latest release of the current MAJOR, with the previous MAJOR's final release on security
