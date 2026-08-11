@@ -1,6 +1,6 @@
 # RFC-0003: Post-1.0 functional scope — the seams a frozen library still owes
 
-- **Status:** Draft
+- **Status:** Accepted
 - **Author:** tech-lead (agent-drafted) · **Reviewers:** reviewer, enterprise-architect ·
   **Approver:** tech-lead
 - **Date:** 2026-08-10
@@ -277,13 +277,23 @@ candidates #91 and #93 keep their issues open with the reasons above recorded.
 
 ## Approval
 
-Filled by the approver **after** review (this is the `rfc-approved` gate's record):
+Recorded on the maintainer's approval of PR #129 (2026-08-11), the same shape RFC-0002's record
+takes:
 
 ```
-approved-by: <pending>
+approved-by: tech-lead (2026-08-11)
 ```
 
-Reviewers (structured findings addressed): reviewer — ▢ · enterprise-architect — ▢.
+Reviewers (structured findings addressed): **no separate peer-review pass was run.** The protocol's
+`reviewer` and `enterprise-architect` seats did not return structured findings on this RFC; the
+maintainer read it as opened and approved it directly. Recorded as it happened rather than as two
+resolved review marks, because a tick standing for a review that never ran is the failure this
+project has already corrected once — `docs/releases/v1.0.0.md` claimed a release gate's approval
+that the gate had refused (item 13.1, issue #122). **What that costs, stated:** the design folds
+below carry the author's confidence tags and nothing independent has challenged them. The two
+decisions most exposed to a missing second opinion are the out-of-scope ruling on
+intra-millisecond ULID monotonicity and the deferral of the rate limiter — both argued from stated
+premises, neither adversarially tested.
 
 ## References
 
