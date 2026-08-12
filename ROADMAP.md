@@ -1690,7 +1690,7 @@ the release process around it.
       has never run once. Either wire it (publishing the output would also serve 13.2's reference
       need) or strike the claim: a documented gate nobody executes is the L-0011 failure class this
       repository already named once — size: M · route: standard / medium
-- [ ] 13.8 Apply the GitHub-side configuration `docs/workflow/github-setup.md` describes, which has
+- [x] 13.8 Apply the GitHub-side configuration `docs/workflow/github-setup.md` describes, which has
       never been run. **Labels:** `.github/labels.yml` defines the ten Conventional-Commit type
       labels (`feat`, `fix`, `docs`, `perf`, `ci`, `security`, …) and the repository still carries
       GitHub's stock set (`bug`, `enhancement`, `good first issue`, …) — **not one type label
@@ -1701,6 +1701,38 @@ the release process around it.
       `--milestone` argument names nothing real either. Reconcile the naming convention first —
       §6.4 and the live repository disagree, and the contract does not automatically win over a
       convention the maintainer has been using for eleven milestones — size: S · route: fast / low
+      *(issue #86; the naming question was put to the maintainer and answered: **`vX.Y.Z`**, not
+      `MN — name` — every one of this project's 14 `ROADMAP.md` milestone headers had already used
+      the version tag, so AGENTS.md §6.4 was corrected to match reality rather than retrofitting 14
+      headers and 11 closed GitHub milestones to a rule nobody had followed.* **`.github/labels.yml`
+      gained an 11th label, `release`**: 4 real merged commits (`v0.11.0`, `v1.0.0`) already used
+      that type and it was in neither the label set nor AGENTS.md §6.2's branch-type enum (which was
+      also missing `security`, present in labels.yml but not there) — both corrected together rather
+      than leaving a demonstrated commit type structurally unnamed. All 11 labels imported. **12
+      milestones closed** (the 11 stale ones plus a newly-discovered 12th, `utils-psr7-bridge-v0.1.0`
+      — M8's own tag, which had never been created at all despite M8 being fully closed since
+      2026-08-05). **Two current milestones created**, `post-1.0` (M13) and `v1.1.0` (M14), each
+      titled by its own ROADMAP header's parenthetical rather than hand-typed.
+      **`.eados-core/tools/seed_milestones.py` corrected locally** (enterprise-architect authority,
+      scaffold-phase acting role) before running it: it had hardcoded every title to `MN — name`
+      regardless of what a header said, which — like the AGENTS.md rule it implemented — no header
+      had ever matched; verified against all 14 real headers post-fix, including the two irregular
+      ones (`utils-psr7-bridge-v0.1.0`'s embedded hyphens, `post-1.0`'s bare/unquoted form).
+      **The fix itself ships nowhere**: `.eados-core/**` is the EADOS factory bundle, gitignored by
+      design (regenerated into a repo, never committed to one), so the corrected source lives only
+      on this machine — the GitHub milestones it created are real and permanent, the script that
+      created them is not part of this project's history. Worth the architect's attention next time
+      the bundle is refreshed, since a re-copy would silently reintroduce the old hardcoded title.
+      **A second gap found applying labels, beyond this item's own scope**: `os/routing`'s
+      `label:adr` floor (a protected signal nine of the 2026-08-09 batch's issues need to route
+      correctly, per RFC-0003/M14's own preamble) had never existed as a real GitHub label at all —
+      `route_advice.py --issue N` returned `fast/low` for the RFC-0003 candidates even after the
+      correct type label landed. Created `adr` (a routing signal, deliberately kept out of
+      `labels.yml`'s Conventional-Commit type set, since it is not one) and applied it to the nine
+      issues whose own acceptance criteria name a required ADR — checked individually against each
+      issue's text, not inferred from title. `severity:*` labels remain unapplied: `os/routing` also
+      reads them, but assigning severity needs a judgment this pass did not make and should not
+      invent under a labels-application item's authority.
 
 ---
 
