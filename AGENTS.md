@@ -144,7 +144,14 @@ final model authority**, and an agent never switches its own session model.
 ### 6.2 Branch naming
 
 Format: `<type>/<short-kebab-description>`, `type ∈ {feat, fix, refactor, perf, docs, test,
-build, chore, ci}`. Keep the description under ~40 characters; favor the *what*.
+build, chore, ci, security, release}`. Keep the description under ~40 characters; favor the
+*what*.
+
+**Corrected 2026-08-12 (issue #86):** `security` and `release` were missing from this list —
+`release` has 4 real merged commits (`v0.11.0`, `v1.0.0`) with no type this enum recognized;
+`security` was already in `.github/labels.yml`'s label set but not here. Reconciled to match
+both actual usage and the label set, rather than leaving a real commit type structurally
+unnamed.
 
 ### 6.3 Commit messages — Conventional Commits
 
@@ -172,16 +179,24 @@ creation in the current session. PR title = lead commit subject.
   resolves to whichever actor — human or agent — runs `gh`).
 - **Label** — **exactly one type label** matching the lead commit's Conventional-Commit
   `type` (one PR = one type).
-- **Milestone** — the current open **roadmap milestone** (`MN — name`, seeded from `ROADMAP.md`;
-  see [`github-setup.md`](docs/workflow/github-setup.md) §5). Create it with
+- **Milestone** — the current open **roadmap milestone**, titled by the SemVer tag its
+  `## Milestone N — <name> (\`vX.Y.Z\`)` header names in `ROADMAP.md` (e.g. `v0.11.0`; a
+  milestone with no release attached, like M13, keeps ROADMAP's own label instead — see
+  [`github-setup.md`](docs/workflow/github-setup.md) §5). Create it with
   `gh api repos/:owner/:repo/milestones` if absent.
 - **Project** — the GitHub **Project**, where the repo has one (`--project "<name>"`).
 
 ```bash
 gh pr create --title "<full Conventional-Commits subject>" --body-file <file> \
-  --assignee danielPoloWork --label <type-label> --milestone "<MN — name>"
+  --assignee danielPoloWork --label <type-label> --milestone "<vX.Y.Z>"
   # --project "<name>"   # add when the repo has a Project
 ```
+
+**Corrected 2026-08-12 (issue #86):** this section previously said `MN — name`. Every one of the
+project's fourteen `ROADMAP.md` milestone headers, and all eleven milestones ever created on
+GitHub, had already used `vX.Y.Z` — the rule was never actually followed, including in the
+document that states it. Reconciled to the convention in use rather than retrofitting fourteen
+headers and eleven closed milestones to match a rule nobody had applied.
 
 The PR body template lives in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
 Squash is the only merge method, so the PR title/body **becomes the commit on

@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **GitHub-side configuration applied for the first time** (issue #86 / ROADMAP 13.8). Milestone
+  naming reconciled to `vX.Y.Z` — every one of the 14 `ROADMAP.md` milestone headers already used
+  it, so `AGENTS.md` §6.4 was corrected to match rather than retrofitting history. All 11 type
+  labels from `.github/labels.yml` imported, plus a newly-added 11th (`release` — 4 real merged
+  commits already used that type with no label to match) and a 12th, `adr`, a routing signal
+  `os/routing` depends on that had never existed as a real label. 12 fully-closed milestones
+  closed on GitHub (the 11 stale `v0.x.0` ones, plus a 12th — `utils-psr7-bridge-v0.1.0` — that had
+  never been created despite M8 closing in 2026-08-05); `post-1.0` (M13) and `v1.1.0` (M14)
+  created. `.eados-core/tools/seed_milestones.py` corrected locally, before use, to title milestones
+  from each header's own tag instead of a hardcoded, never-matched `MN — name` — the fix itself
+  ships in no commit, since `.eados-core/**` is gitignored factory tooling; only the milestones it
+  created on GitHub persist. The 2026-08-09 batch of 39 issues
+  labelled by type; the nine whose own acceptance criteria require an ADR also carry `adr`, so
+  `route_advice.py --issue N` now resolves them to the policy's actual floor instead of `fast/low`.
+
 - **Nine `## References` sections added to the ADR corpus** (issue #85), one per real ADR that
   lacked one, built from each file's own `Related:` header line rather than invented; twelve
   `## Alternatives` headings renamed to the template's canonical `## Alternatives Considered`.

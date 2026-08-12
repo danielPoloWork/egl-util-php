@@ -31,3 +31,6 @@
 - name: security
   color: "b60205"
   description: "Security fix or advisory"
+- name: release
+  color: "0052cc"
+  description: "A release: version bump, changelog roll, or release-process change"

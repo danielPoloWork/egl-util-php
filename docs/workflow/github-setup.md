@@ -84,17 +84,22 @@ gh api -X POST repos/$OWNER/$REPO/pages \
 Private vulnerability reporting (the SECURITY.md target) is enabled in the web UI:
 **Settings → Code security → Private vulnerability reporting → Enable**.
 
-## 5. Roadmap milestones — seed every `MN — name`
+## 5. Roadmap milestones — seed every one by its own tag
 
 PRs are delivered against the **roadmap milestones** (AGENTS.md §6.4), so seed **all** of them
 from [`ROADMAP.md`](../../ROADMAP.md) up front — the board is then complete before milestone-scoped
-delivery begins. Each is titled `MN — <name>` (em-dash, matching the `## Milestone N — <name>`
-headers) with a professional description from the milestone's Goal.
+delivery begins. Each is titled by the tag its own `## Milestone N — <name> (\`TAG\`)` header
+names — a SemVer release (`v0.11.0`), a bridge-scoped tag (`utils-psr7-bridge-v0.1.0`), or a bare
+label for a milestone with no release attached (`post-1.0`, M13's case) — with a professional
+description from the milestone's Goal.
+
+**Corrected 2026-08-12 (issue #86):** this section previously said `MN — <name>`, a convention no
+`ROADMAP.md` header had ever actually used — see AGENTS.md §6.4's matching correction.
 
 ```bash
 # One POST per roadmap milestone — worked example for Milestone 1:
 gh api -X POST repos/$OWNER/$REPO/milestones \
-  -f title="M1 — Project bootstrap & CI" -f state=open \
+  -f title="v0.1.0" -f state=open \
   -f description="The thinnest slice that compiles, tests, and ships under the full quality bar."
 ```
 
