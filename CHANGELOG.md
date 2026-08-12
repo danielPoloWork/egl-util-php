@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Milestone 14, the first functional roadmap after the freeze** (issue #84), specified by the
+  newly accepted [RFC-0003](docs/rfc/0003-post-1-0-functional-scope.md). Five numbered items, all
+  additive under ADR-0059: **FR-45** PSR-20 clock (`SystemClock`/`FrozenClock`), **FR-46**
+  time-sortable identifiers (`Str::ulid()`/`Str::uuidV7()`), **FR-47** pagination value objects in
+  `Persistence`, **FR-48** `Security\Hmac`, **FR-49** `Support\RetryPolicy`. Item 14.1 is sequenced
+  first because three of the others need a clock and `src/main` contains no time abstraction at all.
+  Two of the review board's seven candidates are **deferred with their reasons recorded and their
+  issues left open** — the rate limiter (#91) because a single-node limiter behind a load balancer
+  looks like protection and is not, and the PSR-18 bridge (#93) because it would be the second
+  consumer of a split-publication pipeline that has never executed. The **do-NOT-add list** (money
+  arithmetic, ORM features, an SMTP client, console/i18n helpers) is recorded in the milestone
+  preamble so scope-creep requests have a citable answer. `orchestrator/project.yaml` records
+  `RFC-0003` and `M14` — and `M13`, which had been missing since the milestone was created.
+
 - **`egl/utils` registered on Packagist** (issue #121), with the GitHub integration wired so
   future tags publish by webhook. Verified end to end: `composer require egl/utils:^1.0` in a
   clean throwaway project resolves `v1.0.0` at source commit `be7f34e` — the exact commit the tag

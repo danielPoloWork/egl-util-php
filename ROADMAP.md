@@ -1704,6 +1704,117 @@ the release process around it.
 
 ---
 
+## Milestone 14 — Post-1.0 functional seams (`v1.1.0`) · size: L
+
+The first **functional** milestone after the freeze, specified end to end by
+[RFC-0003](docs/rfc/0003-post-1-0-functional-scope.md) (Accepted 2026-08-11, PR #129). Filed from
+the 2026-08-09 release review board's Product Manager seat, whose finding was that the post-1.0
+roadmap contained no functional direction at all — the API was frozen at the exact moment the story
+for "what is next" became empty (issue #84).
+
+**Every item is additive.** [ADR-0059](docs/adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md)
+permits new public surface in a MINOR and forbids altering an existing signature, so no item here
+touches one. `Str` gains static methods and loses none; `Repository`/`TableGateway` gain read
+methods and keep their existing ones.
+
+**Item 14.1 comes first and alone, and the order is not a preference.** `grep -rn
+"ClockInterface\|psr/clock" src/main/ composer.json` returns nothing: the library has no time
+abstraction anywhere, and items 14.4 and 14.5 both need one. Shipping them before the seam means
+two private clocks, which is the same mistake twice.
+
+**Two of the board's seven candidates were deferred by the RFC, on reasons rather than on size.**
+Their issues stay **open** — deferred is not rejected, and closing them would lose the reason:
+
+- **Rate-limiting primitive (#91).** This library owns no shared state, so the shippable version is
+  single-node. Behind a load balancer that *looks like* protection and is not — strictly worse than
+  none, because it removes the pressure to install a real one. Reconsider when a storage seam exists
+  that can carry the multi-node honesty statement the issue itself asks for.
+- **`utils-psr18-bridge` (#93).** It would be the second consumer of ADR-0033's split-publication
+  pipeline, whose cross-repository push, release-mode install and subtree split **have never
+  executed** (ADR-0035 Consequences records this), and whose first consumer (#120) is paused.
+
+**The do-NOT-add list**, recorded here so scope-creep requests have a citable answer (issue #84's
+third acceptance criterion): **no money/decimal arithmetic** — `brick/math` is the right answer and
+is a third-party pick, not a reimplementation; **no ORM features** — identity map, change tracking,
+lazy loading and JOINs are already refused by FR-35's non-goals; **no SMTP client** — FR-44 states
+`Mailer` is the seam a `symfony/mailer` adapter plugs into; **no console or i18n helpers** — neither
+is a utility concern at this layer.
+
+**Route note, and it corrects the tracker.** Every item below carries an ADR, and `os/routing`'s
+`adr-is-decision-heavy` rule makes `label:adr` a **protected floor** — `route_advice.py --explain`
+prints *"protected (label:adr) — this floor may not be lowered to save cost"* — resolving all five
+to `frontier-reasoning / extra`. The review board hand-wrote `standard / medium` or `standard /
+high` on issues #94–#97; those are **below the policy floor and are superseded here**, the same
+correction item 10.12 already made once (item 1.10's precedent). **Caveat stated rather than
+implied:** `route_advice.py --issue N` currently returns `fast / low` for all seven candidates
+because **none of them carries any label** — the routes above are resolved from the derived `adr`
+signal, and become machine-verifiable only when **item 13.8** applies the type labels.
+
+- [ ] 14.1 `Support\SystemClock` + `Support\FrozenClock` — **FR-45**, PSR-20 (RFC-0003). Both
+      implement `Psr\Clock\ClockInterface`; `SystemClock::now()` returns a fresh
+      `DateTimeImmutable`, `FrozenClock` holds a fixed instant with an explicit `advance()`.
+      `psr/clock` joins `require` as the **third interface-only dependency**, the posture
+      `psr/container` and `psr/log` already established (NFR-08). This is the **sanctioned time
+      seam**: every time-touching API added from here on accepts the interface, and shipping both
+      implementations means no consumer writes the test double themselves. **No NFR budget** — the
+      RFC's reasoning, worth keeping visible: NFR-14's control subject measured 57% of its own
+      subject, so a budget on one `DateTimeImmutable` allocation would bound PHP's method dispatch
+      and assert nothing about this library. Closes issue #97 — size: XS · route: frontier-reasoning
+      / extra (adr, protected floor)
+- [ ] 14.2 `Str::ulid()` and `Str::uuidV7()` — **FR-46**, time-sortable identifiers (RFC-0003).
+      Same CSPRNG discipline as `Str::random()` (`random_bytes`, never `rand`); both take an
+      optional `?ClockInterface $clock = null` so conformance vectors pin against a fixed instant.
+      **The decision the item exists to make is already made and must be honoured:**
+      intra-millisecond monotonicity is **out of scope**, because guaranteeing it needs cross-call
+      mutable state inside a `static` method — the shape this library refuses everywhere else — and
+      the stated problem is B-tree fragmentation, which millisecond granularity already solves.
+      **Pin the boundary in both directions**: different milliseconds sort in time order (asserted),
+      same millisecond has no guaranteed order (asserted as *not* guaranteed, so a future change
+      cannot silently acquire the property untested). Conformance against RFC 9562 / the ULID spec
+      vectors. Carries **NFR-15**, the one plausibly hot path here — identifiers are generated per
+      inserted row — with the number set from CI measurement, never this document (ADR-0040), and
+      checked against `Str::random()`'s own cost first (item 10.10's nested-scope lesson). Closes
+      issue #96 — size: S · route: frontier-reasoning / extra (adr, protected floor)
+- [ ] 14.3 `Persistence\PageRequest` + `Persistence\Page<T>` — **FR-47** (RFC-0003). Readonly value
+      objects; an invalid page or size is **refused, not clamped** (the group's stance). `Page<T>`
+      carries items, total and the derived page count with `@template` generics matching
+      `TableGateway<T>` — static-analysis only, as `Collection<T>` already is and as
+      `docs/releases/v1.0.0.md` already states. `Repository`/`TableGateway` gain reads taking a
+      `PageRequest`. **No new SQL door**: `QueryBuilder` already carries `limit()`/`offset()` with
+      non-negative validation (`QueryBuilder.php:258-274`), so composition stays inside the existing
+      `Identifier` allowlist and `SqlStatement::fromQueryBuilder()` — which is why this sizes below
+      the board's estimate. `withTotal` defaults **true** and issues a **second statement**: that is
+      a round trip, documented as the price of the default and opted out of per request, not hidden
+      by omission. Window-function totals were rejected on portability — this project's database
+      proof is **SQLite-only** (issue #110), so a construct with version-dependent support across
+      three engines cannot be claimed to work. Extend the T-13 injection suite to the new read
+      paths. Closes issue #95 — size: S · route: frontier-reasoning / extra (adr, protected floor)
+- [ ] 14.4 `Security\Hmac` — **FR-48**, signed URLs and webhook signatures (RFC-0003).
+      `sign()`/`verify()` over a **versioned compact token**, the shape ADR-0054 established for
+      `Crypto` (`v1.` + base64url). Key material is `SecretKey` only — the type is the enforcement.
+      A failed verify **throws `CryptoException`**; the `bool|string` return RFC-0002 named as the
+      anti-requirement applies identically here. Algorithms are an explicit allowlist, never a
+      caller-supplied string. Optional expiry is embedded in the signed payload and validated
+      against 14.1's clock, so expiry is testable without sleeping. **Two mechanism assertions per
+      ADR-0027**, because behaviour can observe neither: that the comparator is `hash_equals()`, and
+      that the allowlist is consulted rather than the caller's string. **Does not block on the
+      SecretKeyRing issue (#114)** — ADR-0054's versioned prefix already absorbs key identifiers as
+      a `v2.` while `v1.` tokens keep verifying; the prefix was designed for this. Closes issue #92
+      — size: M · route: frontier-reasoning / extra (**security**, protected floor — twice over)
+- [ ] 14.5 `Support\RetryPolicy` — **FR-49** (RFC-0003). Maximum attempts, jittered exponential
+      delay, a retryable-exception allowlist, and — the part
+      [ADR-0049](docs/adr/0049-tls-options-per-request-and-a-wall-clock-deadline-the-wrapper-cannot-give.md)
+      already paid for once — a **total wall-clock deadline**. That ADR found PHP's per-phase
+      timeout re-arms and therefore bounds no request; attempt-count alone bounds no retry loop for
+      exactly the same reason, so the deadline is not optional. **Jitter is part of the requirement,
+      not a flag**: without it, N clients that failed together retry together and the retry storm is
+      the outage. Delay is consumed through 14.1's clock so tests never sleep. Consumed **opt-in** by
+      `HttpClient` and transaction callers, never implicit — a library that silently retries has
+      changed a caller's failure semantics without being asked. **Depends on 14.1.** Closes issue
+      #94 — size: M · route: frontier-reasoning / extra (adr, protected floor)
+
+---
+
 ## Spec Coverage Map
 
 Tracks which spec section is fulfilled by which roadmap item(s). Sections follow the frozen
