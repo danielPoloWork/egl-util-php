@@ -32,7 +32,10 @@ pre-1.0 milestone-driven.
    **The `-s` is not optional**: the release workflow refuses an unsigned tag (see *Release-time
    gates* below).
 9. **Publish** the GitHub Release — *the maintainer* (the deliberate human checkpoint).
-10. **CI builds & attaches artifacts** on the tag push.
+10. **CI drafts the Release body** on the tag push — `draft-release`'s `softprops/action-gh-release`
+    step sets only `draft`, `generate_release_notes` and `body_path`; it attaches no build
+    artifacts. The release IS the tagged source (`composer require` resolves it via the Packagist
+    integration, item 2 above), not a downloadable binary — there is nothing to build and attach.
 
 
 ## Release-time gates

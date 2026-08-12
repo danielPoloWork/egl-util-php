@@ -4,8 +4,7 @@
 
 ![Status](https://img.shields.io/badge/Status-v1.0.0-blue)
 
-A
-library written in **PHP 8.1+**, built and governed to an enterprise quality
+A library written in **PHP 8.1+**, built and governed to an enterprise quality
 bar: full CI matrix, static analysis, sanitizers, documented design decisions, and SemVer
 releases.
 

@@ -80,7 +80,7 @@ surface.
    pushed unsigned too and the gate refused it identically; the Release was hand-published. The
    supersession and the tag deletion stand. **Only the last sentence of this point is wrong.]**
 
-## Alternatives
+## Alternatives Considered
 
 1. **Freeze `@internal` symbols as public API too** — the maximally honest reading ("if it is
    `public`, it is API"). Rejected by the maintainer: it permanently pins a raw-key-bytes getter
@@ -114,3 +114,11 @@ surface **no external consumer has yet exercised**: this library has never been 
 Packagist, so 1.0.0 states confidence earned from tests, benchmarks and review rather than from
 field use. That is the honest basis, and it is recorded here rather than implied by the version
 number.
+
+## References
+
+- [ADR-0031](0031-run-the-bc-checker-outside-the-dependency-graph-and-gate-breaks-by-bump.md) (BC gate by bump)
+- [ADR-0032](0032-verify-the-tag-before-drafting-and-let-packagist-pull.md) (signed tags)
+- [ADR-0022](0022-argon2id-by-default-with-a-fallback-decided-at-construction.md) (`Hash::selectAlgorithm` seam)
+- [ROADMAP](../../ROADMAP.md) (the standing "post-M7 API-freeze review")
+- [maintenance.md](../workflow/maintenance.md) (the deprecation window this ADR arms)

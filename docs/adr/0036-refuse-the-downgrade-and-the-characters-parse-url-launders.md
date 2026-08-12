@@ -132,7 +132,7 @@ subclass later is additive.
 Spec §2's r3 exception enumeration did not list this type, so **the spec is amended to r4**
 in the same PR rather than left to drift (AGENTS.md §7).
 
-## Alternatives
+## Alternatives Considered
 
 1. **`FILTER_VALIDATE_URL` as the gate** — rejected on the probe: it rejects valid IDN
    hosts (`https://exämple.com/`), trading a correctness bug for the control-character
@@ -174,3 +174,12 @@ downgrade check, making that check read the raw scheme (case evasion), form-enco
 query, dropping the null refusal, removing its recursion, dropping the absoluteness check,
 keeping the default port, skipping the scheme lowercase, and re-encoding the raw query at
 parse. Each was caught.
+
+## References
+
+- ROADMAP item 9.3
+- spec r3 FR-27, r4 (exception enumeration)
+- [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md) §Decision (`Support` additions)
+- [ADR-0019](0019-four-escaping-contexts-and-the-unquoted-attribute-assumption.md) (name the assumption an escaper cannot verify)
+- [ADR-0025](0025-typed-http-wrappers-that-refuse-rather-than-coerce.md) (refuse rather than coerce; CR/LF refused at set time; `array-key`, not `string`)
+- [ADR-0021](0021-delegate-rich-html-and-escape-like-wildcards-with-a-portable-character.md) (a portable refusal over a per-driver spelling)

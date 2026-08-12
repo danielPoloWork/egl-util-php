@@ -102,7 +102,7 @@ so an unresolved `\SensitiveParameter` is inert there rather than a compile erro
 lets the same source run unmodified across the 8.1–8.3 matrix while doing something real on
 8.2+.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Let the token state its own tag length** (a length-prefixed or delimited format) —
    rejected on probe #1/#2 directly: it is the one design shape that reopens the truncated-tag

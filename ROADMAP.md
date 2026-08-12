@@ -1824,11 +1824,11 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
-| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | 🚧 |
-| §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | 🚧 |
+| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | ✅ |
+| §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | ✅ |
 | §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14; r16 splits target from CI ceiling | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5–11.7, 12.3, 12.5–12.6 | ✅ |
-| §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | 🚧 |
-| §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | 🚧 |
-| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | 🚧 |
-| §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | 🚧 |
+| §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | ✅ |
+| §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | ✅ |
+| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | ✅ |
+| §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | ✅ |
 | §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6 | ✅ |

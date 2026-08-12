@@ -111,7 +111,7 @@ happens would make the "complete or previous, never a mix" promise a lie. It cat
 the temporary file must not survive either way — and it propagates the original unchanged,
 the same contract `Transaction::run()` documents.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Keep PHP's default escape** — rejected on the probe: it is not a style choice, it
    destroys any field ending in a backslash.
@@ -153,3 +153,13 @@ write and on read, removing the single-empty-field form, silently writing a zero
 flipping the guard default in both directions, dropping the tab/CR leaders, yielding blank
 lines, skipping the `CsvSerializable` width check, suppressing the header, leaving a
 temporary file behind on failure, and removing the pre-rename flush. Each was caught.
+
+## References
+
+- ROADMAP item 9.4
+- spec r5 FR-28, FR-29, FR-22/23, §6 T-08
+- [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md) §Cross-cutting (the CSV guard clause)
+- [ADR-0005](0005-atomic-file-writes-with-a-sidecar-lock.md) (the atomic write this streams through)
+- [ADR-0015](0015-identifier-allowlist-closed-keywords-and-the-anchor-hole.md) (an enum over a validated string)
+- [ADR-0019](0019-four-escaping-contexts-and-the-unquoted-attribute-assumption.md) (do not silently substitute what the caller supplied)
+- [ADR-0036](0036-refuse-the-downgrade-and-the-characters-parse-url-launders.md) (the immediately preceding case of a standard-library function that succeeds while changing the value)

@@ -113,3 +113,11 @@ constraint. Duplication on purpose — that tree is the artifact that gets publi
   ref-shape guards, the YAML, the pins. Named here rather than implied to be fine.
 - Milestone 8 closes. The bridge is written, contract-tested against two PSR-17 implementations, and
   ready to publish the moment the core has a version to depend on.
+
+## References
+
+- ROADMAP item 8.3 (closes Milestone 8)
+- [`docs/specs/02_spec_psr7_bridge.md`](../specs/02_spec_psr7_bridge.md) §6 (the pipeline this implements, amended to r3 here)
+- [ADR-0033](0033-bridge-source-in-the-monorepo-published-through-a-generated-split-repository.md) §3 and §5 (independent versioning; the authenticity chain)
+- [ADR-0032](0032-verify-the-tag-before-drafting-and-let-packagist-pull.md) (the signature mechanism reused)
+- [ADR-0031](0031-run-the-bc-checker-outside-the-dependency-graph-and-gate-breaks-by-bump.md) (the skip-on-a-declared-condition precedent this one deliberately does **not** follow)

@@ -172,6 +172,7 @@ final class Result
      * The value, or the failure's throwable thrown.
      *
      * @return T
+     * @throws Throwable the exact instance passed to {@see self::failure()}, rethrown unchanged
      */
     public function orElseThrow(): mixed
     {

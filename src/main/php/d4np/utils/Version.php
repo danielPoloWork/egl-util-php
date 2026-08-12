@@ -9,8 +9,8 @@ namespace D4np\Utils;
  *
  * Kept in lockstep with the README `Status-vX.Y.Z` badge by
  * {@see \tools\consistency_lint} (roadmap item 1.5); bump both in the same
- * commit that completes a milestone (versioning: pre-1.0, one minor per
- * milestone — RFC-0001 / ROADMAP.md).
+ * commit that completes a release (post-1.0: SemVer, per the frozen public
+ * API — ADR-0059 / docs/workflow/maintenance.md).
  */
 final class Version
 {

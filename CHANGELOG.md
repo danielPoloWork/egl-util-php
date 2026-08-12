@@ -12,6 +12,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Nine `## References` sections added to the ADR corpus** (issue #85), one per real ADR that
+  lacked one, built from each file's own `Related:` header line rather than invented; twelve
+  `## Alternatives` headings renamed to the template's canonical `## Alternatives Considered`.
+  `docs/patterns/README.md`'s two scaffold sections (*Candidate patterns*, *Out-of-scope
+  categories*) now carry real, sourced entries instead of template instructions. `ROADMAP.md`'s
+  Spec Coverage Map flips six sections from 🚧 to ✅ — every roadmap item they reference is
+  closed, and the frozen spec they track has not changed since.
+
 - **Milestone 14, the first functional roadmap after the freeze** (issue #84), specified by the
   newly accepted [RFC-0003](docs/rfc/0003-post-1-0-functional-scope.md). Five numbered items, all
   additive under ADR-0059: **FR-45** PSR-20 clock (`SystemClock`/`FrozenClock`), **FR-46**
@@ -57,6 +65,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **Ten cosmetic defects the review board logged as minor** (issue #85), each verified against
+  the tree before touching it: `Version.php`'s docblock described the retired pre-1.0 versioning
+  scheme at a 1.0.0 HEAD; a verbless README fragment; a duplicated checklist item in
+  `local-build.md`; `nightly.yml`'s comment claimed `composer install` re-resolves dependencies,
+  which a committed root `composer.lock` makes false (only the runner environment moves between
+  nightly runs); the bridge's `composer.json` carried no `homepage`/`support` block;
+  `Result::orElseThrow()` documented its rethrow contract without an `@throws` tag; and
+  `docs/workflow/release.md` step 10 claimed CI "builds & attaches artifacts" when
+  `draft-release`'s only step sets `draft`/`generate_release_notes`/`body_path` and attaches
+  nothing — corrected to state why: the release *is* the tagged source, resolved via Packagist,
+  not a downloadable binary. **Left open**: the root and bridge `composer.json` author blocks
+  still carry no email — adding one publishes it to Packagist, which is the maintainer's call,
+  not a default to fill in.
 - **`docs/releases/v1.0.0.md` no longer claims the release gate approved it.** The notes stated the
   published tree was *"the one the gate approved"*; it is not. `v1.0.0`'s tag is unsigned, so
   `release.yml`'s `The tag must be signed` step failed (run 31283673519), the tagged-tree 8.1/8.2/8.3

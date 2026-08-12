@@ -144,7 +144,7 @@ invert ADR-0029's stance: the decision to log belongs to the caller who catches 
 to the transport. `Persistence`'s two named cross-group edges (ADR-0043) remain the only exception in
 the file. Proved by planting a `Mail → Errors` type dependency: 2 violations, restored to 0.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Strip `CR`/`LF` from the subject instead of refusing** — rejected (D1): it is what PHP does on
    one path, and it silently sends a message the caller did not write.
