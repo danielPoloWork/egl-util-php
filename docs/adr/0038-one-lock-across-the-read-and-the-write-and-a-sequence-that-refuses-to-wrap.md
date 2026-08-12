@@ -109,7 +109,7 @@ Both read without the lock. Any value they return may be stale before the caller
 so branching on them to decide whether `next()` will succeed is a race. Documented on both
 methods: call `next()` and catch the refusal.
 
-## Alternatives
+## Alternatives Considered
 
 1. **`read()` + `write()` at the call site** — rejected: the interleaving above loses
    increments, which for a sequence means duplicate identifiers.
@@ -151,3 +151,13 @@ non-vacuous by 8 planted defects**, the first of which is the one that matters: 
 it**. The others — cap check removed, cap wrapping, corrupt state reset, window change not
 resetting, blank file treated as corrupt, window guard removed, `cap: 0` accepted — were each
 caught by the unit suite.
+
+## References
+
+- ROADMAP item 9.5
+- spec r6 FR-32, FR-22/23, §6 T-14
+- [RFC-0002](../rfc/0002-application-layer-groups-from-legacy-intake.md) §Decision (`Support` additions)
+- [ADR-0005](0005-atomic-file-writes-with-a-sidecar-lock.md) (the sidecar lock this composes)
+- [ADR-0037](0037-disable-phps-escape-character-and-keep-the-formula-guard-opt-in.md) (the immediately preceding case for extending `File` rather than duplicating it)
+- [ADR-0027](0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md) (a property no in-process test can observe)
+- [ADR-0036](0036-refuse-the-downgrade-and-the-characters-parse-url-launders.md) (naming a limit rather than pretending it away)

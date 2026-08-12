@@ -173,3 +173,13 @@ in.*
   hour: GitHub's scheduler queues heavily at `:00`, and a benchmark that waited in a queue measured a
   busier machine.
 - All 27 action pins across three workflows verified upstream (ADR-0003).
+
+## References
+
+- ROADMAP item 7.1
+- spec NFR-01, NFR-02, NFR-03, NFR-04, NFR-05, **NFR-06**
+- [ADR-0018](0018-querybuilder-benchmark-scope-and-the-measured-build-time-gap.md) (the deferral this revisits)
+- [ADR-0020](0020-correct-the-nfr03-workload-and-resolve-the-driver-once.md) and [ADR-0028](0028-container-exceptions-live-in-the-container-group-and-get-carries-a-type.md) (the two earlier benchmark-workload errors, same shape)
+- [ADR-0024](0024-assert-the-work-factor-not-the-wall-clock.md) (why NFR-05's wall clock stays ungated)
+- [ADR-0003](0003-pin-ci-actions-by-commit-sha.md) (the action pins these workflows obey)
+- **Benchmark record:** [`docs/benchmarks/2026/08/nfr-budgets-under-nfr06-methodology.md`](../benchmarks/2026/08/nfr-budgets-under-nfr06-methodology.md)

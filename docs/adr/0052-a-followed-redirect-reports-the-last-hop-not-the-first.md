@@ -70,7 +70,7 @@ Two properties are kept deliberately:
    caller who needs the chain has a better instrument available: turn following off, which is the
    default, and follow it themselves.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Leave it and document the behaviour in T-07.** Rejected: it would make a test the record of
    a defect rather than a guard against one, and `isSuccessful()` returning `false` for a
@@ -107,6 +107,14 @@ both directions — a chain to a `200` reports `200` with no leaked `Location`, 
 whatever status happens to be final". Proved non-vacuous: reverting this decision fails that test
 (status), and keeping the status fix while retaining the hops' headers fails it too (the leaked
 `Location`).
+
+## References
+
+- ROADMAP item **11.4** (security)
+- spec **FR-37** (r15)
+- suite **T-07**
+- [ADR-0049](0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md) (the transport this corrects)
+- [ADR-0025](0025-typed-http-wrappers-that-refuse-rather-than-coerce.md) (whose suite tag this item reclaims)
 
 ## Footnote — the suite name this item had to reclaim
 

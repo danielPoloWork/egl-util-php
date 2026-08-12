@@ -118,3 +118,12 @@ widened by exactly what the blocked clauses required and no further.
   item 6.1).
 - The blocked clauses are now implemented and tested: BFR-04, BFR-05, BFR-06 and BFR-07 pass against
   both `nyholm/psr7` and `guzzlehttp/psr7`.
+
+## References
+
+- ROADMAP item 8.2
+- spec FR-13
+- [`docs/specs/02_spec_psr7_bridge.md`](../specs/02_spec_psr7_bridge.md) §3–§4 (the BFR clauses this unblocks)
+- [ADR-0025](0025-typed-http-wrappers-that-refuse-rather-than-coerce.md) (the refuse-don't-coerce rule this does **not** retreat from)
+- [ADR-0033](0033-bridge-source-in-the-monorepo-published-through-a-generated-split-repository.md) (the bridge whose implementation surfaced this)
+- imported [ADR-002](../../.specs/d4np_php_adr_002_http_psr7.md)

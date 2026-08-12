@@ -83,7 +83,7 @@ still check it — that is what makes the SQL safe — but a gateway wired to an
 should fail where it was wired (ADR-0022's fail-fast line), not on whichever read runs first in
 production.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Compose the write SQL inside `TableGateway`** (in `Persistence`, using a shared
    `Identifier`) — rejected on two counts. It puts a second SQL generator in the group whose job

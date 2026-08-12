@@ -122,7 +122,7 @@ exact reproduction of item 12.4's run-1 numbers:
 8. `--exclude` alone, reproducing ADR-0045's original scenario → unchanged `OK` with a `skipped`
    marker, confirming the two mechanisms do not interfere.
 
-## Alternatives
+## Alternatives Considered
 
 1. **(b) Net each subject's delta against the control's own delta**, so a run-wide shift cancels
    out arithmetically (e.g. subtract the control's % from every other subject's %) — the option

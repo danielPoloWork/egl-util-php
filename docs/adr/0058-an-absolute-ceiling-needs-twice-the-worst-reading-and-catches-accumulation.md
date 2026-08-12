@@ -129,7 +129,7 @@ this ADR rests on is that the *code's* cost was measured first, found to be a do
 deliberate design property, and judged acceptable on its own merits — and only then was the number
 that mis-described it corrected. Had the router measured 500 µs, D4 would have gone the other way.
 
-## Alternatives
+## Alternatives Considered
 
 1. **(11.6) Exclude `benchSequenceNext` from the absolute gate too** — rejected. The item required
    that this option be paired with *"say plainly that NFR-10 is then unenforced,"* and that is the

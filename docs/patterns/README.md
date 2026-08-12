@@ -62,13 +62,43 @@ _No superseded patterns yet._
 
 ## Candidate patterns to consider
 
-The taxonomy in [`design-patterns.md`](design-patterns.md) lists every pattern in scope. As
-the architecture takes shape, narrow that universe to the patterns plausibly applicable to
-*this* artifact and list them here by category, each with a one-line "possible application".
-A candidate remains a candidate until adopted (own ADR) or explicitly rejected.
+Narrowed from the full taxonomy to what is plausibly applicable and not yet decided one way or
+the other. A candidate remains a candidate until adopted (own ADR, moves to *Implemented*) or
+explicitly rejected (moves to *Rejected*).
+
+- **Cloud & Distributed Systems — Rate Limiting / Throttling.** Possible application: a
+  token-bucket/fixed-window primitive for the login and `Hash::verify()` call sites the Security
+  group already owns. Proposed in issue #91; **deferred by [RFC-0003](../rfc/0003-post-1-0-functional-scope.md)**
+  because this library owns no shared-state seam yet, so the version that could ship today would
+  be single-node — behind a load balancer that looks like protection and is not. Revisit once a
+  storage seam exists.
+- **Cloud & Distributed Systems — Retry with Backoff.** Possible application: `Support\RetryPolicy`
+  consumed opt-in by `HttpClient` and transaction callers. **Accepted by RFC-0003 as FR-49**, on
+  the roadmap as Milestone 14 item 14.5; moves to *Implemented* with its own ADR when that item
+  lands, not before — an RFC deciding to build something is not the same record as the ADR that
+  names the pattern.
+- **Cloud & Distributed Systems — Circuit Breaker.** Possible application: guarding `HttpClient`
+  or a future retry policy against a dependency that is failing outright rather than transiently.
+  **Named a stated non-goal** of item 14.5's own acceptance criteria ("no circuit breaker in v1 of
+  the feature") — recorded here rather than in *Rejected*, since that table's rows carry an ADR and
+  none exists yet for a decision made inside an issue.
 
 ## Out-of-scope categories
 
-Record here any taxonomy category pre-classified as not applicable to this artifact (with a
-one-line reason), so the policy of explicit rejection is honoured without filling the
-*Rejected* table with N/A noise.
+Whole taxonomy categories pre-classified as not applicable, so the policy of explicit rejection
+is honoured without filling the *Rejected* table with a pattern-by-pattern N/A for a category
+this artifact structurally cannot host.
+
+- **Concurrency** (Monitor Object, Thread Pool, Producer-Consumer, Read-Write Lock, Future/Promise,
+  Lock-Free/Wait-Free, Thread-Local Storage, …). PHP's standard execution model is share-nothing
+  per request: this library owns no persistent process, no thread, and no shared memory to
+  coordinate across one. `Immutable Object` and `Guarded Suspension` are the two entries in this
+  category with a real single-request analogue, and both already exist under other names —
+  immutability is the DTO group's whole contract (ADR-0008), and `Repository::withTransaction()`
+  is this codebase's guarded-precondition seam (ADR-0016). Nothing in the category needs its own
+  adoption.
+- **Enterprise Integration Patterns** (Message Channel, Message Router, Publish-Subscribe,
+  Competing Consumers, Dead Letter Channel, …). This library owns no messaging infrastructure —
+  no queue, no broker, no publish/subscribe mechanism anywhere in `src/main`. `Mail` sends
+  synchronously to an SMTP transport (FR-44); it is not a message bus and does not become one by
+  adding a queue in front of it, which would be a different library's job.

@@ -6,8 +6,10 @@ name: nightly
 # 1. **Slow drift.** The per-PR gate compares HEAD against its base, so twenty commits at +9% each
 #    pass every one of its checks and still double the runtime. The absolute NFR ceilings are what
 #    notice that, and here they run against no baseline at all.
-# 2. **Change that arrives without a commit.** `composer install` re-resolves on every run, so an
-#    upstream dependency that got slower shows up here even on a week with no pushes.
+# 2. **Change that arrives without a commit.** The runner image itself moves under this job
+#    (a new PHP point release, a new `ubuntu-24.04` snapshot), so a subject that got slower
+#    shows up here even on a week with no pushes — `composer install` reads the committed
+#    `composer.lock`, so this axis is the environment, never a re-resolved dependency version.
 #
 # What this deliberately does NOT do is compare against a stored baseline from a previous night.
 # Measured: across nine `master` runs where the subject's code was provably unchanged, one

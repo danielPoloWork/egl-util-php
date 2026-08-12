@@ -150,7 +150,7 @@ records are simply not there when someone needs them. A non-boolean `enabled` is
 sharper reason: the string `'false'` is *truthy*, so accepting it would leave a channel the
 operator believes is off and which is writing every record.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Keep `Logger`'s own severity map and give the decorator a second one** — rejected: two copies
    of one rule, which is item 10.5's finding restated. The map moved to `Level` instead, and

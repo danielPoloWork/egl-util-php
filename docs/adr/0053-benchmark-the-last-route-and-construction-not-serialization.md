@@ -50,7 +50,7 @@ ADR-0018): tied to spec NFR-06's reference machine and methodology, and enforced
 absolute budget per ADR-0030's finding that the headroom these NFRs carry dwarfs cross-runner
 noise — not asserted as a hard requirement independent of that measurement.
 
-## Alternatives
+## Alternatives Considered
 
 1. **Dispatch a route near the middle of the table.** Rejected: it answers a question nobody
    asked — "the typical case" is not what a linear scan's worst-case cost analysis needs, and a
@@ -76,3 +76,10 @@ carry no ceiling of their own.
 item 3.5/3.7's and item 4.5/4.6's precedent exactly: report the real number, ship it
 non-blocking, and file the gap as its own roadmap item rather than narrow the benchmark until it
 passes.
+
+## References
+
+- ROADMAP item **11.5** (step:optimize)
+- spec **NFR-11**
+- [ADR-0011](0011-benchmark-scope-and-the-measured-hydration-ratio.md), [ADR-0018](0018-querybuilder-benchmark-scope-and-the-measured-build-time-gap.md) (the same workload-scoping question, asked twice before)
+- [ADR-0050](0050-classify-the-miss-and-keep-the-router-a-table.md) (`Router`), [ADR-0051](0051-one-envelope-shape-and-a-reference-instead-of-the-exception.md) (`ApiEnvelope`)
