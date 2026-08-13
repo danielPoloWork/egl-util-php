@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`docs/patterns/third-party-picks.md`** (issue #90) — endorsed third-party libraries for needs
+  this library deliberately doesn't cover: `brick/math` (money/decimal arithmetic), `symfony/cache`
+  (PSR-6/16 caching), `symfony/mailer` behind the existing `Mail\Mailer` seam. Carries the explicit
+  do-not-add list (money arithmetic, ORM features, an SMTP client, console/i18n helpers) so a
+  scope-creep request has a citable answer instead of a fresh argument every time. States plainly
+  that the two currently-deferred M14 candidates (rate limiting, the PSR-18 bridge) are **not** on
+  this page — deferred in-scope future work is a different claim from "bring your own," and
+  recommending a stand-in would blur it. Linked from `README.md`'s docs table and the patterns
+  catalogue index.
+
 - **`docs/upgrading.md`** (issue #89), the consumer-facing deprecation lifecycle and
   supported-versions guidance — translating `docs/workflow/maintenance.md`'s internal decision
   tree and ADR-0060 into terms a consumer can act on, written before the first deprecation
