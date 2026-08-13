@@ -18,7 +18,14 @@ pre-1.0 milestone-driven.
 1. **Bump the version constant** (public const VERSION = 'X.Y.Z') in `src/main/php/d4np/utils/Version.php`; update any
    version-check test.
 2. **Roll the changelog** — move the `[Unreleased]` entries into a new per-version file
-   `docs/changelog/v<MAJOR>/v<X.Y.Z>.md` and add an index row to `CHANGELOG.md`.
+   `docs/changelog/v<MAJOR>/v<X.Y.Z>.md` and add an index row to `CHANGELOG.md`. **Open the new
+   file with a `## Highlights` section** — a handful of consumer-facing bullets (what's in the
+   box, any breaking or notable behavior, verification numbers worth repeating) sitting above the
+   rolled `[Unreleased]` entries, which stay newest-first exactly as written. The highlights say
+   nothing the narrative log beneath doesn't already say at length; they exist so a reader doesn't
+   have to read a hundred engineering-record bullets to learn what shipped (issue #88, ROADMAP
+   13.5's single-sourcing question is separate and unaffected — this step applies wherever the
+   per-version file ends up living).
 3. **Refresh the README** status badge (and milestone table on a MINOR that closes a
    milestone).
 4. **Draft release notes** under `docs/releases/v<X.Y.Z>.md`.

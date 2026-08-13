@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A consumer-facing `## Highlights` section** at the top of `docs/changelog/v1/v1.0.0.md`
+  (issue #88) — the 1,186-line file interleaves 21 repeated `### Added`/`### Changed`/`### Fixed`
+  headings in a newest-first engineering roll, self-acknowledged in its own provenance note, and
+  said nothing scannable about what shipped. The new section restates nothing the log below
+  doesn't already say at length; it exists so a reader doesn't have to read the whole record to
+  learn the box's contents. `docs/workflow/release.md`'s changelog-roll step gains the matching
+  instruction so future rolls open this way by construction, independent of ROADMAP 13.5's still-
+  open question of which of the two changelog locations is canonical.
+
 - **The community files a public repository is expected to carry** (issue #87 / ROADMAP 13.6):
   `CONTRIBUTING.md`, built entirely from gates already documented and enforced elsewhere (the
   `local-build.md` PR checklist, `AGENTS.md` §6's commit/branch/PR conventions) rather than new
