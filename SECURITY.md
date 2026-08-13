@@ -15,6 +15,9 @@ window, including what happens when a `2.0.0` line opens, is in
 | older `1.x` | ❌ — upgrade within 1.x; the freeze guarantees no break |
 | `0.x` | ❌ — none was ever published |
 
+See [`docs/upgrading.md`](docs/upgrading.md) for the deprecation lifecycle and this table's
+reasoning, in consumer terms.
+
 ## Reporting a vulnerability
 
 **Do not open a public issue or PR for a security problem.** Report it privately via
