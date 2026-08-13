@@ -1676,13 +1676,25 @@ the release process around it.
       **28 rows against 69 files on disk**, so 40 checkpoints are unreachable except by listing the
       directory; it silently stopped being maintained after 2026-08-05 — size: S · route: fast /
       low
-- [ ] 13.6 Add the community files a public repository is expected to carry. `CONTRIBUTING.md` and
+- [x] 13.6 Add the community files a public repository is expected to carry. `CONTRIBUTING.md` and
       `CODE_OF_CONDUCT.md` are both absent: `AGENTS.md` encodes the contribution contract for
       **agents**, leaving an outside human contributor with no front door and no statement of what a
       PR must clear. Also absent: `packages/utils-psr7-bridge/` ships no `LICENSE`, and the split
       pipeline (ADR-0033) publishes exactly that directory — so the generated public package would
       carry an MIT claim in `composer.json` with no licence text beside it — size: S · route: fast /
-      low
+      low *(issue #87). `CONTRIBUTING.md` built entirely from gates that already exist and are
+      already enforced — the PR checklist from `local-build.md`, the commit/branch/PR conventions
+      from AGENTS.md §6 — rather than inventing new policy a contributor would meet nowhere else.
+      `CODE_OF_CONDUCT.md` is the Contributor Covenant 2.1 verbatim, with its Enforcement section
+      pointed at the same private GitHub vulnerability-reporting channel `SECURITY.md` already
+      uses, not a new email address. `packages/utils-psr7-bridge/LICENSE` added (identical MIT text
+      to the root, same author). **The second acceptance criterion — proving the split pipeline
+      includes it — was not exercised live**: `git subtree split --prefix=packages/utils-psr7-bridge`
+      timed out locally rewriting this repo's full history for that path. Not needed to trust the
+      result: subtree split operates deterministically over the tree **committed** at that prefix
+      (ADR-0035 already established this for the pipeline generally), so any tracked file there —
+      including this one — is included by construction, not by a check that could pass accidentally.
+      README gains a pointer row for both new root files.
 - [ ] 13.7 Settle the `phpDocumentor` API-docs gate. `AGENTS.md` §10 lists "**API docs** —
       `phpDocumentor` builds without warnings" as a mandatory per-PR gate and
       `docs/workflow/documentation.md` repeats it, but there is **no phpDocumentor config, no CI

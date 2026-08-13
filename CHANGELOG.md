@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The community files a public repository is expected to carry** (issue #87 / ROADMAP 13.6):
+  `CONTRIBUTING.md`, built entirely from gates already documented and enforced elsewhere (the
+  `local-build.md` PR checklist, `AGENTS.md` §6's commit/branch/PR conventions) rather than new
+  policy; `CODE_OF_CONDUCT.md`, the Contributor Covenant 2.1 verbatim with its Enforcement section
+  pointed at the same private GitHub vulnerability-reporting channel `SECURITY.md` uses;
+  `packages/utils-psr7-bridge/LICENSE`, identical MIT text to the root, so the package the split
+  pipeline (ADR-0033) publishes carries the licence text its `composer.json` already claims.
+  `README.md` gains a pointer row for both root files.
+
 - **GitHub-side configuration applied for the first time** (issue #86 / ROADMAP 13.8). Milestone
   naming reconciled to `vX.Y.Z` — every one of the 14 `ROADMAP.md` milestone headers already used
   it, so `AGENTS.md` §6.4 was corrected to match rather than retrofitting history. All 11 type
