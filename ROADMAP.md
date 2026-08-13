@@ -1675,7 +1675,11 @@ the release process around it.
       own procedure — *"adds a link row to this index"* at every state-changing session — and holds
       **28 rows against 69 files on disk**, so 40 checkpoints are unreachable except by listing the
       directory; it silently stopped being maintained after 2026-08-05 — size: S · route: fast /
-      low
+      low *(issue #88 coordinated with this item rather than folded into it — a highlights section
+      inside each per-version changelog file, plus the matching step in `docs/workflow/release.md`,
+      is orthogonal to which of the two locations wins the canonical-home decision below, so it
+      shipped independently under #88 and is done. This item's own question — location — remains
+      open.)*
 - [x] 13.6 Add the community files a public repository is expected to carry. `CONTRIBUTING.md` and
       `CODE_OF_CONDUCT.md` are both absent: `AGENTS.md` encodes the contribution contract for
       **agents**, leaving an outside human contributor with no front door and no statement of what a
