@@ -52,6 +52,7 @@ setup.
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |
+| [`docs/upgrading.md`](docs/upgrading.md) | The deprecation lifecycle and the supported-versions window, in consumer terms. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to open an issue or a PR, and what it must clear. |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Community standards for this project. |
 

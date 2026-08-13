@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`docs/upgrading.md`** (issue #89), the consumer-facing deprecation lifecycle and
+  supported-versions guidance — translating `docs/workflow/maintenance.md`'s internal decision
+  tree and ADR-0060 into terms a consumer can act on, written before the first deprecation
+  exists rather than after one is discovered. Linked from `README.md` and `SECURITY.md`. Corrects
+  a removal-timing detail worth stating plainly: post-1.0, no MINOR release ever removes a
+  deprecated symbol regardless of how long its deprecation window has been closed — only a MAJOR
+  does, since the maintenance decision tree routes every removal to a MAJOR once past 1.0. An
+  earlier draft of this page said a symbol deprecated in `1.4.0` could be removed in `1.6.0`,
+  which the decision tree it was translating does not actually permit; caught and fixed before
+  publishing rather than after.
+
 - **A consumer-facing `## Highlights` section** at the top of `docs/changelog/v1/v1.0.0.md`
   (issue #88) — the 1,186-line file interleaves 21 repeated `### Added`/`### Changed`/`### Fixed`
   headings in a newest-first engineering roll, self-acknowledged in its own provenance note, and
