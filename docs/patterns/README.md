@@ -7,6 +7,9 @@ or removes a pattern, and updated in the same PR.
 - **Rules** — [`AGENTS.md`](../../AGENTS.md) §8.
 - **Canonical taxonomy** — [`design-patterns.md`](design-patterns.md). All pattern names
   used here, in ADRs, and in commit messages must match its spelling and categorisation.
+- **Third-party picks** — [`third-party-picks.md`](third-party-picks.md). Not a pattern this
+  codebase implements; endorsed libraries for needs it deliberately doesn't cover, plus the
+  explicit do-not-add list.
 
 ## Architecture style
 

@@ -49,6 +49,7 @@ setup.
 | [`ISSUES.md`](ISSUES.md) | The GitHub issues, newest first, each with its advisory model/effort route. |
 | [`docs/adr/`](docs/adr/) | Why it is built the way it is (Architecture Decision Records). |
 | [`docs/patterns/`](docs/patterns/) | Design patterns adopted, rejected, or considered. |
+| [`docs/patterns/third-party-picks.md`](docs/patterns/third-party-picks.md) | Endorsed third-party libraries for needs this library deliberately doesn't cover. |
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |
