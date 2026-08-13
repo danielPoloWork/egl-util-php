@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`D4np\Utils\Support\SystemClock` and `Support\FrozenClock`** — the PSR-20 time seam (spec
+  **r17 FR-45**, RFC-0003; roadmap item **14.1**, M14's keystone; **ADR-0062**; closes issue #97).
+  Both implement `Psr\Clock\ClockInterface`, and `psr/clock` joins `require` as the third
+  interface-only dependency (NFR-08's posture, RFC-0001 R-3's carve-out). Every time-touching API
+  added from here on accepts the interface — the retry policy, HMAC expiry and rate-limiter
+  refill items all consume it, which is why this shipped first and alone. Behaviours worth
+  knowing before wiring it:
+  - **`SystemClock::now()` returns a fresh `DateTimeImmutable` per call**, in PHP's default
+    timezone unless a `DateTimeZone` object was injected — byte-for-byte what
+    `new DateTimeImmutable('now')` does, so the seam changes *where* time is read, never *what*.
+    Construction cannot fail: the parameter is an object, not a string, so an invalid zone never
+    reaches this class.
+  - **`FrozenClock` is the shipped test double and deliberately mutable**: `advance(DateInterval)`
+    moves the held instant — cumulatively, and **honouring inverted intervals**, because time
+    moving backward is a first-class clock-skew scenario (ADR-0061 §5), not an error.
+  - **`Support` gains its first outward deptrac edge in sixty ADRs** (`Support → Psr`), a
+    consequence RFC-0003's accepted placements had already made inevitable; the config comment
+    claiming "Support depends on nothing" is retired in place, and the new grant is proven to
+    discriminate (a planted `Support → Dto` reference refused by name; 344 allowed edges, zero
+    violations, zero uncovered).
+
 - **ADR-0061, the rate-limiter design** (issue #91, reopened by the maintainer on 2026-08-13
   against RFC-0003's deferral — whose revisit condition, *"when a storage seam exists"*, proved
   unreachable: nothing in the backlog creates a storage seam, because the seam is this issue's own
