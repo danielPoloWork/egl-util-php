@@ -76,3 +76,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0058](0058-an-absolute-ceiling-needs-twice-the-worst-reading-and-catches-accumulation.md) | An absolute ceiling needs twice the worst reading, and it catches accumulation — not steps | Accepted |
 | [0059](0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md) | Freeze the API at 1.0.0, with `@internal` symbols outside the frozen surface | Accepted |
 | [0060](0060-support-the-latest-release-of-the-current-major-and-measure-the-window-in-releases.md) | Support the latest release of the current MAJOR, and measure the window in releases | Accepted |
+| [0061](0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md) | A token bucket behind a compare-and-swap store, with keys hashed at the boundary | Accepted |

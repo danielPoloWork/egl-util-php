@@ -42,9 +42,17 @@ acceptance criterion):
 ## What's deliberately not on this page
 
 **Rate limiting and a PSR-18 HTTP client bridge are not endorsed third-party picks** — both are
-in-scope future work this library may build itself, tracked as [issue #91](https://github.com/danielPoloWork/egl-util-php/issues/91)
-and [issue #93](https://github.com/danielPoloWork/egl-util-php/issues/93) respectively, currently
-deferred by [RFC-0003](../rfc/0003-post-1-0-functional-scope.md) for reasons specific to each
-(no shared-state seam exists yet; the bridge-publication pipeline needs a first successful run).
-Deferred is not the same claim as *"bring your own"* — recommending a stand-in here would blur
-that distinction for exactly the two items where it matters most.
+in-scope work this library builds itself, and in-scope is a different claim from *"bring your
+own"*; recommending a stand-in here would blur that distinction for exactly the two items where
+it matters most.
+
+- **Rate limiting** ([issue #91](https://github.com/danielPoloWork/egl-util-php/issues/91)) is
+  **designed and awaiting implementation**: reopened by the maintainer on 2026-08-13,
+  [ADR-0061](../adr/0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md)
+  settles the algorithm, the storage seam and the honesty statement; roadmap item 14.7 lands the
+  code. One connected recommendation *does* belong here: the multi-node store the seam expects
+  (Redis or equivalent) is consumer-implemented — the library ships the algorithm and no network
+  client.
+- **The PSR-18 bridge** ([issue #93](https://github.com/danielPoloWork/egl-util-php/issues/93))
+  remains **deferred** by [RFC-0003](../rfc/0003-post-1-0-functional-scope.md): the
+  bridge-publication pipeline needs a first successful run before a second consumer builds on it.
