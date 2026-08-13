@@ -12,6 +12,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **ADR-0061, the rate-limiter design** (issue #91, reopened by the maintainer on 2026-08-13
+  against RFC-0003's deferral — whose revisit condition, *"when a storage seam exists"*, proved
+  unreachable: nothing in the backlog creates a storage seam, because the seam is this issue's own
+  deliverable). Decision-only, the item 7.4/ADR-0033 shape — no code lands. Decided: a **token
+  bucket** (fixed window rejected as the estate's boundary-burst defect institutionalized; sliding
+  log as attacker-controlled memory; sliding counter as an estimate sold as a limit; GCRA as
+  equivalent but less legible) behind a **compare-and-swap store seam**, because a get/set store
+  cannot be composed race-free by any caller; **keys hashed at the boundary** (no store-syntax
+  injection, no path traversal in the library's own file store, fixed per-key cost,
+  content-oblivious comparisons by construction); refill on the injected PSR-20 clock with
+  negative elapsed clamped so a skewed node can never mint tokens; **a store failure is never an
+  allow** — it propagates typed and the caller owns the availability-versus-security call. Two
+  stores will ship with their enforcement scope in their own docblocks (array: one process; file
+  over `File::update()`'s locked RMW: one machine), and the multi-node honesty statement the
+  deferral demanded is decided verbatim in the ADR. Implementation is roadmap item **14.7**
+  (FR-50 reserved), after 14.1's clock. Along the way: the patterns catalogue's *Planned* status
+  and `consistency_lint.py`'s patterns check turn out to disagree (the lint requires a code
+  location the *Planned* vocabulary says may not exist yet) — recorded in the catalogue rather
+  than resolved unilaterally.
+
 - **`docs/patterns/third-party-picks.md`** (issue #90) — endorsed third-party libraries for needs
   this library deliberately doesn't cover: `brick/math` (money/decimal arithmetic), `symfony/cache`
   (PSR-6/16 caching), `symfony/mailer` behind the existing `Mail\Mailer` seam. Carries the explicit

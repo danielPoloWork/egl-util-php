@@ -1777,6 +1777,11 @@ Their issues stay **open** — deferred is not rejected, and closing them would 
   single-node. Behind a load balancer that *looks like* protection and is not — strictly worse than
   none, because it removes the pressure to install a real one. Reconsider when a storage seam exists
   that can carry the multi-node honesty statement the issue itself asks for.
+  **[Reopened 2026-08-13** — maintainer decision, with the finding that this bullet's revisit
+  condition was unreachable: nothing in the backlog creates a storage seam, because the seam is
+  #91's own deliverable. Resolved by design rather than waited out — **ADR-0061**, items 14.6/14.7
+  below; RFC-0003's Status note carries the matching annotation. The reasoning above stands as
+  history.**]**
 - **`utils-psr18-bridge` (#93).** It would be the second consumer of ADR-0033's split-publication
   pipeline, whose cross-repository push, release-mode install and subtree split **have never
   executed** (ADR-0035 Consequences records this), and whose first consumer (#120) is paused.
@@ -1851,7 +1856,7 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       — size: M · route: frontier-reasoning / extra (**security**, protected floor — twice over)
 - [ ] 14.5 `Support\RetryPolicy` — **FR-49** (RFC-0003). Maximum attempts, jittered exponential
       delay, a retryable-exception allowlist, and — the part
-      [ADR-0049](docs/adr/0049-tls-options-per-request-and-a-wall-clock-deadline-the-wrapper-cannot-give.md)
+      [ADR-0049](docs/adr/0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md)
       already paid for once — a **total wall-clock deadline**. That ADR found PHP's per-phase
       timeout re-arms and therefore bounds no request; attempt-count alone bounds no retry loop for
       exactly the same reason, so the deadline is not optional. **Jitter is part of the requirement,
@@ -1860,6 +1865,42 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       `HttpClient` and transaction callers, never implicit — a library that silently retries has
       changed a caller's failure semantics without being asked. **Depends on 14.1.** Closes issue
       #94 — size: M · route: frontier-reasoning / extra (adr, protected floor)
+- [x] 14.6 Decide the rate limiter — **issue #91, reopened by the maintainer 2026-08-13** against
+      RFC-0003's deferral (annotated there, not erased; the revisit condition proved unreachable —
+      the storage seam it waits for is this item's own deliverable, and nothing else in the backlog
+      creates one). Decision-only, item 7.4/ADR-0033's shape: the deliverable is **ADR-0061**.
+      What it decides: a **token bucket** (a fixed window institutionalizes the estate's
+      boundary-burst defect — the issue's own "resettable windows" complaint; a sliding log hands
+      the throttled attacker a lever on the defender's memory; a sliding counter is an estimate
+      sold as a limit; GCRA is equivalent but less legible, and legibility chose the endpoint
+      kernel over a pipeline once already) behind a **compare-and-swap store seam** — a get/set
+      store cannot be composed race-free by any caller: two nodes both reading one remaining token
+      is the limiter exceeding its own limit at exactly the concurrency an attack produces, so
+      atomicity is the interface's contract rather than each implementor's luck. **Keys are hashed
+      at the boundary** (fixed length, fixed alphabet: no store-syntax injection, no file-path
+      traversal in the library's own store, no content-shaped timing — the issue's
+      "constant-time-safe key handling" satisfied by construction, once). Refill consumes 14.1's
+      injected clock with negative elapsed **clamped to zero**, so a skewed node can under-grant
+      but never mint tokens. Two stores ship with their enforcement scope in their own docblocks:
+      array (one process — tests and resident workers; under PHP-FPM that means one request, and
+      the docblock opens by saying so) and file over `File::update()`'s locked RMW (ADR-0038,
+      already proven multi-process by T-14) — **one machine, and behind a load balancer that means
+      N independent limits**, which is the honesty statement the deferral demanded, now decided
+      verbatim in the ADR. A store failure is **never an allow**: it propagates typed, and the
+      caller owns the availability-versus-security call at its own catch — what the library
+      refuses is only the silent version of either policy — size: S · route: frontier-reasoning /
+      extra (security, adr — protected floor; session model matched: Fable 5)
+- [ ] 14.7 Implement `Security\{RateLimiter, RateLimitPolicy, RateLimitDecision, RateLimitStore}`
+      + the two stores, per **ADR-0061** — **FR-50** (spec amendment at landing, M14's pattern;
+      suite number claimed then too). Adversarial tests the issue names, plus the ADR's mechanism
+      assertions (ADR-0027): clock skew (a behind-clock node refills zero, never negative), burst
+      at exactly capacity, CAS contention with a bounded retry loop that **refuses** on
+      exhaustion, and the key-collision/traversal corpus against the hashed boundary. The new
+      typed store failure joins the exception hierarchy and `ExceptionHierarchyTest`'s pinned
+      lists. Benchmark subject **only if measurement says the path is hot** (ADR-0040 — the
+      guarded call costs ~100 ms of Argon2id by design; the limiter's job is to be invisible next
+      to it). **Depends on 14.1** (the clock) and on this design; closes issue #91 — size: L ·
+      route: frontier-reasoning / extra (security, adr — protected floor)
 
 ---
 

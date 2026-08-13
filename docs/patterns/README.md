@@ -69,12 +69,18 @@ Narrowed from the full taxonomy to what is plausibly applicable and not yet deci
 the other. A candidate remains a candidate until adopted (own ADR, moves to *Implemented*) or
 explicitly rejected (moves to *Rejected*).
 
-- **Cloud & Distributed Systems — Rate Limiting / Throttling.** Possible application: a
-  token-bucket/fixed-window primitive for the login and `Hash::verify()` call sites the Security
-  group already owns. Proposed in issue #91; **deferred by [RFC-0003](../rfc/0003-post-1-0-functional-scope.md)**
-  because this library owns no shared-state seam yet, so the version that could ship today would
-  be single-node — behind a load balancer that looks like protection and is not. Revisit once a
-  storage seam exists.
+- **Cloud & Distributed Systems — Rate Limiting / Throttling — decided, awaiting code
+  (Planned-in-substance).** Issue #91 was reopened by the maintainer on 2026-08-13 and the design
+  is settled in [ADR-0061](../adr/0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md)
+  (RFC-0003's deferral annotated there): a token bucket behind a compare-and-swap store seam, keys
+  hashed at the boundary, enforcement scope stated in every store's own docblock. Moves to
+  *Implemented* in the table above when roadmap item 14.7 lands (after 14.1's clock).
+  **Why this is a bullet and not a table row:** the status vocabulary defines *Planned* (decided
+  in an ADR, not yet in code), but `consistency_lint.py`'s patterns check requires a real source
+  location for every table row — the vocabulary and the lint disagree, found 2026-08-13 when this
+  entry became the first *Planned*-shaped pattern since the lint arrived. Recorded here rather
+  than resolved unilaterally: either the lint learns the Planned case or the vocabulary drops it,
+  and that call is the maintainer's (same class as ADR-0040's spec-owns-its-numbers rule).
 - **Cloud & Distributed Systems — Retry with Backoff.** Possible application: `Support\RetryPolicy`
   consumed opt-in by `HttpClient` and transaction callers. **Accepted by RFC-0003 as FR-49**, on
   the roadmap as Milestone 14 item 14.5; moves to *Implemented* with its own ADR when that item

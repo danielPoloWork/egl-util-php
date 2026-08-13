@@ -1,6 +1,13 @@
 # RFC-0003: Post-1.0 functional scope — the seams a frozen library still owes
 
-- **Status:** Accepted
+- **Status:** Accepted — **the rate-limiter deferral is lifted** (2026-08-13, maintainer
+  decision, issue #91 reopened): its revisit condition — *"when a storage seam exists"* — proved
+  unreachable, since no backlog item creates a storage seam and the seam is #91's own
+  deliverable. The design answering the deferral's objection is
+  [ADR-0061](../adr/0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md)
+  (ROADMAP items 14.6/14.7). **Nothing else decided here changes** — the five accepted units,
+  their reasoning, and the PSR-18 bridge deferral (#93) all stand as written; the #91 deferral
+  text below stays as history. Annotated rather than edited, per ADR-0041's precedent.
 - **Author:** tech-lead (agent-drafted) · **Reviewers:** reviewer, enterprise-architect ·
   **Approver:** tech-lead
 - **Date:** 2026-08-10
@@ -8,9 +15,9 @@
   (both Accepted and fully implemented) · frozen spec
   [`01_spec_utils.md`](../specs/01_spec_utils.md) r16 ·
   [ADR-0059](../adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md)
-  (the API freeze this RFC must live inside) · [ADR-0049](../adr/0049-tls-options-per-request-and-a-wall-clock-deadline-the-wrapper-cannot-give.md)
-  (the wall-clock lesson FR-49 inherits) · [ADR-0054](../adr/0054-authenticated-encryption-with-a-versioned-compact-token.md)
-  (the versioned token prefix FR-48 reuses) · [ADR-0040](../adr/0040-install-the-mutation-tester-outside-the-graph-and-let-the-spec-own-its-numbers.md)
+  (the API freeze this RFC must live inside) · [ADR-0049](../adr/0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md)
+  (the wall-clock lesson FR-49 inherits) · [ADR-0054](../adr/0054-authenticated-encryption-with-fixed-lengths-and-a-key-only-secretkey-can-produce.md)
+  (the versioned token prefix FR-48 reuses) · [ADR-0040](../adr/0040-install-the-mutation-tester-outside-the-graph-and-keep-nfr07s-own-number.md)
   (the spec owns its numbers) · GitHub issues #84 (this planning item), #91–#97 (the candidates),
   #114 (SecretKeyRing) · feeds **Milestone 14**
 
@@ -77,6 +84,11 @@ already established and NFR-08's rule requires.
   single-node rate limiter deployed behind a load balancer **looks like protection and is not** —
   strictly worse than none, because it removes the pressure to install a real one. Reconsider when
   a storage seam exists and can carry the multi-node honesty statement the issue itself asks for.
+  **[Lifted 2026-08-13 — see the Status note.** The revisit condition was unreachable (the seam it
+  waits for is #91's own deliverable, and nothing else in the backlog creates one); the objection
+  this paragraph states is answered by design in ADR-0061 rather than waited out. The reasoning
+  above stands as written, as the record of why the design had to carry an honesty statement at
+  all.**]**
 - **#93 `utils-psr18-bridge` — deferred.** It reuses the ADR-0033 split-publication machinery,
   which **has never executed**: `bridge-release.yml`'s cross-repository push, release-mode install
   and subtree split are all unexercised (ADR-0035 Consequences records this), and the PSR-7
