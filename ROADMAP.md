@@ -1803,7 +1803,7 @@ implied:** `route_advice.py --issue N` currently returns `fast / low` for all se
 because **none of them carries any label** — the routes above are resolved from the derived `adr`
 signal, and become machine-verifiable only when **item 13.8** applies the type labels.
 
-- [ ] 14.1 `Support\SystemClock` + `Support\FrozenClock` — **FR-45**, PSR-20 (RFC-0003). Both
+- [x] 14.1 `Support\SystemClock` + `Support\FrozenClock` — **FR-45**, PSR-20 (RFC-0003). Both
       implement `Psr\Clock\ClockInterface`; `SystemClock::now()` returns a fresh
       `DateTimeImmutable`, `FrozenClock` holds a fixed instant with an explicit `advance()`.
       `psr/clock` joins `require` as the **third interface-only dependency**, the posture
@@ -1813,7 +1813,27 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       RFC's reasoning, worth keeping visible: NFR-14's control subject measured 57% of its own
       subject, so a budget on one `DateTimeImmutable` allocation would bound PHP's method dispatch
       and assert nothing about this library. Closes issue #97 — size: XS · route: frontier-reasoning
-      / extra (adr, protected floor)
+      / extra (adr, protected floor) *(delivered — spec **r17**, **ADR-0062**; 2 848 tests, +17).
+      The item as filed missed a layering consequence the implementation surfaced:
+      `deptrac.yaml` carried "**Support depends on nothing**, and that must not change to
+      accommodate one class (ADR-0028)" — and FR-45 puts PSR-20 implementors IN Support, so
+      **Support gains its first outward edge in sixty ADRs** (`Support → Psr`, collector widened
+      to `Log|Container|Clock`). Not the move ADR-0028 forbade — nothing was relocated to dodge a
+      grant; RFC-0003's own accepted placements (FR-46 and FR-49 live in Support and consume the
+      interface) made the edge inevitable wherever the clocks sat. The old comment is retired in
+      place with a pointer to the ADR; the grant is **proven to discriminate**: deptrac 344
+      allowed / 0 violations / 0 uncovered, and a planted `Support → Dto` property type refused by
+      name. Implementation decisions recorded in ADR-0062: timezones are **objects, optional,
+      defaulting to PHP's default** (construction cannot fail — the type is the validation;
+      instant arithmetic is timezone-independent, which is every in-library use); `FrozenClock` is
+      **deliberately mutable** (the injected reference is the mechanism — an immutable advance()
+      returns a clock nothing under test holds) and honours **inverted intervals**, because
+      ADR-0061 §5's skew tests move time backward on purpose. Six plants, six caught (five test
+      defects — cached instant, ignored timezone, ticking frozen clock, ignored invert flag,
+      non-cumulative advance — plus the deptrac violation), each verified landed by
+      absence-of-the-original first. No new exception type, stated because an absence leaves no
+      trace: construction, now() and advance() cannot fail, and `ExceptionHierarchyTest`'s pinned
+      lists are untouched.)*
 - [ ] 14.2 `Str::ulid()` and `Str::uuidV7()` — **FR-46**, time-sortable identifiers (RFC-0003).
       Same CSPRNG discipline as `Str::random()` (`random_bytes`, never `rand`); both take an
       optional `?ClockInterface $clock = null` so conformance vectors pin against a fixed instant.
@@ -1913,11 +1933,11 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
-| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4 | ✅ |
-| §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4 | ✅ |
+| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002); r17 adds FR-45 (RFC-0003) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4; 14.1 | ✅ |
+| §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges; r17 adds Support→Psr | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4, 14.1 | ✅ |
 | §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14; r16 splits target from CI ceiling | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5–11.7, 12.3, 12.5–12.6 | ✅ |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | ✅ |
 | §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | ✅ |
 | §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | ✅ |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | ✅ |
-| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6 | ✅ |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs; M14 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6, 14.1, 14.6 | ✅ |

@@ -100,7 +100,9 @@ deptrac:
       collectors:
         - type: classLike
           # Doubled backslashes: a PCRE pattern, where a single `\L` would be a regex escape.
-          value: ^Psr\\(Log|Container)\\.*
+          # `Clock` joined 2026-08-13 (spec FR-45, item 14.1, ADR-0062): psr/clock is the third
+          # interface-only require, and `Support`'s clocks implement its one interface.
+          value: ^Psr\\(Log|Container|Clock)\\.*
 
     # The PSR-7 bridge (ADR-0033), whose source lives in `packages/utils-psr7-bridge/` and is
     # therefore outside `paths` above — deptrac never analyses it. This layer exists to constrain
@@ -133,8 +135,12 @@ deptrac:
       - Support
       # The Container implements PSR-11, and its exceptions implement PSR-11's own exception
       # interfaces (spec FR-04, imported ADR-001). Those exceptions live in this group rather than
-      # in Support with the rest of the hierarchy precisely so this grant stays here: Support
-      # depends on nothing, and that must not change to accommodate one class (ADR-0028).
+      # in Support with the rest of the hierarchy precisely so this grant stays here: a class is
+      # never RELOCATED into Support to dodge a grant (ADR-0028). Until 2026-08-13 this comment
+      # read "Support depends on nothing" — true for its first sixty ADRs, and superseded by
+      # ADR-0062 when Support's own RFC-accepted surface (FR-45's clocks, and FR-46/FR-49's
+      # consumers of them) began implementing an interface-only PSR. ADR-0028's operative rule
+      # survives unchanged; the blanket claim did not.
       - Psr
     Database:
       - Support
@@ -183,7 +189,16 @@ deptrac:
     # load-bearing half of the rule — it is what makes a Support -> Dto import (the inversion
     # ADR-0010 had to design around for `ParameterMetadata::$attributes`) a build failure rather
     # than a code-review opinion.
-    Support: ~
+    # Support's FIRST outward edge, granted 2026-08-13 (spec FR-45, item 14.1, ADR-0062) after
+    # sixty ADRs of `Support: ~`. Not a relaxation ADR-0028 forbids — nothing was moved here to
+    # dodge a grant; RFC-0003 placed the clock seam (FR-45) and its Support-resident consumers
+    # (FR-46's `Str::ulid`, FR-49's `RetryPolicy`) in this group, so the edge to the
+    # interface-only `Psr` layer is a consequence of the accepted design, not of this file. The
+    # direction everything above relies on still holds: nothing in `Support` reaches any sibling
+    # group, and the planted-violation proof for THIS grant is a `Support -> Dto` type reference
+    # deptrac must refuse (item 14.1's journal records the run).
+    Support:
+      - Psr
 
     # A version constant depends on nothing.
     Version: ~
@@ -193,7 +208,8 @@ deptrac:
     Psr: ~
 
     # No group may reach the bridge. Absent from every ruleset above AND declared empty here, so a
-    # core -> Bridge import is a violation from both directions of deptrac's bookkeeping. This is
-    # the same shape as `Support: ~`, and load-bearing for the same reason: it is what makes the
-    # bridge's optionality a build property rather than a promise in an ADR.
+    # core -> Bridge import is a violation from both directions of deptrac's bookkeeping. This was
+    # the same shape as `Support: ~` until ADR-0062 gave Support its Psr grant; `Version: ~` keeps
+    # the shape, and it stays load-bearing here for the same reason it always was: it is what makes
+    # the bridge's optionality a build property rather than a promise in an ADR.
     Bridge: ~
