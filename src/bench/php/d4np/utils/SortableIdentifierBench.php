@@ -14,12 +14,15 @@ use PhpBench\Attributes as Bench;
  * drawn once per inserted row, so its cost rides every write a consumer makes — the one place in
  * FR-46's surface where a regression would be paid at volume rather than once at wiring.
  *
- * **`benchRandomToken` is the comparison, not decoration.** Item 10.10's lesson was that budgets
- * over nested scopes go unsatisfiable when nobody checks the outer against the inner's own cost:
- * `ulid()` and `uuidV7()` each draw ten CSPRNG bytes, so `Str::random()`'s existing, already
- * accepted cost is the floor beneath both. Reading the three numbers together is what makes an
- * NFR-15 ceiling derivable rather than guessed — and if a future change makes an identifier cost
- * markedly more than the entropy draw it is built on, these subjects say so in the same run.
+ * **`benchRandomToken` is the comparison, and the comparison refuted its own premise.** It was
+ * added on item 10.10's lesson — check a budget against the already-accepted cost it contains
+ * before setting it — on the assumption that `Str::random(10)`'s ten CSPRNG bytes were the floor
+ * beneath both identifiers. **Measured on CI, both identifiers are faster than it**: 3.453 µs
+ * (`benchUlid`) and 2.592 µs (`benchUuidV7`) against 6.083 µs. The two are not nested at all.
+ * `Str::random()` calls `random_int()` once **per character** — ten rejection-sampled draws — while
+ * these call `random_bytes(10)` **once**, so the subject measures a different entropy mechanism
+ * rather than a smaller amount of the same one. Kept, relabelled: it is a reference point, not a
+ * floor, and it is the reason NFR-15's ceiling is derived from the identifiers' own readings.
  *
  * The number itself is deliberately absent from this file: **the spec owns it** (ADR-0040), it is
  * set from a reference-runner measurement rather than a developer machine (which has overstated
@@ -56,9 +59,9 @@ final class SortableIdentifierBench
     }
 
     /**
-     * The floor both subjects above are built on: ten CSPRNG bytes' worth of `Str::random()`,
-     * whose cost this project already accepted. Unbudgeted on purpose — it exists to be read
-     * beside the two subjects, not to be gated.
+     * The reference point described above — `Str::random(10)`, this library's other CSPRNG draw.
+     * Unbudgeted on purpose: it exists to be read beside the two subjects, not to be gated, and
+     * it is **not** a floor beneath them (measurement said otherwise; see the class docblock).
      */
     public function benchRandomToken(): void
     {

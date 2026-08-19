@@ -348,7 +348,7 @@ jobs:
         if: steps.cfg.outputs.present == 'true'
         shell: bash
         run: |
-          python3 tools/bench_budget_gate.py build/logs/head.xml             --budget benchHydrateWarm=5             --budget benchBuildFiveConditionSelect=10             --budget benchWarmSingletonResolve=2             --budget benchFirstAutowiredResolve=30             --budget benchSequenceNext=450             --budget benchWriteTenThousandByTen=150000             --budget benchDispatchLastOfFiftyRoutes=15             --budget benchEnvelopeBuild=2             --budget benchSuppressedRecord=0.5             --budget benchCryptoRoundTrip=60
+          python3 tools/bench_budget_gate.py build/logs/head.xml             --budget benchHydrateWarm=5             --budget benchBuildFiveConditionSelect=10             --budget benchWarmSingletonResolve=2             --budget benchFirstAutowiredResolve=30             --budget benchSequenceNext=450             --budget benchWriteTenThousandByTen=150000             --budget benchDispatchLastOfFiftyRoutes=15             --budget benchEnvelopeBuild=2             --budget benchSuppressedRecord=0.5             --budget benchCryptoRoundTrip=60             --budget benchUlid=10             --budget benchUuidV7=10
       - name: NFR-01 ratio — hydration vs manual construction
         if: steps.cfg.outputs.present == 'true'
         shell: bash

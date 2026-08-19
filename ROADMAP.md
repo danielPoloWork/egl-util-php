@@ -1834,7 +1834,7 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       absence-of-the-original first. No new exception type, stated because an absence leaves no
       trace: construction, now() and advance() cannot fail, and `ExceptionHierarchyTest`'s pinned
       lists are untouched.)*
-- [ ] 14.2 `Str::ulid()` and `Str::uuidV7()` — **FR-46**, time-sortable identifiers (RFC-0003).
+- [x] 14.2 `Str::ulid()` and `Str::uuidV7()` — **FR-46**, time-sortable identifiers (RFC-0003).
       Same CSPRNG discipline as `Str::random()` (`random_bytes`, never `rand`); both take an
       optional `?ClockInterface $clock = null` so conformance vectors pin against a fixed instant.
       **The decision the item exists to make is already made and must be honoured:**
@@ -1847,7 +1847,27 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       vectors. Carries **NFR-15**, the one plausibly hot path here — identifiers are generated per
       inserted row — with the number set from CI measurement, never this document (ADR-0040), and
       checked against `Str::random()`'s own cost first (item 10.10's nested-scope lesson). Closes
-      issue #96 — size: S · route: frontier-reasoning / extra (adr, protected floor)
+      issue #96 — size: S · route: frontier-reasoning / extra (adr, protected floor) *(delivered —
+      spec **r18** (FR-46, **NFR-15**), **ADR-0063**; 2 868 tests, +20; five plants, five caught.
+      **The decision RFC-0003 asked to pin "in both directions" needed a mechanism, not a
+      behaviour.** Asserting "these ARE ordered" is easy; asserting "these are NOT guaranteed
+      ordered" has no honest behavioural form — an unsorted-output assertion is probabilistic and
+      flaky by construction, distinctness only proves the entropy is live, and above all **a
+      monotonic implementation passes every behavioural test**, since more ordering never
+      contradicts an assertion that some ordering exists. The pin is therefore that `Str` declares
+      **no properties at all**: monotonicity needs memory, memory needs state, state on a
+      static-only class is a property. Proved non-vacuous the way that matters — planting a
+      `private static int $lastMillisecond`, the first line of any monotonic implementation, failed
+      **exactly one** test (this one) while the other nineteen stayed green. **NFR-15's derivation
+      corrected an assumption of its own, before the number was written.** `benchRandomToken`
+      (`Str::random(10)`) was added as the already-accepted inner cost item 10.10 says to check a
+      budget against — and CI measured it **slower than both identifiers** (6.083 µs vs 3.453 /
+      2.592): the scopes are not nested at all, because `random()` draws `random_int()` once per
+      character while these draw `random_bytes()` once. Relabelled a reference point, not a floor;
+      the 10 µs ceiling rests on the identifiers' own readings, at 2.90×/3.86× per ADR-0058's
+      ≥ 2.66× band. Also decided: an unrepresentable instant is **refused, never truncated**, since
+      a wrapped timestamp is a well-formed identifier that sorts wrongly — silent corruption of the
+      one property the format exists for, in a primary key that outlives the bug.)*
 - [ ] 14.3 `Persistence\PageRequest` + `Persistence\Page<T>` — **FR-47** (RFC-0003). Readonly value
       objects; an invalid page or size is **refused, not clamped** (the group's stance). `Page<T>`
       carries items, total and the derived page count with `@template` generics matching
@@ -1933,11 +1953,11 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
-| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002); r17 adds FR-45 (RFC-0003) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4; 14.1 | ✅ |
+| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002); r17/r18 add FR-45–46 (RFC-0003) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4; 14.1–14.2 | ✅ |
 | §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges; r17 adds Support→Psr | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4, 14.1 | ✅ |
-| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14; r16 splits target from CI ceiling | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5–11.7, 12.3, 12.5–12.6 | ✅ |
+| §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14; r16 splits target from CI ceiling; r18 adds NFR-15 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5–11.7, 12.3, 12.5–12.6, 14.2 | ✅ |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | ✅ |
 | §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | ✅ |
 | §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | ✅ |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | ✅ |
-| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs; M14 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6, 14.1, 14.6 | ✅ |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs; M14 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6, 14.1–14.2, 14.6 | ✅ |
