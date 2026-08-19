@@ -37,13 +37,13 @@ the decision and its silent reversal.
 budget against the already-accepted inner cost it contains before setting it. The assumption was
 that ten CSPRNG bytes were the floor beneath both identifiers.
 
-CI, run 1:
+CI, both runs:
 
-| Subject | Mode | rstdev |
-|---|---|---|
-| `benchUlid` | 3.453 µs | ±0.68% |
-| `benchUuidV7` | 2.592 µs | ±1.34% |
-| `benchRandomToken` | **6.083 µs** | ±1.08% |
+| Subject | Run 1 | Run 2 | Spread |
+|---|---|---|---|
+| `benchUlid` | 3.453 µs | 3.722 µs | +7.8% |
+| `benchUuidV7` | 2.592 µs | 2.812 µs | +8.5% |
+| `benchRandomToken` | **6.083 µs** | **8.195 µs** | +34.7% |
 
 Both identifiers are **faster than the thing they were supposed to be built on top of**. The
 scopes are not nested at all: `Str::random()` calls `random_int()` once **per character** — ten
@@ -57,7 +57,17 @@ before the number was written rather than three items later, which is the only r
 paragraph instead of a revision.
 
 The subject stays, relabelled a reference point. NFR-15's 10 µs rests on the identifiers' own
-readings, at 2.90×/3.86× — inside ADR-0058's ≥ 2.66× never-fired band.
+readings — and **the second run is what makes that ratio honest**: against run 1 alone the ceiling
+would have been quoted at 2.90×, when the worst reading is 7.8% higher and the true figure is
+**2.69×**, the bottom edge of ADR-0058's ≥ 2.66× band. Item 10.12's no-single-run rule was earned
+on a claimed *improvement*; this is the first time it has moved an absolute *ceiling's* stated
+headroom, and the lesson generalizes: "worst observed reading" is only as honest as the number of
+observations behind it.
+
+The `benchRandomToken` outlier (+34.7% on identical code) is explicable rather than alarming, and
+its explanation is load-bearing for the budget: ten `random_int()` calls to the subjects' one
+`random_bytes()`, so ten times the exposure to per-call CSPRNG variance. The budgeted subjects'
+own ~8% swing is what the ceiling has to survive, and 10 µs survives it with room.
 
 ## A mistake of my own, caught in the draft
 

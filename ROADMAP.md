@@ -1861,11 +1861,15 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       **exactly one** test (this one) while the other nineteen stayed green. **NFR-15's derivation
       corrected an assumption of its own, before the number was written.** `benchRandomToken`
       (`Str::random(10)`) was added as the already-accepted inner cost item 10.10 says to check a
-      budget against — and CI measured it **slower than both identifiers** (6.083 µs vs 3.453 /
-      2.592): the scopes are not nested at all, because `random()` draws `random_int()` once per
-      character while these draw `random_bytes()` once. Relabelled a reference point, not a floor;
-      the 10 µs ceiling rests on the identifiers' own readings, at 2.90×/3.86× per ADR-0058's
-      ≥ 2.66× band. Also decided: an unrepresentable instant is **refused, never truncated**, since
+      budget against — and CI measured it **slower than both identifiers** (6.083 / 8.195 µs against
+      3.453→3.722 and 2.592→2.812): the scopes are not nested at all, because `random()` draws
+      `random_int()` once per character while these draw `random_bytes()` once. Relabelled a
+      reference point, not a floor; the 10 µs ceiling rests on the identifiers' own readings, at
+      **2.69×** the worst of two runs — the bottom edge of ADR-0058's ≥ 2.66× band, which is what
+      the rule gives against the honest worst reading. **The second run is why that figure is not
+      2.90×**: run 1 alone would have set the ratio against a reading 7.8% too low, which is item
+      10.12's single-run rule earning its keep on an absolute ceiling rather than a claimed
+      improvement. Also decided: an unrepresentable instant is **refused, never truncated**, since
       a wrapped timestamp is a well-formed identifier that sorts wrongly — silent corruption of the
       one property the format exists for, in a primary key that outlives the bug.)*
 - [ ] 14.3 `Persistence\PageRequest` + `Persistence\Page<T>` — **FR-47** (RFC-0003). Readonly value

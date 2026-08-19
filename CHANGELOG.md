@@ -31,8 +31,8 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
     wrapped timestamp would be a well-formed identifier that *sorts wrongly*, silently defeating
     the one property the format exists for, in a value that outlives the bug.
   - **NFR-15 budgets generation at ≤ 10 µs** (CI ceiling), derived from measurement rather than
-    chosen: 3.453 µs (ULID) and 2.592 µs (UUIDv7) on the reference runner, at ADR-0058's ≥ 2.66×
-    band.
+    chosen from two reference-runner runs: ULID 3.453 → 3.722 µs, UUIDv7 2.592 → 2.812 µs, putting
+    the ceiling at 2.69× the worst reading — the bottom edge of ADR-0058's ≥ 2.66× band.
 
 - **`D4np\Utils\Support\SystemClock` and `Support\FrozenClock`** — the PSR-20 time seam (spec
   **r17 FR-45**, RFC-0003; roadmap item **14.1**, M14's keystone; **ADR-0062**; closes issue #97).

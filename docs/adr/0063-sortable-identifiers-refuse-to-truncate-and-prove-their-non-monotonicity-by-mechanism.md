@@ -127,9 +127,9 @@ premise, which is the point of running it**:
 
 | Subject | CI (run 1) | CI (run 2) |
 |---|---|---|
-| `benchUlid` | 3.453 µs (±0.68%) | _(pending)_ |
-| `benchUuidV7` | 2.592 µs (±1.34%) | _(pending)_ |
-| `benchRandomToken` | 6.083 µs (±1.08%) | _(pending)_ |
+| `benchUlid` | 3.453 µs (±0.68%) | 3.722 µs (±0.79%) |
+| `benchUuidV7` | 2.592 µs (±1.34%) | 2.812 µs (±0.76%) |
+| `benchRandomToken` | 6.083 µs (±1.08%) | 8.195 µs (±1.45%) |
 
 Both identifiers are **faster** than the draw they were assumed to be built on top of. The scopes
 are not nested: `Str::random()` calls `random_int()` once **per character** — ten rejection-sampled
@@ -138,12 +138,24 @@ mechanism, not a smaller amount of the same one, so it is a reference point rath
 and NFR-15 is derived from the identifiers' own readings alone.
 
 **The ceiling is 10 µs**, covering both subjects (they realize one requirement). Derivation, per
-ADR-0058: the worst observed reading is `benchUlid` at 3.453 µs, and that ADR's empirical finding
-was that every never-fired ceiling in this repository sits at **≥ 2.66×** its subject's worst
-reading, with nothing between 1× and 2.66×. 3.453 × 2.66 = 9.19, so 10 µs is the next round
-number above the safe band — **2.90×** the ULID reading and 3.86× the UUIDv7 one. Two runs rather
-than one, per the standing rule earned at item 10.12. No new control subject —
-`RowNormalizerBench::benchInlineTrimHundredRows` already serves this CI job (ADR-0057).
+ADR-0058: the worst observed reading across both runs is `benchUlid` at **3.722 µs**, and that
+ADR's empirical finding was that every never-fired ceiling in this repository sits at **≥ 2.66×**
+its subject's worst reading, with nothing between 1× and 2.66×. 3.722 × 2.66 = 9.90, so 10 µs is
+the next round number above the safe band — **2.69×** the ULID reading and 3.56× the UUIDv7 one.
+
+Two runs rather than one, per the standing rule earned at item 10.12, and the second run is why
+this ADR does not quote 2.90×: run 1 alone would have put the ceiling at 2.90× a reading 7.8%
+lower than the truth. **10 µs therefore sits at the bottom edge of ADR-0058's band, deliberately
+and not comfortably** — that is what applying the rule to the honest worst reading produces, and
+inflating it further would be a number with no rule behind it.
+
+The spreads are themselves a datum about this runner, on identical code: ULID +7.8%, UUIDv7
++8.5%, `benchRandomToken` **+34.7%**. The outlier is explicable rather than alarming and its
+explanation matters for the budget — `Str::random(10)` makes ten `random_int()` calls to the two
+subjects' one `random_bytes()`, so it is ten times as exposed to per-call CSPRNG variance. The
+budgeted subjects' own ~8% swing is the figure the ceiling must survive, and it does with room.
+No new control subject — `RowNormalizerBench::benchInlineTrimHundredRows` already serves this CI
+job (ADR-0057).
 
 ## Alternatives Considered
 
