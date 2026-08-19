@@ -79,3 +79,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0061](0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md) | A token bucket behind a compare-and-swap store, with keys hashed at the boundary | Accepted |
 | [0062](0062-the-clock-seam-ships-both-halves-and-support-gains-its-first-outward-edge.md) | The clock seam ships both halves, and Support gains its first outward edge | Accepted |
 | [0063](0063-sortable-identifiers-refuse-to-truncate-and-prove-their-non-monotonicity-by-mechanism.md) | Sortable identifiers refuse to truncate, and prove their non-monotonicity by mechanism | Accepted |
+| [0064](0064-pagination-refuses-an-unordered-query-and-the-count-is-a-builder-clause.md) | Pagination refuses an unordered query, and the count is a builder clause | Accepted |

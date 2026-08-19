@@ -76,6 +76,12 @@ final class QueryBuilder
     private ?int $offset = null;
 
     /**
+     * Render `COUNT(*)` instead of the projection — see {@see self::asRowCount()} (spec r19
+     * FR-47, ADR-0064).
+     */
+    private bool $countOnly = false;
+
+    /**
      * The allowlist and quoting rules, resolved once (roadmap 4.6, ADR-0020).
      *
      * Every identifier this builder quotes goes through the same instance, because the
@@ -277,6 +283,47 @@ final class QueryBuilder
     }
 
     /**
+     * The same query as `SELECT COUNT(*)` — the total this query's filters match, ignoring any
+     * window placed on it (spec r19 FR-47; ADR-0064).
+     *
+     * Exists so that pagination can ask "how many rows in total?" **without any caller-supplied
+     * text reaching SQL**. `COUNT(*)` cannot pass {@see Identifier}'s allowlist — it is not a bare
+     * identifier — so a paginating layer that had to produce it itself would need
+     * {@see SqlStatement::composed()}, spending the zero-in-library-uses property ADR-0041 relies
+     * on for its review list. Placing it here keeps the count on the same footing as every other
+     * clause this builder renders: assembled by the builder, never by a caller.
+     *
+     * **`ORDER BY`, `LIMIT` and `OFFSET` are dropped**, and dropping them is the point rather than
+     * a convenience: a `LIMIT` would count the window instead of the population, and ordering rows
+     * nobody looks at is work with no result. The `WHERE` clause and its bindings carry over
+     * unchanged, so the count answers for exactly the rows the unwindowed query would return.
+     */
+    public function asRowCount(): self
+    {
+        $clone = clone $this;
+        $clone->countOnly = true;
+        $clone->orderBy = [];
+        $clone->limit = null;
+        $clone->offset = null;
+
+        return $clone;
+    }
+
+    /**
+     * Whether this query carries an `ORDER BY`.
+     *
+     * Exposed for one reason: **a paginated read without a total order is a correctness bug that
+     * looks like it works.** SQL guarantees no row order absent `ORDER BY`, so two windows over
+     * the same unordered query may repeat a row and skip another — and every individual page
+     * looks perfectly valid. {@see \D4np\Utils\Persistence\Repository::fetchPage()} refuses an
+     * unordered builder on the strength of this (ADR-0064).
+     */
+    public function isOrdered(): bool
+    {
+        return $this->orderBy !== [];
+    }
+
+    /**
      * The SQL this builder represents, with `?` where every value goes.
      *
      * Paired with {@see self::bindings()}; the two are only meaningful together, and neither
@@ -285,7 +332,7 @@ final class QueryBuilder
     public function toSql(): string
     {
         $sql = 'SELECT '
-            . ($this->columns === [] ? '*' : \implode(', ', $this->columns))
+            . ($this->countOnly ? 'COUNT(*)' : ($this->columns === [] ? '*' : \implode(', ', $this->columns)))
             . ' FROM ' . $this->quotedTable;
 
         if ($this->conditions !== []) {

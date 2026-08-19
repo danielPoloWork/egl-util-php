@@ -9,6 +9,7 @@ use D4np\Utils\Database\Identifier;
 use D4np\Utils\Database\MutationBuilder;
 use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
+use D4np\Utils\Database\Sort;
 use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Dto\DataTransferObject;
 use D4np\Utils\Support\DatabaseException;
@@ -165,6 +166,56 @@ class TableGateway extends Repository
     }
 
     /**
+     * One page of the whole table, ordered by the key column (spec r19 FR-47; ADR-0064).
+     *
+     * **The ordering is not a default a caller may not want — it is what makes the pages mean
+     * anything.** SQL promises no row order without `ORDER BY`, so paginating an unordered read
+     * can repeat a row on page 2 that already appeared on page 1 and silently skip another. This
+     * gateway knows the column that addresses a single row ({@see self::find()}'s key), which is
+     * exactly the unique column that makes the split total — so it orders by it rather than
+     * demanding the caller supply an ordering they have no reason to think about.
+     *
+     * That is the same reasoning {@see self::all()} uses to add *no* ordering, arriving at the
+     * opposite answer for the opposite reason: an unpaginated read pays for an `ORDER BY` nobody
+     * asked for, while a paginated read is incorrect without one. A caller who needs a different
+     * order writes the query and calls {@see Repository::fetchPage()} through the {@see self::query()}
+     * seam.
+     *
+     * @return Page<T>
+     *
+     * @throws DatabaseException
+     * @throws \D4np\Utils\Support\HydrationException
+     */
+    public function paginate(PageRequest $request): Page
+    {
+        return $this->fetchPage($this->orderedByKey($this->query()), $request, $this->dtoClass);
+    }
+
+    /**
+     * One page of the rows matching all of `$criteria` (`AND`), ordered by the key column.
+     *
+     * Refuses empty criteria for the reason {@see self::findBy()} does — an empty array is what an
+     * unvalidated request filter collapses to, and paginating the whole table by accident is the
+     * worse version of reading it by accident. {@see self::paginate()} is the named whole-table
+     * page.
+     *
+     * @param array<array-key, mixed> $criteria column name => value
+     *
+     * @return Page<T>
+     *
+     * @throws DatabaseException if a column fails the allowlist, or `$criteria` is empty
+     * @throws \D4np\Utils\Support\HydrationException
+     */
+    public function paginateBy(array $criteria, PageRequest $request): Page
+    {
+        return $this->fetchPage(
+            $this->orderedByKey($this->filtered($criteria, 'paginateBy')),
+            $request,
+            $this->dtoClass,
+        );
+    }
+
+    /**
      * Every row matching all of `$criteria` (`AND`), with `null` meaning `IS NULL`.
      *
      * @param array<array-key, mixed> $criteria column name => value
@@ -296,6 +347,20 @@ class TableGateway extends Repository
     {
         return $this->baseQuery ??= (new QueryBuilder($this->connection, $this->table))
             ->select(...$this->projection());
+    }
+
+    /**
+     * `$builder` ordered by this gateway's key column — the total order a paginated read needs.
+     *
+     * Ascending, and only ever this one column: the key is unique by the definition
+     * {@see self::find()} relies on, so it is sufficient on its own, and appending anything else
+     * would be inventing a sort the caller did not ask for.
+     *
+     * @throws DatabaseException if the key column fails the allowlist
+     */
+    private function orderedByKey(QueryBuilder $builder): QueryBuilder
+    {
+        return $builder->orderBy($this->key, Sort::Asc);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace D4np\Utils\Persistence;
 
 use D4np\Utils\Database\DatabaseConnection;
+use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Database\Transaction;
 use D4np\Utils\Dto\DataTransferObject;
@@ -89,6 +90,87 @@ abstract class Repository
         }
 
         return $hydrated;
+    }
+
+    /**
+     * One window of `$query`, hydrated, with the matching total when the request asks for it
+     * (spec r19 FR-47; ADR-0064).
+     *
+     * Takes a {@see QueryBuilder} rather than a {@see SqlStatement} because pagination has to
+     * *modify* the query — apply the window, and strip it again for the count — and a
+     * `SqlStatement` is deliberately opaque text by then. The builder is the last point where
+     * that is still possible without any caller-supplied text reaching SQL.
+     *
+     * **An unordered query is refused.** SQL guarantees no row order without `ORDER BY`, so two
+     * windows over the same unordered query may repeat one row and skip another while every
+     * individual page looks perfectly valid — a data-correctness bug with no symptom at the call
+     * site. Requiring the ordering turns it into a message at the seam instead.
+     *
+     * **A requested total costs a second statement**, issued before the window. Two statements
+     * mean the count and the rows are read a moment apart, so a table under concurrent writes can
+     * return a total that does not match the window to the row; that is inherent to counting
+     * separately and is why {@see PageRequest::withoutTotal()} exists for callers who do not need
+     * the number.
+     *
+     * @template T of DataTransferObject
+     *
+     * @param class-string<T> $dtoClass
+     *
+     * @return Page<T>
+     *
+     * @throws DatabaseException                      if `$query` carries no `ORDER BY`, or the
+     *                                                statement fails, or a value fails normalization
+     * @throws \D4np\Utils\Support\HydrationException if a row does not fit `$dtoClass`
+     */
+    protected function fetchPage(QueryBuilder $query, PageRequest $request, string $dtoClass): Page
+    {
+        if (!$query->isOrdered()) {
+            throw new DatabaseException(
+                'A paginated read needs an ORDER BY: without one SQL promises no row order, so '
+                . 'consecutive pages of the same query may repeat a row and skip another while '
+                . 'each page looks correct on its own. Add an ordering the query can be split on '
+                . '— a unique column is what makes the split total.',
+            );
+        }
+
+        $total = $request->withTotal ? $this->countRowsOf($query) : null;
+
+        $items = $this->fetchAll(
+            SqlStatement::fromQueryBuilder(
+                $query->limit($request->size)->offset($request->offset()),
+            ),
+            $dtoClass,
+        );
+
+        return new Page($items, $request->page, $request->size, $total);
+    }
+
+    /**
+     * How many rows `$query` matches, ignoring any window on it.
+     *
+     * The value arrives as whatever the driver reports a `COUNT(*)` as — an `int` on some, a
+     * numeric string on others — so it is checked rather than cast blind. A missing or
+     * non-numeric answer means the driver did not honour the contract `COUNT(*)` has, and that
+     * **throws rather than defaulting to `0`**: a zero here would render as "no results" over a
+     * table that is not empty, which is the silent-sentinel failure FR-34 exists to prevent.
+     *
+     * @throws DatabaseException
+     */
+    private function countRowsOf(QueryBuilder $query): int
+    {
+        $row = $this->connection->selectOne(SqlStatement::fromQueryBuilder($query->asRowCount()));
+        $value = $row === null ? null : \reset($row);
+
+        if (!\is_numeric($value)) {
+            throw new DatabaseException(\sprintf(
+                'The COUNT(*) behind this page returned %s rather than a number. The total is '
+                . 'not reported as 0, because a table that is not empty would then render as '
+                . 'having no results.',
+                \get_debug_type($value),
+            ));
+        }
+
+        return (int) $value;
     }
 
     /**

@@ -12,6 +12,32 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`Persistence\PageRequest` and `Persistence\Page<T>` — pagination value objects** (spec
+  **r19 FR-47**, RFC-0003; roadmap item **14.3**; **ADR-0064**; closes issue #95), with
+  `Repository::fetchPage()` and `TableGateway::paginate()`/`paginateBy()` as the reads, plus two
+  additive `QueryBuilder` methods (`asRowCount()`, `isOrdered()`). All additive under ADR-0059.
+  Four behaviours worth knowing before wiring it:
+  - **A paginated read refuses an unordered query.** SQL promises no row order without `ORDER BY`,
+    so consecutive windows over the same query may repeat one row and skip another *while every
+    page looks perfectly valid*. `TableGateway`'s own paginated reads order by the key column, so
+    callers do not have to think about it; a caller with their own query supplies the ordering or
+    is told why they must.
+  - **The total costs a second statement**, and `withTotal` defaults to on. `COUNT(*) OVER ()`
+    would collapse the two, and is rejected on portability rather than merit: every database proof
+    here is SQLite-only (issue #110).
+  - **Asking for a total that was never counted throws** rather than answering `0` — a zero
+    meaning "not counted" renders as "no results" over a table that is not empty. `hasTotal()` and
+    `totalOr()` are the tolerant forms, reusing `Lookup`'s missing-value policy.
+  - **Nonsense is refused, not clamped**: a page below 1, a size below 1, or an offset that would
+    overflow PHP's integer range. `pageCount()` is `1` for an empty result set, never `0`.
+
+### Fixed
+
+- **FR-46's specification entry, which item 14.2 never wrote.** `NFR-15` and r18's own revision
+  row both referenced `FR-46` while §2 contained no such requirement — a cross-reference pointing
+  at something absent, the defect class ADR-0060 named when `SECURITY.md` deferred to a section
+  that did not exist. Added in full at r19.
+
 - **`Str::ulid()` and `Str::uuidV7()` — time-sortable identifiers** (spec **r18 FR-46/NFR-15**,
   RFC-0003; roadmap item **14.2**; **ADR-0063**; closes issue #96). A random v4 UUID as a primary
   key fragments a B-tree index at enterprise table sizes; these carry a 48-bit millisecond
