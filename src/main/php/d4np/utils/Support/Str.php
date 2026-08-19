@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Support;
 
+use DateTimeImmutable;
 use InvalidArgumentException;
+use Psr\Clock\ClockInterface;
 
 /**
- * String utilities: URL-friendly slugs, UUIDs, CSPRNG tokens (spec §2 items 19–21), and the
+ * String utilities: URL-friendly slugs, UUIDs, CSPRNG tokens (spec §2 items 19–21), the
  * FR-31 additions — whitespace collapsing, blank-to-null, charset transcoding, multibyte-safe
- * padding, class-name and case helpers (spec r3, RFC-0002).
+ * padding, class-name and case helpers (spec r3, RFC-0002) — and the FR-46 time-sortable
+ * identifiers, {@see self::ulid()} and {@see self::uuidV7()} (spec r18, RFC-0003).
+ *
+ * **This class holds no state, and one test asserts it.** Every method is a pure function of its
+ * arguments and the CSPRNG. That is load-bearing for FR-46: guaranteeing that two identifiers
+ * drawn in the same millisecond sort in generation order requires remembering the previous call,
+ * and this class deliberately remembers nothing (ADR-0063).
  */
 final class Str
 {
@@ -18,6 +26,24 @@ final class Str
      * unambiguous alphanumerics, upper- and lowercase.
      */
     private const DEFAULT_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+    /**
+     * Crockford's Base32, the ULID specification's encoding: the digits and uppercase letters
+     * with `I`, `L`, `O` and `U` removed — the first three because they are confusable with `1`
+     * and `0` when read aloud or transcribed, the fourth to avoid accidental obscenities.
+     *
+     * Order is the specification's and is what makes a ULID's lexicographic sort agree with its
+     * numeric one: the alphabet is monotonically increasing in ASCII, so comparing the encoded
+     * strings byte by byte compares the underlying integers.
+     */
+    private const CROCKFORD_BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+    /**
+     * The largest instant a 48-bit millisecond timestamp can carry — 10889-08-02T05:31:50.655Z.
+     * Both FR-46 identifier formats spend exactly 48 bits on time, so this ceiling is theirs
+     * rather than this library's choice.
+     */
+    private const MAX_TIMESTAMP_MS = 281474976710655;
 
     private function __construct()
     {
@@ -66,6 +92,83 @@ final class Str
     {
         $bytes = \random_bytes(16);
         $bytes[6] = \chr((\ord($bytes[6]) & 0x0F) | 0x40);
+        $bytes[8] = \chr((\ord($bytes[8]) & 0x3F) | 0x80);
+
+        $hex = \bin2hex($bytes);
+
+        return \sprintf(
+            '%s-%s-%s-%s-%s',
+            \substr($hex, 0, 8),
+            \substr($hex, 8, 4),
+            \substr($hex, 12, 4),
+            \substr($hex, 16, 4),
+            \substr($hex, 20, 12),
+        );
+    }
+
+    /**
+     * A ULID: a 26-character, time-sortable identifier (spec r18 FR-46, RFC-0003; ADR-0063).
+     *
+     * 128 bits — a 48-bit millisecond timestamp followed by 80 bits from {@see random_bytes()} —
+     * encoded in Crockford's Base32. Because that alphabet ascends in ASCII and time occupies the
+     * leading bits, **sorting the strings sorts them by generation time**: the property that makes
+     * these usable as primary keys where a v4 UUID fragments a B-tree index.
+     *
+     * The clock is injectable so a test can pin a known instant; passing nothing reads the system
+     * clock ({@see SystemClock}, spec FR-45).
+     *
+     * **Ordering within a single millisecond is explicitly not guaranteed** — two ULIDs drawn from
+     * the same millisecond share a timestamp prefix and are ordered only by their random tails,
+     * which is to say not ordered at all. Guaranteeing otherwise would require this class to
+     * remember its previous call, and a static method holding cross-call state is the shape this
+     * library refuses everywhere else. The index locality that motivates the format is a
+     * millisecond-granularity property and is unaffected. Both halves of this are pinned by test.
+     *
+     * @throws InvalidArgumentException if the clock reports an instant before the Unix epoch or
+     *                                   beyond what 48 bits of milliseconds can carry — neither is
+     *                                   representable, and silently truncating would produce an
+     *                                   identifier that sorts wrongly rather than one that fails.
+     */
+    public static function ulid(?ClockInterface $clock = null): string
+    {
+        $milliseconds = self::millisecondsFrom($clock, __FUNCTION__);
+
+        // The two halves encode independently because both are whole multiples of five bits:
+        // 48 bits of time into ten characters (the top two of the fifty are always zero, which is
+        // why a ULID's first character never exceeds '7'), and 80 bits of entropy into sixteen.
+        $encoded = '';
+        for ($i = 9; $i >= 0; $i--) {
+            $encoded = self::CROCKFORD_BASE32[$milliseconds & 31] . $encoded;
+            $milliseconds >>= 5;
+        }
+
+        return $encoded . self::encodeBase32(\random_bytes(10));
+    }
+
+    /**
+     * A version 7 UUID: RFC 9562's time-ordered layout, in the familiar 36-character form
+     * (spec r18 FR-46, RFC-0003; ADR-0063).
+     *
+     * 48 bits of big-endian millisecond timestamp, the version nibble `7`, the variant bits `10`,
+     * and the remaining 74 bits from {@see random_bytes()}. Sorts by generation time for the same
+     * reason {@see self::ulid()} does, and is the answer where a consumer needs the sortability
+     * but a UUID-shaped column: it is a valid UUID everywhere {@see self::uuid()} is.
+     *
+     * The same clock injection, the same 48-bit range refusal, and the **same explicit
+     * non-guarantee of ordering within one millisecond** as `ulid()` — see there for why.
+     *
+     * @throws InvalidArgumentException if the instant is before the Unix epoch or beyond 48 bits
+     */
+    public static function uuidV7(?ClockInterface $clock = null): string
+    {
+        $milliseconds = self::millisecondsFrom($clock, __FUNCTION__);
+
+        // `J` packs 64 bits big-endian; the low six bytes are the 48-bit timestamp the format
+        // asks for. The version and variant nibbles are then stamped over random bytes exactly as
+        // self::uuid() stamps them, because RFC 9562 places them at the same offsets for every
+        // version.
+        $bytes = \substr(\pack('J', $milliseconds), 2) . \random_bytes(10);
+        $bytes[6] = \chr((\ord($bytes[6]) & 0x0F) | 0x70);
         $bytes[8] = \chr((\ord($bytes[8]) & 0x3F) | 0x80);
 
         $hex = \bin2hex($bytes);
@@ -372,5 +475,62 @@ final class Str
     private static function viaAsciiFilter(string $value): string
     {
         return \preg_replace('/[^\x20-\x7E]/', '', $value) ?? '';
+    }
+
+    /**
+     * Milliseconds since the Unix epoch, from the given clock or the system one, refused when
+     * outside what 48 bits can carry.
+     *
+     * `U * 1000 + v` rather than a float `microtime()`: `v` is always the 0–999 milliseconds
+     * *within* the second and `U` is the whole second, so the arithmetic stays exact and stays
+     * correct for pre-epoch instants (where `U` is negative and `v` is not) — which is precisely
+     * how such an instant is detected below instead of silently wrapping.
+     *
+     * @param non-empty-string $method the caller's name, so the refusal names the API the
+     *                                 consumer actually called rather than this private helper
+     *
+     * @throws InvalidArgumentException if the instant is not representable in 48 bits
+     */
+    private static function millisecondsFrom(?ClockInterface $clock, string $method): int
+    {
+        $now = ($clock ?? new SystemClock())->now();
+        $milliseconds = ((int) $now->format('U')) * 1000 + ((int) $now->format('v'));
+
+        if ($milliseconds < 0 || $milliseconds > self::MAX_TIMESTAMP_MS) {
+            throw new InvalidArgumentException(\sprintf(
+                'Str::%s() needs an instant between the Unix epoch and %s, got %s.',
+                $method,
+                (new DateTimeImmutable('@281474976710'))->format('Y-m-d\TH:i:s\Z'),
+                $now->format(DateTimeImmutable::ATOM),
+            ));
+        }
+
+        return $milliseconds;
+    }
+
+    /**
+     * Crockford Base32 over a byte string whose bit count is a multiple of five.
+     *
+     * Callers pass ten bytes (80 bits → 16 characters, exactly), so no padding case exists and
+     * none is invented: a partial final group would need a padding convention, and the two
+     * formats that use this never produce one.
+     */
+    private static function encodeBase32(string $bytes): string
+    {
+        $encoded = '';
+        $accumulator = 0;
+        $bits = 0;
+
+        for ($i = 0, $length = \strlen($bytes); $i < $length; $i++) {
+            $accumulator = ($accumulator << 8) | \ord($bytes[$i]);
+            $bits += 8;
+
+            while ($bits >= 5) {
+                $bits -= 5;
+                $encoded .= self::CROCKFORD_BASE32[($accumulator >> $bits) & 31];
+            }
+        }
+
+        return $encoded;
     }
 }
