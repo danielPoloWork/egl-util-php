@@ -16,8 +16,6 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 
 ## Index
 
-_No defects recorded yet._
-
 | Bug | Title | Severity | Status | Fixed in |
 |-----|-------|----------|--------|----------|
-| —   | —     | —        | —      | —        |
+| [BUG-0001](2026/08/BUG-0001-constant-time-registry-blind-to-prefixed-calls.md) | The constant-time comparison registry has been blind to every call since function prefixing landed | medium | fixed | v1.1.0 |

@@ -80,3 +80,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0062](0062-the-clock-seam-ships-both-halves-and-support-gains-its-first-outward-edge.md) | The clock seam ships both halves, and Support gains its first outward edge | Accepted |
 | [0063](0063-sortable-identifiers-refuse-to-truncate-and-prove-their-non-monotonicity-by-mechanism.md) | Sortable identifiers refuse to truncate, and prove their non-monotonicity by mechanism | Accepted |
 | [0064](0064-pagination-refuses-an-unordered-query-and-the-count-is-a-builder-clause.md) | Pagination refuses an unordered query, and the count is a builder clause | Accepted |
+| [0065](0065-a-detached-signature-over-a-derived-key-with-the-algorithm-never-in-the-token.md) | A detached signature over a derived key, with the algorithm never in the token | Accepted |

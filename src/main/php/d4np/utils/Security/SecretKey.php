@@ -91,8 +91,12 @@ final class SecretKey
     }
 
     /**
-     * @internal {@see Crypto} only. Exposing the raw bytes any wider would defeat the point of
-     *           wrapping them.
+     * @internal {@see Crypto} and {@see Hmac} only. Exposing the raw bytes any wider would defeat
+     *           the point of wrapping them. `Hmac` joined 2026-08-20 (spec r20 FR-48, ADR-0065)
+     *           and does **not** use these bytes as its MAC key: it derives a domain-separated
+     *           subkey with HKDF first, so one `SecretKey` reused for encryption and signing —
+     *           the single-`APP_SECRET` deployment, which is the common one — never feeds the
+     *           same bytes to two primitives.
      */
     public function bytes(): string
     {

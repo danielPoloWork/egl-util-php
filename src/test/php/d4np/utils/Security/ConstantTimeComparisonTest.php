@@ -6,6 +6,7 @@ namespace D4np\Utils\Tests\Security;
 
 use D4np\Utils\Http\CsrfToken;
 use D4np\Utils\Security\Hash;
+use D4np\Utils\Security\Hmac;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
@@ -56,6 +57,7 @@ final class ConstantTimeComparisonTest extends TestCase
     {
         yield 'CsrfToken::validate()' => [CsrfToken::class, 'validate', 'hash_equals', 'stored', 'token'];
         yield 'Hash::verify()' => [Hash::class, 'verify', 'password_verify', 'password', 'hash'];
+        yield 'Hmac::verify()' => [Hmac::class, 'verify', 'hash_equals', 'mac', 'expected'];
     }
 
     /**
@@ -177,6 +179,43 @@ final class ConstantTimeComparisonTest extends TestCase
     }
 
     /**
+     * The scanner must be able to SEE the comparisons, not merely find no unregistered ones.
+     *
+     * This is BUG-0001's regression guard, and it exists because the failure it guards against was
+     * **green**, not red: when ADR-0048 prefixed every internal call, the scanner's token filter
+     * stopped matching and `assertSame([], $unregistered)` above compared an empty list against an
+     * empty list — for ten items, across two security items. A test that passes because it found
+     * nothing to check is indistinguishable, from the outside, from one that passes because
+     * everything checked out.
+     *
+     * Asserting `>=` rather than `===` on purpose: a legitimately unregistered call would be caught
+     * by the test above, and pinning an exact count here would make this file fail twice for one
+     * cause.
+     */
+    public function testTheScannerCanSeeEveryRegisteredComparison(): void
+    {
+        $seen = 0;
+        foreach (self::libraryFiles() as $file) {
+            $seen += \count(self::constantTimeCallsIn($file));
+        }
+
+        $registered = \count([...self::secretComparisonPaths()]);
+
+        self::assertGreaterThanOrEqual(
+            $registered,
+            $seen,
+            \sprintf(
+                'the source scanner sees %d constant-time comparison(s) but %d path(s) are '
+                . 'registered, so it has gone blind to at least one and the completeness check '
+                . 'above is passing on an empty set (BUG-0001: \\hash_equals tokenizes as '
+                . 'T_NAME_FULLY_QUALIFIED, not T_STRING)',
+                $seen,
+                $registered,
+            ),
+        );
+    }
+
+    /**
      * @return list<string>
      */
     private static function libraryFiles(): array
@@ -200,6 +239,18 @@ final class ConstantTimeComparisonTest extends TestCase
     /**
      * Calls to a constant-time comparator in `$file`, ignoring comments and method names.
      *
+     * **Both token shapes, and that is BUG-0001.** PHP tokenizes `hash_equals(…)` as `T_STRING`
+     * but `\hash_equals(…)` as `T_NAME_FULLY_QUALIFIED` carrying the leading backslash. This
+     * matched only the former until 2026-08-20, and ADR-0048's `native_function_invocation` rule
+     * had prefixed the entire tree at item 10.12 — so the scanner saw **0** of the library's 3
+     * comparisons and {@see testTheRegistryNamesEverySecretComparisonInTheLibrary()} passed on an
+     * empty set for ten items. The two text-searching tests in this file were unaffected, because
+     * `\hash_equals(` still contains `hash_equals(`, which is why the file looked healthy.
+     *
+     * Item 10.12's audit checked the other source-inspecting tests and called them safe because
+     * they "match patterns, not spellings". This one matched a **token type** — a category that
+     * audit did not have, and the one the prefixing changed.
+     *
      * @return list<array{string, int}>
      */
     private static function constantTimeCallsIn(string $file): array
@@ -208,17 +259,25 @@ final class ConstantTimeComparisonTest extends TestCase
         $calls = [];
 
         foreach ($tokens as $index => $token) {
-            if (!\is_array($token) || $token[0] !== T_STRING || !\in_array($token[1], self::CONSTANT_TIME, true)) {
+            if (!\is_array($token) || !\in_array($token[0], [T_STRING, T_NAME_FULLY_QUALIFIED], true)) {
                 continue;
             }
 
-            // `->hash_equals` or `::hash_equals` would be a method, not the PHP function.
+            // Compare on the bare name: this must be indifferent to whether the call is prefixed,
+            // which is the whole of BUG-0001.
+            $name = \ltrim($token[1], '\\');
+            if (!\in_array($name, self::CONSTANT_TIME, true)) {
+                continue;
+            }
+
+            // `->hash_equals` or `::hash_equals` would be a method, not the PHP function. Only
+            // reachable for T_STRING; a T_NAME_FULLY_QUALIFIED can never follow either operator.
             $previous = $tokens[$index - 1] ?? null;
             if (\is_array($previous) && \in_array($previous[0], [T_OBJECT_OPERATOR, T_DOUBLE_COLON], true)) {
                 continue;
             }
 
-            $calls[] = [$token[1], $token[2]];
+            $calls[] = [$name, $token[2]];
         }
 
         return $calls;
