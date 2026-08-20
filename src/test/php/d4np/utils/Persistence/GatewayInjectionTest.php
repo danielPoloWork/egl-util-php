@@ -7,6 +7,7 @@ namespace D4np\Utils\Tests\Persistence;
 use D4np\Utils\Database\DatabaseConnection;
 use D4np\Utils\Database\MutationBuilder;
 use D4np\Utils\Database\SqlStatement;
+use D4np\Utils\Persistence\PageRequest;
 use D4np\Utils\Persistence\RowNormalizer;
 use D4np\Utils\Persistence\TableGateway;
 use D4np\Utils\Support\DatabaseException;
@@ -164,6 +165,41 @@ final class GatewayInjectionTest extends TestCase
     }
 
     #[DataProvider('payloads')]
+    public function testGatewayPaginateByBindsTheCriterion(string $payload): void
+    {
+        $this->gateway->paginateBy(['name' => $payload], PageRequest::of(1, 10));
+
+        $this->assertBoundNeverInlined($payload);
+    }
+
+    #[DataProvider('payloads')]
+    public function testTheCountBehindAPageBindsTheCriterionToo(string $payload): void
+    {
+        // A paginated read issues TWO statements, and the COUNT is the one a value could slip
+        // into unnoticed: the rows are covered by the leg above, and a count that inlined its
+        // filter would still return a plausible number nobody would question.
+        $this->gateway->paginateBy(['name' => $payload], PageRequest::of(1, 10));
+
+        $counts = \array_values(\array_filter(
+            $this->log->entries,
+            static fn (array $entry): bool => \str_contains($entry['sql'], 'COUNT(*)'),
+        ));
+
+        self::assertNotSame([], $counts, 'the page issued no COUNT statement, so this would be vacuous');
+
+        foreach ($counts as $entry) {
+            // The empty string is degenerate for a substring check — every string contains it —
+            // so this half is skipped rather than fudged, exactly as assertBoundNeverInlined()
+            // does for the same corpus member.
+            if ($payload !== '') {
+                self::assertStringNotContainsString($payload, $entry['sql']);
+            }
+
+            self::assertContains($payload, $entry['params'] ?? []);
+        }
+    }
+
+    #[DataProvider('payloads')]
     public function testGatewayUpdateBindsTheValueBeingWritten(string $payload): void
     {
         $this->seed(1, 'Ada');
@@ -281,6 +317,9 @@ final class GatewayInjectionTest extends TestCase
         yield 'updateBy criterion'  => [static fn (TableGateway $g, string $id): mixed => $g->updateBy([$id => 'x'], ['name' => 'y'])];
         yield 'updateBy value'      => [static fn (TableGateway $g, string $id): mixed => $g->updateBy(['name' => 'y'], [$id => 'x'])];
         yield 'deleteBy criterion'  => [static fn (TableGateway $g, string $id): mixed => $g->deleteBy([$id => 'x'])];
+        // r19 FR-47's read paths. `paginateBy` reaches the same allowlist through a builder that
+        // also carries an ORDER BY and a window, so its refusal has more to get wrong, not less.
+        yield 'paginateBy criterion' => [static fn (TableGateway $g, string $id): mixed => $g->paginateBy([$id => 'x'], PageRequest::of(1, 10))];
     }
 
     /**

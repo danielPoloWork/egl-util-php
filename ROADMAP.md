@@ -1872,7 +1872,7 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       improvement. Also decided: an unrepresentable instant is **refused, never truncated**, since
       a wrapped timestamp is a well-formed identifier that sorts wrongly — silent corruption of the
       one property the format exists for, in a primary key that outlives the bug.)*
-- [ ] 14.3 `Persistence\PageRequest` + `Persistence\Page<T>` — **FR-47** (RFC-0003). Readonly value
+- [x] 14.3 `Persistence\PageRequest` + `Persistence\Page<T>` — **FR-47** (RFC-0003). Readonly value
       objects; an invalid page or size is **refused, not clamped** (the group's stance). `Page<T>`
       carries items, total and the derived page count with `@template` generics matching
       `TableGateway<T>` — static-analysis only, as `Collection<T>` already is and as
@@ -1885,7 +1885,30 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       by omission. Window-function totals were rejected on portability — this project's database
       proof is **SQLite-only** (issue #110), so a construct with version-dependent support across
       three engines cannot be claimed to work. Extend the T-13 injection suite to the new read
-      paths. Closes issue #95 — size: S · route: frontier-reasoning / extra (adr, protected floor)
+      paths. Closes issue #95 — size: S · route: frontier-reasoning / extra (adr, protected floor) *(delivered — spec **r19** (FR-47), **ADR-0064**; 2 978 tests (+110: 31 new,
+      79 T-13 legs the paginated paths inherit); six plants, six caught. **Two decisions the item
+      as filed did not name, both about correctness rather than surface.** First, **an unordered
+      query is refused**: SQL promises no row order without ORDER BY, so consecutive windows can
+      repeat one row and skip another while every page looks perfectly valid — and it does not
+      reproduce on SQLite over an INTEGER PRIMARY KEY, where rows usually come back in rowid order,
+      so the bug ships. `Repository::fetchPage()` refuses it via a new `QueryBuilder::isOrdered()`;
+      the gateway's own `paginate()`/`paginateBy()` order by the key column instead of pushing the
+      choice onto callers — the **opposite** answer to `all()`'s deliberate absence of ordering, and
+      from the same rule: never invent an ordering the caller does not need, and a paginated read
+      needs one. Second, the count had to become a **builder clause** (`asRowCount()`): `COUNT(*)`
+      cannot pass FR-07's allowlist, so producing it inside Persistence would have required
+      `composed()` — spending the zero-in-library-uses property that makes `grep composed(` a review
+      list (ADR-0041). ADR-0044's precedent, reused. **Two things worth carrying from the run.**
+      PHPStan proved my first overflow guard was theatre: `is_int(($page-1)*$size)` is always true
+      to an analyser that models int×int as int, while PHP yields a float on overflow — real at
+      runtime, unprovable statically, so it reads as a guard while the analyser is certain it never
+      fires; reformulated as a division asked before multiplying. And the plant that removed the
+      window-clearing from `asRowCount()` failed only the direct builder test, never a behavioural
+      one — because `fetchPage()` counts *before* windowing, so that clearing is defence for public
+      API rather than a path this library exercises. Kept and said so, rather than kept silently.
+      **Also repaired here: FR-46's §2 spec entry, which item 14.2 never wrote** — NFR-15 and r18's
+      own revision row referenced a requirement the spec did not contain, the defect class ADR-0060
+      named.)*
 - [ ] 14.4 `Security\Hmac` — **FR-48**, signed URLs and webhook signatures (RFC-0003).
       `sign()`/`verify()` over a **versioned compact token**, the shape ADR-0054 established for
       `Crypto` (`v1.` + base64url). Key material is `SecretKey` only — the type is the enforcement.
@@ -1957,11 +1980,11 @@ Legend: ⏳ not started · 🚧 in progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & design philosophy | 1.1, 1.6 | ✅ |
-| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002); r17/r18 add FR-45–46 (RFC-0003) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4; 14.1–14.2 | ✅ |
+| §2 | Functional items 1–25 (+9b); r3 adds FR-27–44 (RFC-0002); r17–r19 add FR-45–47 (RFC-0003) | 2.1–2.5, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1–6.2, 6.4–6.5; 9.1–9.5, 10.1–10.4, 11.1–11.3, 12.1, 12.3–12.4; 14.1–14.3 | ✅ |
 | §3 | Architecture & layering (deptrac); r3 adds Persistence/Mail + named edges; r17 adds Support→Psr | 1.1, 1.6, 2.1, 2.5, 10.2–10.3, 12.4, 14.1 | ✅ |
 | §4 | NFR budgets & benchmark methodology; r3 adds NFR-09–14; r16 splits target from CI ceiling; r18 adds NFR-15 | 3.5, 4.5, 5.5, 6.4, 7.1, 9.6, 10.6, 10.11–10.12, 11.5–11.7, 12.3, 12.5–12.6, 14.2 | ✅ |
 | §5 | Security test criteria; r3 adds T-08/09/10/13 | 4.4, 5.4, 5.5, 6.3, 9.4, 10.5, 11.4, 12.2, 12.4 | ✅ |
 | §6 | API example / public interface | 1.6, 3.1, 10.3–10.4, 11.3, 12.4 | ✅ |
-| §7 | Verification & test strategy (r3) | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4 | ✅ |
+| §7 | Verification & test strategy (r3); r19 extends T-13 to the paginated reads | 1.2, 2.6, 3.1, 3.4, 4.4, 6.3, 8.2, 9.5, 10.2, 10.5, 10.11, 11.2, 11.4, 12.2–12.4, 14.3 | ✅ |
 | §8 | CI/CD & release engineering | 1.4, 1.7, 7.1–7.3, 8.3 | ✅ |
-| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs; M14 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6, 14.1–14.2, 14.6 | ✅ |
+| §9 | Decision log (imported + seeded ADRs); r3 items carrying ADRs; M14 items carrying ADRs | 2.1, 5.3, 7.4, 9.3–9.4, 10.1, 10.3–10.4, 10.11–10.12, 11.1–11.2, 11.6–11.7, 12.1, 12.3–12.4, 12.6, 14.1–14.3, 14.6 | ✅ |
