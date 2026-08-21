@@ -54,10 +54,22 @@ pre-1.0 milestone-driven.
    **The `-s` is not optional**: the release workflow refuses an unsigned tag (see *Release-time
    gates* below).
 9. **Publish** the GitHub Release — *the maintainer* (the deliberate human checkpoint).
-10. **CI drafts the Release body** on the tag push — `draft-release`'s `softprops/action-gh-release`
-    step sets only `draft`, `generate_release_notes` and `body_path`; it attaches no build
-    artifacts. The release IS the tagged source (`composer require` resolves it via the Packagist
-    integration, item 2 above), not a downloadable binary — there is nothing to build and attach.
+10. **CI drafts the Release body** on the tag push, rendered rather than copied.
+    `tools/release_body.py` reads `docs/releases/v<X.Y.Z>.md`, **rebases its relative links to
+    absolute `blob/<tag>` URLs**, drops the H1 (the Release page supplies its own title), and
+    `draft-release` publishes that. The rebasing is not cosmetic: the notes' links are written
+    against `docs/releases/`, and a Release body is not served from there — published verbatim they
+    would not resolve. The tool **refuses (exit 2)** on a relative link whose target is missing,
+    rather than shipping a 404 to every consumer, so a dangling link fails the release instead of
+    reaching it. `tools/tests/verify_release_body.py` proves both behaviours and runs on every PR.
+    No build artifacts are attached: the release IS the tagged source (`composer require` resolves
+    it via the Packagist integration, item 2 above), not a downloadable binary.
+
+    **Do not hand-edit a published Release body.** It is generated from the notes file, so an edit
+    made on GitHub is overwritten by the next render and lost from the record. Correct
+    `docs/releases/v<X.Y.Z>.md` instead. The `v1.0.0` body was hand-written only because
+    `verify-tag` failed on an unsigned tag and skipped `draft-release` altogether — the mechanism
+    was never the problem; the skipped gate was (issues #115, #122).
 
 
 ## Release-time gates

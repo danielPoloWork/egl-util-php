@@ -137,15 +137,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The notes carry RELATIVE links, written against docs/releases/. A Release body is not
+      # served from that directory, so publishing the file verbatim would ship links that do not
+      # resolve -- and the v1.0.0 body a human published by hand carries absolute blob/<tag> URLs,
+      # a conversion nothing in this repository performed. This step performs it, so the drafted
+      # body and the reviewed body are the same text. It refuses (exit 2) on a dangling link
+      # rather than publishing a 404 to every consumer.
+      - name: Render the Release body from the notes
+        shell: bash
+        run: |
+          python tools/release_body.py \
+            --tag "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            > "$RUNNER_TEMP/release-body.md"
+          echo "::notice title=Release body::Rendered $(wc -l < "$RUNNER_TEMP/release-body.md") lines from docs/releases/${{ github.ref_name }}.md with relative links rebased to this tag."
+
       - name: Draft the release (a human publishes it)
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           draft: true
           generate_release_notes: true
-          # The hand-written notes are the substance; GitHub's generated list is appended context.
-          # release_gate.py has already asserted this file exists, so a missing one fails earlier
-          # and with a better message than this action would give.
-          body_path: docs/releases/${{ github.ref_name }}.md
+          # The rendered notes are the substance; GitHub's generated list is appended context.
+          # release_gate.py has already asserted the source file exists, so a missing one fails
+          # earlier and with a better message than this action would give.
+          body_path: ${{ runner.temp }}/release-body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

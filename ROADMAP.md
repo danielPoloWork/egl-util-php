@@ -1785,7 +1785,7 @@ the release process around it.
       a procedure that fails. `.specs/` deliberately NOT excluded (2 of the 19 live there): an
       exclusion is a blind spot, and if the maintainer wants that input frozen it should be a
       decision rather than a default.*
-- [ ] 13.5 Pick one home for release notes. `CHANGELOG.md`'s header directs readers to
+- [x] 13.5 Pick one home for release notes. `CHANGELOG.md`'s header directs readers to
       `docs/changelog/v<MAJOR>/`; `docs/README.md` documents `docs/releases/`. **Both exist and both
       hold a v1.0.0 file**, so a maintainer updating "the" release notes has even odds of editing
       the copy nobody reads. Choose the canonical location, reduce the other to a pointer, and
@@ -1797,8 +1797,51 @@ the release process around it.
       low *(issue #88 coordinated with this item rather than folded into it — a highlights section
       inside each per-version changelog file, plus the matching step in `docs/workflow/release.md`,
       is orthogonal to which of the two locations wins the canonical-home decision below, so it
-      shipped independently under #88 and is done. This item's own question — location — remains
-      open.)*
+      shipped independently under #88 and is done.)* *(closed by issue #106; route matched — Opus 5.)*
+      ***The item's premise was wrong, and measuring it is what showed that.*** "Both hold a v1.0.0
+      file" is true; "even odds of editing the copy nobody reads" is not. They are **not copies**:
+      `docs/releases/v1.0.0.md` is 156 lines of consumer narrative (what the freeze means for you,
+      what to know before upgrading, the known limits) and `docs/changelog/v1/v1.0.0.md` is 1,213
+      lines of Keep-a-Changelog record (`Added`/`Changed`/`Fixed`/`Deprecated`/`Removed`/`Security`).
+      Collapsing either into "a pointer" as written would have **destroyed a distinct artifact**.
+      So the canonical-home question was answered per document rather than between them:
+      `docs/releases/` is canonical **for the GitHub Release body**, `docs/changelog/` canonical
+      **for the record of what changed**, and the real defect was that each pointer concealed the
+      other's existence — `CHANGELOG.md`'s header named only the changelog, `docs/README.md` only
+      the releases directory, and `docs/changelog/` had no README at all. All four now state what
+      they are and cross-reference the other; `docs/README.md`'s table gains the two rows it omitted
+      (`docs/rfc/`, `docs/changelog/`).
+      **Issue #106's second criterion was already satisfied, and named the wrong file.** It asks that
+      `release.yml`'s draft job build the body from `docs/changelog/v<MAJOR>/v<X.Y.Z>.md` — but the
+      job has always used `body_path: docs/releases/<tag>.md`, and putting a 1,213-line itemized
+      changelog in a Release body is not what anyone wants. The published `v1.0.0` body is
+      `docs/releases/v1.0.0.md`, confirmed against the live Release. The premise behind the criterion
+      — *"the body was hand-written, which is how the false sentence reached consumers"* — also
+      misattributes: the body was hand-written because `verify-tag` failed on the unsigned tag and
+      **skipped `draft-release` entirely**. The mechanism existed; the gate feeding it did not run.
+      **The real defect the automated path hid**: the notes carry **five relative links** written
+      against `docs/releases/`, and a Release body is not served from there, so `body_path` would
+      have published links that do not resolve. The hand-published body carries absolute
+      `blob/v1.0.0/…` URLs — **a conversion nothing in this repository performed**. Because the
+      automated path had never run, its output had never been looked at. `tools/release_body.py`
+      performs the conversion, and the evidence it is the right one is that it reproduces **4 of 4**
+      of the published body's GitHub URLs, including the trailing slash on `docs/benchmarks/` that
+      `normpath()` silently ate on the first attempt. It **refuses (exit 2)** on a dangling relative
+      link rather than shipping a 404 to consumers, and on missing notes.
+      `tools/tests/verify_release_body.py` — 11 cases — proves both refusals and runs on every PR,
+      not only at a tag, so a link broken today surfaces before it can read as a broken release.
+      **Two portability defects were caught only because the tool ran on this Windows box**: stdout
+      and then stderr both encode as cp1252 there, and the notes carry `≥`, `µ` and em dashes, so
+      each stream raised in turn. CI is Linux and would never have shown either. **One defect, two
+      streams — the same shape as item 13.2's harness bug, and I fixed only the first one again
+      before the proof script caught the second.**
+      **Journal index backfilled**: 29 rows against **86** files on disk (13.5 counted 28 against 69;
+      the gap grew while the item waited). Regenerated from disk rather than hand-typed, with the
+      order recovered from `git log --diff-filter=A` so intra-day session sequence is the real one
+      rather than invented — all 86 files had a recoverable add-commit and an H1 title.
+      **`release.md` step 10 now also says what not to do**: never hand-edit a published Release
+      body, because it is generated and an edit made on GitHub is overwritten by the next render and
+      lost from the record.*
 - [x] 13.6 Add the community files a public repository is expected to carry. `CONTRIBUTING.md` and
       `CODE_OF_CONDUCT.md` are both absent: `AGENTS.md` encodes the contribution contract for
       **agents**, leaving an outside human contributor with no front door and no statement of what a
