@@ -1,6 +1,13 @@
 # ADR-0069: Resolve links in the lint, and refuse to guess a numbered section
 
-- **Status:** Accepted
+- **Status:** Accepted — **scope amended** (2026-08-21, same day): a link whose target
+  `.gitignore` excludes is **out of scope**, for the same reason an external URL is. §3's list of
+  stated limits gains that line. **The check's substance is unchanged** — every tracked relative
+  link still resolves, anchors still find headings, and the numbered-`§` refusal stands.
+  The amendment exists because this check **merged green and left `master` red**: its six findings
+  were `.eados-core/` factory-bundle files that `.gitignore` admits only under `learning/runs/`,
+  so they are present on a maintainer's machine and in no clone. The verdict depended on the host.
+  Annotated rather than edited, per ADR-0041's precedent.
 - **Date:** 2026-08-21
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item **13.4** · issues
@@ -68,6 +75,31 @@ So the limitation is printed on every run, beside the count of what *was* resolv
 `coverage_gate.py`'s pattern verbatim, and it is worth noting what that pattern produced: ADR-0007
 stated its own limitation in output, and eighteen ADRs later that sentence became issue #109 and got
 closed. **A stated gap is a filed issue waiting to happen; a silent one is not.**
+
+#### 3b. A `.gitignore`'d target is out of scope, and the count is printed too
+
+*(Amendment, 2026-08-21 — see Status.)* A link into a path `.gitignore` excludes is skipped, and the
+number skipped is printed beside the number resolved, in §3's own idiom. Here that is six references
+into the `.eados-core/` factory bundle, which `.gitignore` admits only under `learning/runs/`.
+
+**The rule is keyed on ignore status, not on the file being missing**, and that distinction is the
+whole amendment. Keying on absence would leave the defect in place: the bundle exists on a
+maintainer's machine and in no clone, so the same commit passed locally and failed in CI. Keying on
+ignore status makes the verdict identical on every host — proved by creating one of the ignored files
+and confirming the counts do not move, where before its mere presence flipped FAIL to OK.
+
+The status is asked of `git check-ignore` rather than pattern-matched in the lint, so the rule stays
+where the project already states it and cannot drift from `.gitignore`.
+
+**A note for whoever ports this**: it must be invoked `-z` and over bytes. Text mode translates the
+outgoing newline to `\r\n` on Windows, git receives every path with a trailing carriage return, and
+then C-quotes the reply — `'".eados-core/tools/autotune.py\r"'` — which matches nothing on the way
+back. The first implementation did exactly that and reported nothing ignored.
+
+**And the lesson §5's proof did not cover.** §5 proved this check could fail, which is the standing
+method — but it proved it on a machine holding files the check depends on and CI never sees. So:
+**a checker's first green run is not evidence it will stay green elsewhere.** Prove a new gate on a
+clean clone, or read its CI run, before treating a local green as the verdict.
 
 ### 4. The roll step is amended, and the checker is what enforces it
 

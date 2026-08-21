@@ -85,6 +85,41 @@ def git(*args):
         return None
 
 
+def gitignored(paths):
+    """The subset of `paths` (repo-relative, POSIX separators) that `.gitignore` excludes.
+
+    Asked of git rather than pattern-matched here on purpose: the rule then lives wherever the
+    project already states it, and cannot drift from `.gitignore` as this file is edited.
+
+    One batched call — `check-ignore` is invoked once for every link in the tree, and per-path
+    subprocesses would dominate the lint's runtime.
+    """
+    if not paths:
+        return set()
+    # NUL-delimited in BOTH directions, and bytes rather than text, for two reasons that each
+    # broke this on Windows: text mode translates the outgoing "\n" to "\r\n", so git receives
+    # every path with a trailing carriage return; and git then C-quotes any name it considers
+    # unusual, so the reply comes back as '".eados-core/tools/autotune.py\r"' and matches nothing
+    # on the way home. `-z` removes the delimiter ambiguity and the quoting together.
+    try:
+        out = subprocess.run(
+            ["git", "-C", ROOT, "check-ignore", "-z", "--stdin"],
+            input=b"\0".join(p.encode("utf-8") for p in sorted(paths)),
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        return set()
+    # 0 = at least one path is ignored, 1 = none are. Anything else is a real git failure, and
+    # returning empty then is the safe direction: every link stays IN scope and gets checked.
+    if out.returncode not in (0, 1):
+        return set()
+    return {
+        chunk.decode("utf-8", "replace").replace(os.sep, "/")
+        for chunk in out.stdout.split(b"\0")
+        if chunk
+    }
+
+
 def semver_tuple(text):
     m = re.search(r"(\d+)\.(\d+)\.(\d+)", text)
     return tuple(int(g) for g in m.groups()) if m else None
@@ -466,6 +501,30 @@ def check_links():
         except OSError as exc:
             fail(name, f"{rel}: cannot be read ({exc})")
 
+    # A link whose target `.gitignore` excludes is OUT OF SCOPE, for the same reason an external
+    # URL is: the file is deliberately absent from every clone, so the reference is unresolvable
+    # by design rather than broken by accident. Here that is the `.eados-core/` factory bundle,
+    # which `.gitignore` admits only under `learning/runs/`.
+    #
+    # The exclusion is by ignore status and NOT by "the file happens to be missing", because the
+    # whole defect this fixes was a verdict that depended on the host: the bundle is present on a
+    # maintainer's machine and in no clone, so the check passed locally and failed in CI on the
+    # same commit. Keying on ignore status makes the verdict identical everywhere.
+    candidates = set()
+    for rel, raw in bodies.items():
+        base = os.path.dirname(rel)
+        for match in _MD_LINK.finditer(_without_fenced_blocks(raw)):
+            target = match.group(1)
+            if target.startswith(("http://", "https://", "mailto:", "tel:")):
+                continue
+            path = target.partition("#")[0]
+            if not path:
+                continue
+            absolute = os.path.normpath(os.path.join(ROOT, base, path))
+            candidates.add(os.path.relpath(absolute, ROOT).replace(os.sep, "/"))
+    ignored = gitignored(candidates)
+    out_of_scope = 0
+
     resolved = 0
 
     for rel, raw in bodies.items():
@@ -479,16 +538,20 @@ def check_links():
 
             line = body[: match.start()].count("\n") + 1
             path, _, anchor = target.partition("#")
-            resolved += 1
 
             if path:
                 absolute = os.path.normpath(os.path.join(ROOT, base, path))
+                pointee = os.path.relpath(absolute, ROOT).replace(os.sep, "/")
+                if pointee in ignored:
+                    out_of_scope += 1
+                    continue
+                resolved += 1
                 if not os.path.exists(absolute):
                     fail(name, f"{rel}:{line}: link target does not exist — {target}")
                     continue
-                pointee = os.path.relpath(absolute, ROOT).replace(os.sep, "/")
             else:
                 pointee = rel  # a same-file "#anchor"
+                resolved += 1
 
             if not anchor:
                 continue
@@ -535,6 +598,9 @@ def check_links():
           "Markdown file(s).")
     print("          NOT resolved: external URLs, and bare or numeric § references "
           "(`§2`) — see ADR-0069.")
+    if out_of_scope:
+        print(f"          {out_of_scope} reference(s) skipped as .gitignore'd targets — absent "
+              "from every clone by design, so unresolvable rather than broken.")
 
 
 CHECKS = [
