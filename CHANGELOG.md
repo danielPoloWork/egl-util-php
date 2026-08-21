@@ -17,6 +17,23 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A published API reference, and a gate that cannot pass vacuously** — `phpdoc.dist.xml`,
+  `.github/workflows/api-docs.yml`, `tools/api_docs_gate.py` (issue #107, ROADMAP 13.7,
+  **ADR-0070**). `AGENTS.md` §10 had listed *"phpDocumentor builds without warnings"* as a mandatory
+  gate since this repository was generated, with **no config, no dependency, no CI job and no
+  published output anywhere**. CI now builds the reference on every pull request and publishes it to
+  **GitHub Pages** from `master`.
+  **The gate reads phpDocumentor's report, not its exit code**, and that is the whole design.
+  Measured before anything was wired: the console printed `All done in 20 seconds!`, the exit status
+  was `0`, and `build/api/reports/errors.html` held **five ERROR rows**. A job that trusted `$?`
+  would have gone green having verified nothing — the fourth instance of that failure class here,
+  after items 2.7, 10.8 and 13.2. A **missing or unparseable** report exits 2 rather than passing.
+  `tools/tests/verify_api_docs_gate.py` (10 cases) proves the pass, the failure, the count, and both
+  refusals, and runs on every PR.
+  phpDocumentor is fetched as a PHAR pinned by version **and SHA-256**, not added to `require-dev`
+  (ADR-0031/0040's stance). The pin is not ceremony: **v3.10.0 — what `latest` resolves to — crashes
+  on startup** before printing its own `--version`.
+
 - **The GitHub Release body is rendered, not copied** — `tools/release_body.py`, wired into
   `release.yml`'s `draft-release` job (issue #106, ROADMAP 13.5). It reads
   `docs/releases/v<X.Y.Z>.md`, rebases every relative link to an absolute `blob/<tag>` URL, and
@@ -225,6 +242,15 @@ the GitHub Release body. Editing "the release notes" almost always means that on
     overflow PHP's integer range. `pageCount()` is `1` for an empty result set, never `0`.
 
 ### Fixed
+
+- **Eight generic docblock annotations no longer break the API-docs build.** `@return self<U>` in
+  `Errors/Result.php` (five) and `@return self<TItem>` in `Dto/Collection.php` (three) use PHPStan's
+  generic `self<T>` form, which phpDocumentor's type parser rejects — *"self is not a collection"* —
+  and therefore **silently drops from the published reference**. They now name the class:
+  `Result<U>`, `Collection<TItem>`. PHPStan at max level accepts both identically and still reports
+  `No errors`; CS-Fixer is clean across 282 files and the 51 `Collection`/`Result` tests pass.
+  Nothing was suppressed to achieve it — `phpdoc.dist.xml` carries no `ignore-tags` block, because
+  silencing `@template` would have hidden the generics from consumers to spare one tool's parser.
 
 - **The two release documents now say what they are, and neither is a copy of the other**
   (issue #106, ROADMAP 13.5). Item 13.5 was filed as *"pick one home"* on the reading that

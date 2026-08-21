@@ -82,7 +82,7 @@ final class Collection implements Countable, IteratorAggregate
      * @param class-string<TItem> $itemType
      * @param iterable<TItem>     $items
      *
-     * @return self<TItem>
+     * @return Collection<TItem>
      *
      * @throws TypeMismatchException
      */
@@ -102,7 +102,7 @@ final class Collection implements Countable, IteratorAggregate
      *
      * @param callable(T): TOut $callback
      *
-     * @return self<TOut>
+     * @return Collection<TOut>
      */
     public function map(callable $callback): self
     {
@@ -116,7 +116,7 @@ final class Collection implements Countable, IteratorAggregate
      *
      * @param callable(T): bool $callback
      *
-     * @return self<T>
+     * @return Collection<T>
      */
     public function filter(callable $callback): self
     {

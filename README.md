@@ -304,7 +304,7 @@ and [`CONTRIBUTING.md`](CONTRIBUTING.md) for what a change must clear.
 | 10 | Persistence | ✅ done |
 | 11 | Http application layer | ✅ done |
 | 12 | Security & channels | ✅ done |
-| 13 | Documentation & release hygiene (post-1.0) | ⏳ planned |
+| 13 | Documentation & release hygiene (post-1.0) | ✅ done |
 | 14 | Post-1.0 functional seams (v1.1.0) | ✅ done |
 
 ## License
