@@ -176,6 +176,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The `links` check no longer depends on files that exist in no clone.** It merged green and left
+  `master` red (run 32476537522): its six findings were `.eados-core/` factory-bundle paths that
+  `.gitignore` admits only under `learning/runs/`, so they are present on a maintainer's machine and
+  absent everywhere else — the same commit passed locally and failed in CI. A link whose target
+  `.gitignore` excludes is now **out of scope**, exactly as an external URL is, and the number
+  skipped is printed beside the number resolved rather than dropped silently (**ADR-0069** §3b,
+  annotated not rewritten).
+  **Keyed on ignore status, not on the file being missing** — keying on absence would have left the
+  host-dependence in place. Proved three ways rather than argued: a genuinely broken link still
+  fails; a broken link inside the *re-included* `learning/runs/` subtree still fails; and creating
+  one of the ignored files does not move the counts, where before its presence alone flipped `FAIL`
+  to `OK`. The status is asked of `git check-ignore` so the rule cannot drift from `.gitignore`.
 - **`README.md` no longer claims "sanitizers" in its quality bar.** The word named no CI job in this
   repository and collided with the library's own `Security\Sanitizer`, which is a feature rather
   than a check. Replaced with the gates that actually run: the 8.1/8.2/8.3 matrix, PHPStan at max,
