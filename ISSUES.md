@@ -20,6 +20,7 @@ replacing it.
 
 ## Issues (newest → oldest)
 
+- [ ] [#149](https://github.com/danielPoloWork/egl-util-php/issues/149) **docs: fix endpoint-kernel.md's flagship example and sweep the doc examples nothing has ever run** — ROADMAP 13.3, which never had an issue while its five siblings all did; `new Response()` hits a private constructor, `setHeader()` does not exist, and the static `json()` called through an instance silently drops the `Allow` header RFC 9110 makes mandatory — route: standard / medium
 - [x] [#122](https://github.com/danielPoloWork/egl-util-php/issues/122) **release: settle the v1.0.0 tag provenance and correct the gate-approved claim** — The flagship release notes assert the opposite of the repository's own audit trail — route: standard / medium
 - [x] [#121](https://github.com/danielPoloWork/egl-util-php/issues/121) **build: register egl/utils on Packagist and verify the tag resolves** — registered + resolution verified 2026-08-10; the `egl/` vendor is squat-protected by that same registration, so the bridge name needs no split repo to defend — route: fast / low
 - [ ] [#120](https://github.com/danielPoloWork/egl-util-php/issues/120) **release: complete the utils-psr7-bridge publication (split repo, Packagist, first bridge tag)** — The library's entire interop story is implemented and contract-tested but not installable — route: standard / medium
