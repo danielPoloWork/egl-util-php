@@ -4,41 +4,268 @@
 
 ![Status](https://img.shields.io/badge/Status-v1.0.0-blue)
 
-A library written in **PHP 8.1+**, built and governed to an enterprise quality
-bar: full CI matrix, static analysis, sanitizers, documented design decisions, and SemVer
-releases.
+A library written in **PHP 8.1+**, built and governed to an enterprise quality bar: a full CI
+matrix on 8.1/8.2/8.3, PHPStan at max level, PHP-CS-Fixer (PSR-12), enforced layer boundaries
+(deptrac), a mutation-score floor, per-diff coverage gates, benchmarked performance budgets,
+documented design decisions, and SemVer releases.
 
 ## What it is
 
-Provide EGL PHP projects (framework-based and native/legacy) with a modern utilities library — Composer package egl/utils, PSR-4 namespace D4np\Utils\, PHP 8.1+ — offering typed readonly DTOs, explicit-mechanism security helpers, safe PDO access, hardened session/CSRF handling, and a minimal PSR-11 DI container, replacing ad-hoc per-project solutions (associative-array DTOs, blocklist sanitizers, string-built SQL, silent PDO error modes).
+A modern utilities library for EGL PHP projects — framework-based and native/legacy alike —
+replacing the ad-hoc per-project solutions this codebase was written to retire: associative-array
+DTOs, blocklist sanitizers, string-built SQL, silent PDO error modes.
 
-The frozen specification is in
-[`docs/specs/01_spec_utils.md`](docs/specs/01_spec_utils.md).
+**Every component refuses rather than guesses.** An unknown DTO key throws instead of being
+dropped; a response header carrying CR/LF is refused when it is set, not when it is sent; a
+connection executes a `SqlStatement` and nothing else. The one place the library deliberately does
+*not* refuse is where refusing would mutilate data — the CSV formula guard is opt-in, because
+silently rewriting `=A1` in round-tripped data is worse than the export being pasted into a
+spreadsheet.
+
+Nine component groups sit over a `Support` layer, and the dependency direction is enforced in CI by
+deptrac rather than by convention:
+
+| Namespace | What it is for |
+|---|---|
+| [`D4np\Utils\Dto\`](src/main/php/d4np/utils/Dto/) | Typed `readonly` DTOs — strict hydration by default, `Collection<T>`, withers |
+| [`D4np\Utils\Database\`](src/main/php/d4np/utils/Database/) | PDO with safe defaults pinned, a fluent `QueryBuilder`, closure-scoped `Transaction`, and `SqlStatement` — the only shape the connection will execute |
+| [`D4np\Utils\Persistence\`](src/main/php/d4np/utils/Persistence/) | `Repository` and `TableGateway` over that: rows normalized, then hydrated, every failure typed |
+| [`D4np\Utils\Security\`](src/main/php/d4np/utils/Security/) | `Escaper` (four contexts), `Sanitizer`, `Hash` (Argon2id), `Crypto` (AES-256-GCM) |
+| [`D4np\Utils\Http\`](src/main/php/d4np/utils/Http/) | `Request`/`Response` that refuse rather than coerce, hardened `Session`, `CsrfToken`, `HttpClient`, `Router`, `ApiEnvelope` |
+| [`D4np\Utils\Errors\`](src/main/php/d4np/utils/Errors/) | `Result`, a PSR-3 `Logger`, level-filtered and fan-out channels, `ExceptionHandler` |
+| [`D4np\Utils\Mail\`](src/main/php/d4np/utils/Mail/) | Validated `EmailAddress`, a `MailMessage` that cannot carry a header terminator, `Mailer`/`NativeMailer` |
+| [`D4np\Utils\Container\`](src/main/php/d4np/utils/Container/) | A minimal PSR-11 container and `ServiceProvider`, with circular dependencies detected |
+| [`D4np\Utils\Support\`](src/main/php/d4np/utils/Support/) | `Str`, `File`, `Csv`, `Url`, `Lookup`, `Env`, `Json`, `FileSequence`, and the exception hierarchy everything above throws into |
+
+The frozen specification is in [`docs/specs/01_spec_utils.md`](docs/specs/01_spec_utils.md).
+
+### The three names, reconciled
+
+They are three different naming systems for one project, and the mismatch is deliberate — a
+recorded maintainer decision (RFC-0001, *Alternatives* #5), not drift:
+
+| You will see | Where it applies |
+|---|---|
+| `egl-util-php` | the **repository** — this GitHub project |
+| `egl/utils` | the **Composer package** — what you `require`, and its name on Packagist |
+| `D4np\Utils\` | the **PSR-4 namespace** — what you `use` in code |
+
+So `composer require egl/utils` gives you classes under `D4np\Utils\`, from a repository called
+`egl-util-php`. The PSR-4 base directory is `src/main/php/d4np/utils/`.
 
 ## Install
 
 ```bash
-composer require egl/utils:^1.0
+composer require egl/utils
 ```
 
-Registered on [Packagist](https://packagist.org/packages/egl/utils); `^1.0` resolves `v1.0.0`.
-A full consumer on-ramp (runnable examples, the naming map, the rest of the surface) is tracked
-as [issue #118](https://github.com/danielPoloWork/egl-util-php/issues/118) — this line only
-states that the package installs.
+It resolves from **[Packagist](https://packagist.org/packages/egl/utils)** — no VCS repository
+entry needed. `^1.0` resolves **v1.0.0** today, the only published release; the API is frozen for
+the whole 1.x line ([ADR-0059](docs/adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md)).
+Installing pulls three packages in total — this one plus the interface-only `psr/container` and
+`psr/log`.
+
+**Requires** PHP ≥ 8.1 with `ext-pdo` and `ext-fileinfo`. Two things are *suggested* rather than
+required, and each refuses at the call site when absent rather than degrading silently:
+`ext-iconv` (for `Str::transcode()`) and `symfony/html-sanitizer` (for `Sanitizer::richText()`).
+
+> **`master` is ahead of what installs.** Milestone 14 is merged but unreleased, so
+> `SystemClock`/`FrozenClock`, `Str::ulid()`/`uuidV7()`, `Hmac`, `RateLimiter`, `PageRequest`/`Page`
+> and `RetryPolicy` are in this repository but **not in v1.0.0**. Read the surface tables above as
+> the repository's; read [`CHANGELOG.md`](CHANGELOG.md) for what a given version contains.
+
+## Quickstart
+
+Four tasks, each a complete program. Every example below was executed against `egl/utils` **v1.0.0
+installed from Packagist** — not against this working tree — and the output shown is what it
+printed.
+
+### Hydrate a DTO
+
+```php
+<?php
+
+use D4np\Utils\Dto\Collection;
+use D4np\Utils\Dto\DataTransferObject;
+use D4np\Utils\Support\HydrationException;
+
+require 'vendor/autoload.php';
+
+final class UserDto extends DataTransferObject
+{
+    public function __construct(
+        public readonly int $id,
+        public readonly string $email,
+        public readonly string $name,
+    ) {}
+}
+
+$user = UserDto::fromArray(['id' => 1, 'email' => 'ada@example.com', 'name' => 'Ada']);
+echo $user->name;                      // Ada
+
+// Strict is the default: a key the DTO does not declare is an error, not a shrug.
+try {
+    UserDto::fromArray(['id' => 1, 'email' => 'a@b.c', 'name' => 'Ada', 'is_admin' => true]);
+} catch (HydrationException $e) {
+    echo $e->getMessage();             // names the offending key: is_admin
+}
+
+// ...unless you genuinely receive wider payloads than you map.
+$user = UserDto::lenient()->fromArray(['id' => 1, 'email' => 'a@b.c', 'name' => 'Ada', 'is_admin' => true]);
+
+$users = Collection::of(UserDto::class, [$user]);
+$names = $users->map(fn (UserDto $u): string => $u->name)->toArray();   // ['Ada']
+```
+
+Dropping an undeclared key silently is how a typo becomes a field that was never assigned, and how
+a mass-assignment attempt becomes invisible — so `fromArray()` refuses and `lenient()` is the
+per-call opt-out.
+
+### Build a safe query
+
+```php
+<?php
+
+use D4np\Utils\Database\DatabaseConnection;
+use D4np\Utils\Database\Operator;
+use D4np\Utils\Database\QueryBuilder;
+use D4np\Utils\Database\SqlStatement;
+
+require 'vendor/autoload.php';
+
+$db = new DatabaseConnection(new PDO('sqlite::memory:'));   // safe defaults pinned here
+
+// Your schema already exists; this is here so the example runs as-is.
+$db->pdo()->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT, name TEXT, active INTEGER)');
+$db->execute(SqlStatement::literal(
+    'INSERT INTO users (id, email, name, active) VALUES (?, ?, ?, ?)',
+    [1, 'ada@example.com', 'Ada', 1],
+));
+
+$query = (new QueryBuilder($db, 'users'))
+    ->select('id', 'email', 'name')
+    ->where('active', Operator::Equals, 1)
+    ->orderBy('name')
+    ->limit(10);
+
+$rows = $db->select(SqlStatement::fromQueryBuilder($query));
+echo $rows[0]['email'];   // ada@example.com
+
+echo $query->toSql();
+// SELECT "id", "email", "name" FROM "users" WHERE "active" = ? ORDER BY "name" ASC LIMIT 10
+echo json_encode($query->bindings());   // [1] — the value never entered the SQL text
+```
+
+`select()`, `selectOne()` and `execute()` accept **only** a `SqlStatement`, so there is one choke
+point where SQL text and its parameters must travel together. Its constructor is private:
+`literal()` takes hand-written SQL that PHPStan proves is a literal string,
+`fromQueryBuilder()`/`fromMutation()` take the builder *object* so no SQL text crosses as a bare
+argument, and `composed()` is the single conspicuous escape hatch — with zero uses inside the
+library, so `grep composed(` is the whole review list.
+
+Table and column names are checked against an allowlist when they enter the builder; values never
+enter the SQL at all.
+
+### Wire CSRF
+
+```php
+<?php
+
+use D4np\Utils\Http\CsrfToken;
+use D4np\Utils\Http\Session;
+use D4np\Utils\Security\Escaper;
+
+require 'vendor/autoload.php';
+
+$session = new Session();       // Secure + HttpOnly + SameSite=Lax by default
+$session->start();              // before any output — see below
+$csrf = new CsrfToken($session);
+
+// Rendering the form
+$token = $csrf->issue('checkout');
+echo '<input type="hidden" name="_token" value="' . Escaper::attr($token) . '">';
+
+// Handling the POST that follows. In a real handler the token arrives as
+// $_POST['_token'] ?? '' — it is a plain variable here so the example runs.
+$submitted = $token;
+
+if (!$csrf->validate($submitted, 'checkout')) {
+    http_response_code(419);
+    exit;
+}
+
+echo 'accepted';
+```
+
+`issue()` is stable within a session, so concurrently open forms all carry a token that still
+validates; `rotate()` is the explicit way to get a new one. Scopes are isolated — a `checkout`
+token does not validate against `profile`.
+
+Two constraints worth knowing before you hit them. `Session::start()` throws if the headers have
+already been sent, because cookie parameters cannot be applied afterwards and it refuses rather
+than starting a session whose cookie lacks the required flags. And `SameSite::None` paired with
+`secure: false` is refused at construction: browsers drop that cookie combination entirely, so the
+misconfiguration surfaces at wiring time rather than as "sessions do not work" in production.
+
+### Handle a Result
+
+```php
+<?php
+
+use D4np\Utils\Errors\Result;
+use D4np\Utils\Support\Json;
+
+require 'vendor/autoload.php';
+
+$requestBody = '{"qty": 3}';   // whatever arrived on the wire
+
+$order = Result::try(static fn (): array => Json::decode($requestBody));
+
+$qty = $order
+    ->map(static fn (array $d): int => $d['qty'] * 2)
+    ->orElse(0);                       // 6 here; 0 when anything above failed
+
+if ($order->isFailure()) {
+    $error = $order->error();          // the Throwable, for your log
+}
+
+echo $qty;                             // 6
+```
+
+`Result` is for the failures you expect to handle, not the ones you want to crash on: `try()`
+captures the throw, `map()`/`flatMap()` only run on the success path, and `orElse()` /
+`orElseThrow()` are the two ways back out. Nothing is swallowed — `error()` always carries the
+original throwable.
+
+### More
+
+The frozen 1.0 surface is browsable under
+[`src/main/php/d4np/utils/`](src/main/php/d4np/utils/) — every class carries its contract, its
+`@throws` and its reasoning in the docblock, which is where the detail behind these four examples
+lives. For needs this library deliberately does not cover, see
+[third-party picks](docs/patterns/third-party-picks.md).
+
+The pattern pages under [`docs/patterns/`](docs/patterns/) explain *why* things are shaped the way
+they are, and are worth reading before extending the library. They are not yet a reliable source of
+copyable code: `endpoint-kernel.md`'s flagship example does not compile against the API it
+documents, and no doc example has ever been executed by CI (ROADMAP item **13.3**). The four above
+are the only examples in this repository proven to run.
 
 ## Build, test, run
+
+For working *on* this library rather than *with* it:
 
 ```bash
 composer install --optimize-autoloader
 vendor/bin/phpunit
 ```
 
-- **Toolchain:** Composer (PSR-4 autoload), PHPUnit (Pest optional), PHP-CS-Fixer (PSR-12), PHPStan (max level).
+- **Toolchain:** Composer (PSR-4 autoload), PHPUnit, PHP-CS-Fixer (PSR-12), PHPStan (max level),
+  deptrac, Infection, phpbench.
 - **Supported platforms:** Linux (PHP 8.1, 8.2, 8.3).
-- Consumers import the public surface via: `use D4np\Utils\Dto\DataTransferObject;`.
 
-See [`docs/development/local-build.md`](docs/development/local-build.md) for the full local
-setup.
+See [`docs/development/local-build.md`](docs/development/local-build.md) for the full local setup,
+and [`CONTRIBUTING.md`](CONTRIBUTING.md) for what a change must clear.
 
 ## How this project is run
 
@@ -75,7 +302,6 @@ setup.
 | 12 | Security & channels | ✅ done |
 | 13 | Documentation & release hygiene (post-1.0) | ⏳ planned |
 | 14 | Post-1.0 functional seams (v1.1.0) | ✅ done |
-
 
 ## License
 
