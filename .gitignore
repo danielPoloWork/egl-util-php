@@ -44,6 +44,7 @@ htmlcov/
 .php-cs-fixer.cache
 .deptrac.cache
 /.infection.cache/
+/.phpbench/
 
 # IDE / editor
 /.idea/

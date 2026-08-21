@@ -12,6 +12,29 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`.gitattributes` scopes the Packagist dist to what a consumer needs** (issue #119, first
+  acceptance criterion). `export-ignore` on everything that is not the autoloaded source
+  (`src/main`), `composer.json`, `LICENSE`, or `README.md` — tests, benchmarks, the unpublished
+  bridge package, ADRs, the EADOS factory bundle, CI config, tooling configs, and every root
+  governance file (`AGENTS.md`, `ROADMAP.md`, `ISSUES.md`, and their siblings). Silence rather
+  than an allowlist, because allowlisting `src/main` breaks the moment a new top-level file is
+  added and nobody remembers the rule. Proved with `git archive HEAD | tar -t` against the
+  criterion's own bar (production code + LICENSE + README + composer.json), not against the
+  issue's six-item sample list, which undercounted: measurement found more out-of-place content
+  than the review board's spot-check had (`.eados-core`, `orchestrator`, `.specs`, and the root
+  Markdown files it did not name).
+  **`export-ignore` never removes anything from `git clone` or CI** — only from the archive
+  `composer create-project`/Packagist serve. Nothing here changes what the test suite, PHPStan, or
+  any CI job sees.
+  **Found on the way: a phpbench storage artifact had been committed by accident** in PR #42 and
+  shipped in every dist since — one file, but with no `.gitignore` rule for `.phpbench/` at all,
+  so the next benchmark run would have re-added others just like it. Untracked and gitignored.
+  **The issue's second criterion — a release to carry this — is deliberately NOT done here.**
+  Cutting a release is the maintainer's call (AGENTS.md §11), and which release is itself in
+  question: Milestone 14 is already merged and additive, so the next tag is `v1.1.0` regardless of
+  this change, and a standalone `v1.0.1` carrying only a dist-hygiene fix would spend a full
+  release cycle on one file. Left for the maintainer to decide.
+
 - **`README.md` has a consumer on-ramp** (ROADMAP 13.2, closes issue #118). An **Install** section
   stating that `composer require egl/utils` resolves from Packagist with no VCS entry, that `^1.0`
   resolves v1.0.0, the real platform requirements (`ext-pdo`, `ext-fileinfo`; `ext-iconv` and
