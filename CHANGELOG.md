@@ -27,10 +27,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   - **Absence is failure.** A missing report, an unparseable one, or a base ref git cannot resolve
     all exit 2. A change touching no coverable statement passes, saying so rather than dividing by
     zero in either direction.
+  - **Uncovered changed lines are named even when the gate passes.** A run that knows exactly which
+    lines are dead and reports only a percentage is withholding the actionable half of its own
+    measurement.
   - **The proof that it can fail ships with it.** `tools/tests/verify_diff_coverage_gate.py` is the
-    first executable check for any `tools/*.py` here — fifteen cases over throwaway git
+    first executable check for any `tools/*.py` here — seventeen cases over throwaway git
     repositories, four of them the ones that matter, and CI runs it in the `consistency` job. Every
     previous tool on this project was verified by hand and the outcome written into an ADR.
+  - **Measured, not asserted.** The floor is confirmed by the first real readings this project has
+    ever had (run 32464266232): item 14.4 `Hmac` 62/62 = 100%, item 14.5 `RetryPolicy` 89/89 = 100%,
+    item 14.7's rate limiter 167/175 = 95.43%, against 94.05% total tree coverage.
 - **`Security\RateLimiter` — a token bucket per key, behind a compare-and-swap store** (spec
   **r22 FR-50**, RFC-0003; roadmap items **14.6**/**14.7**; **ADR-0061** design + **ADR-0067**
   implementation; closes issue #91). Additive under ADR-0059. With it:
@@ -134,6 +140,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **Three classes' default-clock construction path is now exercised.** `RateLimiter`,
+  `ArrayRateLimitStore` and `FileRateLimitStore` each accept an optional `Psr\Clock\ClockInterface`
+  and fall back to `SystemClock` — the path **every production caller takes**, and the one no test
+  reached, because they all inject a `FrozenClock`. No behaviour changed; what changed is that it is
+  now asserted. Found by reading the new per-diff coverage gate's first real output rather than by
+  anyone reporting it (ADR-0068).
 - **The constant-time comparison registry had been blind to every call in the library**
   ([BUG-0001](docs/bugs/2026/08/BUG-0001-constant-time-registry-blind-to-prefixed-calls.md), the
   bug ledger's first record; found by item 14.4 and fixed in the same PR).

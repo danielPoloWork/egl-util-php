@@ -319,6 +319,25 @@ final class RateLimitStoreTest extends TestCase
         );
     }
 
+    /**
+     * Both stores on the system clock — the default-clock path no other test here reaches.
+     *
+     * Same gap as `RateLimiterTest::testItWorksWithoutAnInjectedClock()`, and found the same way:
+     * the per-diff coverage gate's first real reading (ADR-0068) named eight never-executed
+     * statements on this item, and `$clock ?? new SystemClock()` was one of them in each class.
+     * A generous TTL keeps the assertion independent of what time it actually is.
+     */
+    public function testBothStoresWorkWithoutAnInjectedClock(): void
+    {
+        foreach ([new ArrayRateLimitStore(), new FileRateLimitStore($this->directory)] as $store) {
+            self::assertTrue($store->writeIfVersion(self::key(), 'state', 3_600_000_000, null));
+
+            $record = $store->read(self::key());
+            self::assertNotNull($record, \get_class($store) . ' lost the state it just wrote');
+            self::assertSame('state', $record->state());
+        }
+    }
+
     public function testTheArrayStoreEnforcesNothingAcrossInstances(): void
     {
         $first = new ArrayRateLimitStore($this->clock);

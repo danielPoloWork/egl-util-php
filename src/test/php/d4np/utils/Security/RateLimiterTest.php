@@ -242,6 +242,34 @@ final class RateLimiterTest extends TestCase
         self::assertTrue($limiter->attempt('login', 'grace')->allowed());
     }
 
+    /**
+     * The default-clock path — the one every production caller takes.
+     *
+     * Every other test here injects a {@see FrozenClock}, so `$clock ?? new SystemClock()` was
+     * never executed by anything. The per-diff coverage gate's first real reading (issue #109,
+     * ADR-0068: 167/175 changed statements on this item) is what surfaced it: eight never-executed
+     * statements, of which this was one in each of three classes. A wiring path that only
+     * consumers reach, and no test does, is worth one assertion each.
+     *
+     * Real wall-clock time, and that is fine: nothing here depends on *which* instant it is, only
+     * that a clock exists and the bucket works against it. No sleeping either.
+     */
+    public function testItWorksWithoutAnInjectedClock(): void
+    {
+        $limiter = new RateLimiter(
+            RateLimitPolicy::perWindow(2, new DateInterval('PT1H')),
+            new ArrayRateLimitStore(),
+        );
+
+        self::assertTrue($limiter->attempt('login', 'ada')->allowed());
+        self::assertTrue($limiter->attempt('login', 'ada')->allowed());
+        self::assertFalse(
+            $limiter->attempt('login', 'ada')->allowed(),
+            'the bucket must behave identically on the system clock; an hour-long window means '
+            . 'no refill can arrive inside this test',
+        );
+    }
+
     // -----------------------------------------------------------------------------------------
     // Clock skew — a behind-clock node must not mint tokens
     // -----------------------------------------------------------------------------------------

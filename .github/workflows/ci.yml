@@ -295,20 +295,10 @@ jobs:
         run: |
           python tools/diff_coverage_gate.py build/logs/clover.xml \
             --base '${{ github.event.pull_request.base.sha }}' --min 90
-      # TEMPORARY, and removable once the floor is confirmed. There is no coverage driver on the
-      # maintainer's machine (a standing local quirk), so the first real per-diff readings this
-      # project has ever had can only come from a runner. This prints the figure for the three
-      # most recent merged PHP items against today's report, so the 90% floor above is confirmed
-      # or revised on evidence rather than on the argument that it is NFR-07's own number.
-      # Report-only: it must not fail a PR on the coverage of somebody else's merge.
-      - name: Measure per-diff coverage of recent merges (informational, remove after #109)
-        if: github.event_name == 'pull_request'
-        run: |
-          for ref in e781934 3a42911 1dea68c; do
-            echo "--- ${ref} ($(git log -1 --format=%s "${ref}" | cut -c1-60)) ---"
-            python tools/diff_coverage_gate.py build/logs/clover.xml \
-              --base "${ref}^" --head "${ref}" --min 90 --report-only || true
-          done
+      # The temporary measurement step that stood here is gone: it did its job on run
+      # 32464266232 and the 90% floor above is now confirmed on evidence rather than on the
+      # argument that it is NFR-07's own number. The three readings, recorded in ADR-0068:
+      # Hmac 62/62 (100%), RetryPolicy 89/89 (100%), the rate limiter 167/175 (95.43%).
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   #

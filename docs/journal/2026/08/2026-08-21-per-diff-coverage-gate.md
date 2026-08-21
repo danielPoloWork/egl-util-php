@@ -99,3 +99,39 @@ This change adds Python and YAML, so its diff contains no coverable PHP statemen
 "nothing to measure" on itself. **The first real reading arrives on the next PHP change** — stated in
 the PR rather than left for someone to discover, because a gate that has never returned a number is not
 yet a gate that works.
+
+## Postscript — the numbers arrived, and they changed the tool
+
+`#144` merged, and the temporary step delivered on run **32464266232**:
+
+| commit | item | changed statements covered |
+|---|---|---|
+| `e781934` | 14.4 `Hmac` | 62 / 62 — **100.00%** |
+| `3a42911` | 14.5 `RetryPolicy` | 89 / 89 — **100.00%** |
+| `1dea68c` | 14.7 rate limiter | 167 / 175 — **95.43%** |
+
+Total tree coverage on the same run: 2 515 / 2 674 = **94.05%**. And on the PR itself, exactly as
+predicted: *"no coverable statements changed"*.
+
+**The floor is confirmed on evidence.** The worst of three real items clears 90% by 5.4 points, and the
+two before it were exact. §2's reasoning justified the *number*; this justifies it being *affordable*,
+which is the part an argument alone could not settle.
+
+**But the 95.43% is the useful part, and it exposed a defect in my own tool.** Eight statements in the
+rate limiter are never executed — and the gate *declined to name them, because it had passed*. It
+enumerated uncovered lines only on failure. That is withholding the actionable half of its own
+measurement: a run that knows precisely which lines are dead and reports a percentage instead is doing
+less than it could for free. Fixed; it now names them on success too, with a verification case for
+each direction and one asserting a fully covered run stays quiet (17 cases).
+
+**And then the named lines were worth having.** `$clock ?? new SystemClock()` in `RateLimiter`,
+`ArrayRateLimitStore` and `FileRateLimitStore` — **the path every production caller takes**, and the
+one no test reached, because every test injects a `FrozenClock`. No behaviour was wrong; what was
+missing was any assertion that the default wiring works at all. Three tests added.
+
+The transferable bit: **the gate's first output was worth reading as carefully as a test failure.** It
+passed, it was green, and it still contained two findings — a hole in the tool and a hole in the
+suite. This session started with BUG-0001 (a guard green on an empty set) and item 14.7 (two tests
+green without reaching their own branch). Green is not the end of the sentence.
+
+The temporary measurement step is gone, its readings recorded in ADR-0068.

@@ -251,6 +251,19 @@ def main(argv=None):
 
     if pct + 1e-9 >= args.min:
         print("diff coverage gate: OK")
+        # Named even on success, and that is the point. The first three real readings this gate
+        # ever produced were 100%, 100% and 95.43% — and the 95.43% meant eight statements in the
+        # rate limiter were never executed, which nobody could see because the first version of
+        # this tool enumerated the lines only when it failed. A passing run that knows exactly
+        # which lines are dead and says nothing is withholding the actionable half of its own
+        # measurement.
+        if uncovered:
+            print(f"\n  {len(uncovered)} changed statement(s) inside the floor are still never "
+                  "executed:")
+            for path, line in uncovered[:40]:
+                print(f"    {path}:{line}")
+            if len(uncovered) > 40:
+                print(f"    … and {len(uncovered) - 40} more")
         return 0
 
     print(f"\ndiff coverage gate: {'FAIL' if not args.report_only else 'BELOW FLOOR (report-only)'} "
