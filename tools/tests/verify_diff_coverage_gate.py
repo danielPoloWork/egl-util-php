@@ -54,7 +54,8 @@ def clover(files):
     return '\n'.join(parts) + '\n'
 
 
-def scenario(name, base_files, head_files, report, extra_args=(), expect=None, expect_in=None):
+def scenario(name, base_files, head_files, report, extra_args=(), expect=None, expect_in=None,
+             expect_not_in=None):
     work = tempfile.mkdtemp(prefix='dcg-')
     try:
         git(['init', '-q', '-b', 'master'], work)
@@ -89,6 +90,9 @@ def scenario(name, base_files, head_files, report, extra_args=(), expect=None, e
         if expect_in is not None and expect_in not in r.stdout:
             ok = False
             detail = f' (missing text: {expect_in!r})'
+        if expect_not_in is not None and expect_not_in in r.stdout:
+            ok = False
+            detail = f' (unexpected text: {expect_not_in!r})'
         print(f'  [{"ok " if ok else "FAIL"}] exit {r.returncode} (want {expect}){detail}  {name}')
         if not ok:
             FAILED.append(name)
@@ -131,6 +135,19 @@ scenario('9 of 10 covered (90%) -> pass, the floor is inclusive',
          {SRC: '<?php\n' + ''.join(f'$x{i} = {i};\n' for i in range(1, 11))},
          clover({SRC: {**{i: 1 for i in range(2, 11)}, 11: 0}}), expect=0,
          expect_in='9/10 changed statements covered = 90.00%')
+
+# The reason this case exists: the gate's first three real readings were 100%, 100% and 95.43%,
+# and the 95.43% meant eight never-executed statements that the tool declined to name because it
+# had passed. A passing run must still say which lines are dead.
+scenario('a passing run still names the uncovered lines',
+         {SRC: '<?php\n'},
+         {SRC: '<?php\n' + ''.join(f'$x{i} = {i};\n' for i in range(1, 11))},
+         clover({SRC: {**{i: 1 for i in range(2, 11)}, 11: 0}}), expect=0,
+         expect_in=f'{SRC}:11')
+
+scenario('a fully covered run says nothing about uncovered lines',
+         BASE, GREW, clover({SRC: {3: 5, 4: 1, 5: 1, 6: 1, 7: 1}}), expect=0,
+         expect_not_in='never executed')
 
 scenario('a docs-only change -> pass, saying nothing was measurable',
          {'README.md': 'a\n', SRC: '<?php\n$a = 1;\n'},

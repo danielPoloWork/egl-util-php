@@ -159,13 +159,28 @@ script, it is not.
   both events.
 - **ADR-0007 is annotated, not rewritten** — its decision (total coverage, measured once, against
   NFR-07's 90%) is untouched, and the per-diff gate reuses that same number.
-- **A temporary measurement step ships with this**, and it is the honest way around a local
-  constraint: there is no coverage driver on the maintainer's machine, so the first per-diff readings
-  this project has ever had can only come from a runner. The step prints the figure for the three most
-  recent merged PHP items (`e781934`, `3a42911`, `1dea68c`) against today's report, report-only, so
-  the 90% floor is **confirmed or revised on evidence** rather than on §2's argument alone. It is
-  labelled for removal once that is settled — the same shape as item 11.5's draft-PR-for-real-numbers
-  method, which exists because local figures on this machine are not evidence.
+- **A temporary measurement step shipped with this and has since been removed**, having done its
+  job. It was the honest way around a local constraint: there is no coverage driver on the
+  maintainer's machine, so the first per-diff readings this project has ever had could only come from
+  a runner — item 11.5's draft-PR-for-real-numbers method, applied to a gate. **Run 32464266232**:
+
+  | commit | item | changed statements covered |
+  |---|---|---|
+  | `e781934` | 14.4 `Hmac` | 62 / 62 — **100.00%** |
+  | `3a42911` | 14.5 `RetryPolicy` | 89 / 89 — **100.00%** |
+  | `1dea68c` | 14.7 rate limiter | 167 / 175 — **95.43%** |
+
+  Total tree coverage on the same run: 2 515 / 2 674 = **94.05%**. **The 90% floor is therefore
+  confirmed on evidence, not on §2's argument alone** — the worst of three real items clears it by
+  5.4 points, and the two before it were exact. §2's reasoning stands as the justification for the
+  *number*; this is the justification for it being *affordable*.
+- **The 95.43% reading changed the tool.** Eight statements in the rate limiter are never executed,
+  and the first version of this gate **declined to name them because it had passed** — it enumerated
+  uncovered lines only on failure. That is withholding the actionable half of its own measurement: a
+  passing run that knows exactly which lines are dead should say so. It now does, on success as well
+  as on failure, with a verification case for each direction (and one asserting a fully covered run
+  stays quiet). Found by reading the gate's own first output rather than by anybody reporting it —
+  which is the argument for having made it print real numbers on run one.
 - **What this does not measure**, stated so nobody reads more into a green square than it carries: that
   an executed line was *asserted* about. Item 14.7's two tests that passed without reaching their own
   branch would have satisfied this gate the moment any test touched those lines. Coverage is a floor
