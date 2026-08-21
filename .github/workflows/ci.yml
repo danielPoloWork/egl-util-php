@@ -118,6 +118,12 @@ jobs:
       # repeatable half lives in a script beside the one above.
       - name: Verify the documentation link check can fail
         run: python tools/tests/verify_link_check.py
+      # And the Release-body renderer's (issue #106, ROADMAP 13.5). It runs here, on every PR,
+      # rather than only in release.yml: the notes it renders are edited between releases, and a
+      # dangling link introduced today should surface now instead of at the tag push, when the
+      # tool's refusal would read as a broken release rather than as prose that needs fixing.
+      - name: Verify the Release-body renderer can fail
+        run: python tools/tests/verify_release_body.py
       # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
       # shape, and a version comment that lies is invisible to any purely local check when the
       # error is applied uniformly. CI is where the truthful half must run.

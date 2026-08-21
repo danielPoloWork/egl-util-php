@@ -6,11 +6,38 @@ All notable changes to `egl-util-php` are documented here, following
 
 Every PR that introduces a user-visible change adds a line to `[Unreleased]` in the same
 PR. A release PR moves the `[Unreleased]` entries into a new per-version file under
-`docs/changelog/v<MAJOR>/v<X.Y.Z>.md` and adds an index row below.
+[`docs/changelog/v<MAJOR>/`](docs/changelog/) and adds an index row below.
+
+**There are two release documents, and they are not copies.** This file and its archive are the
+exhaustive record of *what changed*. The consumer-facing narrative — *should I upgrade, what should
+I know first* — is [`docs/releases/`](docs/releases/), which is also the file published verbatim as
+the GitHub Release body. Editing "the release notes" almost always means that one.
 
 ## [Unreleased]
 
 ### Added
+
+- **The GitHub Release body is rendered, not copied** — `tools/release_body.py`, wired into
+  `release.yml`'s `draft-release` job (issue #106, ROADMAP 13.5). It reads
+  `docs/releases/v<X.Y.Z>.md`, rebases every relative link to an absolute `blob/<tag>` URL, and
+  drops the H1 the Release page already supplies.
+  **Why this was needed at all**: the draft job already built the body mechanically
+  (`body_path`), so a hand-written Release was never the design — the `v1.0.0` body was
+  hand-written because `verify-tag` failed on an unsigned tag and skipped `draft-release`
+  entirely. But because that path had never run, nobody had looked at its output: the notes carry
+  **five relative links** written against `docs/releases/`, and a Release body is not served from
+  there, so publishing the file verbatim would ship links that do not resolve. The body a human
+  published carries absolute URLs — a conversion nothing in the repository performed.
+  It **refuses (exit 2)** on a dangling relative link rather than shipping a 404 to every
+  consumer, and on missing notes. `tools/tests/verify_release_body.py` (11 cases) proves both and
+  runs on **every PR**, not only at a tag, so a link broken today surfaces before it can read as a
+  broken release. Fidelity is measured, not asserted: the renderer reproduces **4 of 4** GitHub
+  URLs in the published `v1.0.0` body.
+  `docs/workflow/release.md` step 10 gains the rule that follows: **never hand-edit a published
+  Release body** — it is generated, so an edit made on GitHub is overwritten by the next render
+  and lost from the record. Correct the notes file instead.
+- **`docs/changelog/README.md`**, which did not exist — half the reason a reader could not tell the
+  changelog archive from the release notes.
 
 - **`.gitattributes` scopes the Packagist dist to what a consumer needs** (issue #119, first
   acceptance criterion). `export-ignore` on everything that is not the autoloaded source
@@ -198,6 +225,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
     overflow PHP's integer range. `pageCount()` is `1` for an empty result set, never `0`.
 
 ### Fixed
+
+- **The two release documents now say what they are, and neither is a copy of the other**
+  (issue #106, ROADMAP 13.5). Item 13.5 was filed as *"pick one home"* on the reading that
+  `docs/releases/` and `docs/changelog/v1/` hold duplicate `v1.0.0` files, giving a maintainer
+  *"even odds of editing the copy nobody reads"*. Measured, they are **not duplicates**: 156 lines
+  of consumer narrative against 1,213 lines of Keep-a-Changelog record. Reducing either to a
+  pointer would have destroyed a distinct artifact. The real defect was that each pointer concealed
+  the other document — root `CHANGELOG.md` named only the changelog, `docs/README.md` only the
+  releases directory, and `docs/changelog/` had no README at all. All now state their own purpose
+  and cross-reference the other.
+- **`docs/README.md`'s layout table lists every `docs/` subdirectory**, having omitted `docs/rfc/`
+  and `docs/changelog/` entirely.
+- **`docs/journal/README.md`'s index is complete again — 86 rows, up from 29.** Its own procedure
+  requires a row per state-changing session; it silently stopped being maintained after
+  2026-08-05, leaving 57 checkpoints reachable only by listing the directory. Regenerated from disk
+  with the ordering recovered from `git log --diff-filter=A`, so intra-day session sequence is the
+  real one rather than invented.
 
 - **`docs/patterns/endpoint-kernel.md`'s flagship example runs** (ROADMAP 13.3, closes issue #149).
   It had shipped since 1.0 unable to execute: `new Response()` against a **private** constructor,

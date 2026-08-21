@@ -9,6 +9,7 @@ conversational context and scratch notes do not live here.
 | Path | Purpose |
 |---|---|
 | `docs/specs/` | Functional and technical specifications. Frozen contracts — diverging requires an ADR. |
+| `docs/rfc/` | Accepted design proposals — the scope decisions the specs and roadmap implement. |
 | `docs/adr/` | Architecture Decision Records — one numbered file per decision. |
 | `docs/patterns/` | Living catalogue of design patterns + the canonical taxonomy. |
 | `docs/workflow/` | Git, documentation, release, and maintenance conventions, plus `packaging.md` (registry/publish). |
@@ -17,7 +18,8 @@ conversational context and scratch notes do not live here.
 | `docs/bugs/` | In-repo bug ledger — one record per known defect, with the triage trail. |
 | `docs/security/` | Threat model (STRIDE, per trust boundary) — the analysis beside the root `SECURITY.md` policy. |
 | `docs/compliance/` | Control register — controls → evidence, under the enterprise posture (ADR-0015). |
-| `docs/releases/` | Per-version release notes (one file per release; index of all of them). |
+| `docs/releases/` | **Per-version release notes** — the consumer-facing narrative, published verbatim as the GitHub Release body. |
+| `docs/changelog/` | **Per-version changelog archive** — the exhaustive Keep-a-Changelog record, rolled out of root `CHANGELOG.md` at release time. Not a copy of the above; see either README. |
 | `docs/benchmarks/` | Reproducible performance methodology + results, backing every performance claim. |
 
 
