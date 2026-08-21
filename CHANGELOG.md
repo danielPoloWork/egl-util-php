@@ -12,6 +12,29 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`Security\Hmac` — keyed authentication for signed URLs and webhook signatures** (spec
+  **r20 FR-48**, RFC-0003; roadmap item **14.4**; **ADR-0065**; closes issue #92). Additive under
+  ADR-0059. `sign(message, ttl = null)` returns `v1.` + base64url(8-byte big-endian expiry ||
+  raw MAC); `verify(message, token)` returns **void** and throws `CryptoException` on every
+  failure. Five things worth knowing before wiring it:
+  - **The signature is detached.** The message stays where it lives — a URL's query, a webhook
+    body — because `verify()` is handed it back anyway; a container format would duplicate it on
+    the wire.
+  - **The MAC covers the expiry, not just the message.** An unauthenticated expiry would make
+    extending a signed URL's life an eight-byte edit. Its width is fixed so the concatenation needs
+    no delimiter: with a variable-width prefix, `1 || "23"` and `12 || "3"` sign identically.
+  - **The algorithm is never read from the token.** It is chosen at construction from an allowlist
+    (`sha256`/`sha384`/`sha512`) — a format naming its own algorithm lets an attacker choose how
+    their forgery is checked, the JWT `alg`-confusion class. The consequence is deliberate and
+    tested: changing algorithm invalidates outstanding tokens rather than trusting them.
+  - **The MAC key is derived, not your `SecretKey`.** `hash_hkdf(algorithm, secret, 0,
+    'egl/utils:hmac:v1')`, so a single `APP_SECRET` behind both `Crypto` and `Hmac` never feeds the
+    same bytes to two primitives. The label is part of the `v1.` format — a verifier in another
+    language needs it, along with the payload layout.
+  - **Expiry is refused rather than fudged.** A TTL that does not move time forward, or one landing
+    at or before the Unix epoch (timestamp `0` is the never-expires sentinel), throws at `sign()`.
+    The boundary is inclusive-expired, RFC 7519 `exp` semantics, and measured against FR-45's
+    clock so no test sleeps.
 - **`Persistence\PageRequest` and `Persistence\Page<T>` — pagination value objects** (spec
   **r19 FR-47**, RFC-0003; roadmap item **14.3**; **ADR-0064**; closes issue #95), with
   `Repository::fetchPage()` and `TableGateway::paginate()`/`paginateBy()` as the reads, plus two
@@ -33,6 +56,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The constant-time comparison registry had been blind to every call in the library**
+  ([BUG-0001](docs/bugs/2026/08/BUG-0001-constant-time-registry-blind-to-prefixed-calls.md), the
+  bug ledger's first record; found by item 14.4 and fixed in the same PR).
+  `ConstantTimeComparisonTest`'s completeness guard exists so a secret comparison added later
+  cannot go unasserted — and the defect it guards against, `===` in place of `hash_equals()`, is
+  invisible to every behavioural test. Its scanner matched `T_STRING`, and ADR-0048 prefixed every
+  internal call at item 10.12, so `\hash_equals` became `T_NAME_FULLY_QUALIFIED` and the scanner
+  saw **0 of 3** comparisons from then on. Demonstrated rather than inferred: in that state, with a
+  timing-unsafe comparison present and unregistered in `src/main`, the file reported
+  `OK (5 tests, 15 assertions)`. **No shipped code ever used a weakened comparator** — all three
+  call sites were verified directly — so no consumer was affected; what was missing was the
+  guarantee about the next one. The scanner now matches both token shapes, and a new assertion
+  requires it to *see* at least as many comparisons as are registered, because the failure mode
+  here was a test going **green**, not red.
 - **FR-46's specification entry, which item 14.2 never wrote.** `NFR-15` and r18's own revision
   row both referenced `FR-46` while §2 contained no such requirement — a cross-reference pointing
   at something absent, the defect class ADR-0060 named when `SECURITY.md` deferred to a section

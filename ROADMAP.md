@@ -1909,7 +1909,7 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       **Also repaired here: FR-46's §2 spec entry, which item 14.2 never wrote** — NFR-15 and r18's
       own revision row referenced a requirement the spec did not contain, the defect class ADR-0060
       named.)*
-- [ ] 14.4 `Security\Hmac` — **FR-48**, signed URLs and webhook signatures (RFC-0003).
+- [x] 14.4 `Security\Hmac` — **FR-48**, signed URLs and webhook signatures (RFC-0003).
       `sign()`/`verify()` over a **versioned compact token**, the shape ADR-0054 established for
       `Crypto` (`v1.` + base64url). Key material is `SecretKey` only — the type is the enforcement.
       A failed verify **throws `CryptoException`**; the `bool|string` return RFC-0002 named as the
@@ -1920,7 +1920,48 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       that the allowlist is consulted rather than the caller's string. **Does not block on the
       SecretKeyRing issue (#114)** — ADR-0054's versioned prefix already absorbs key identifiers as
       a `v2.` while `v1.` tokens keep verifying; the prefix was designed for this. Closes issue #92
-      — size: M · route: frontier-reasoning / extra (**security**, protected floor — twice over)
+      — size: M · route: frontier-reasoning / extra (**security**, protected floor — twice over) *(session model Opus 5 — route matched)*.
+      *`Security\{Hmac, Base64Url}` + **ADR-0065** + spec **r20** + **BUG-0001**; 3 022 tests (+44),
+      **15 planted defects, 15 caught**, all local gates green (deptrac 390 allowed, **no new edge** —
+      `Security` already had `Psr` from `Hash`'s PSR-3 logging and `Support` from always, so the clock
+      seam cost nothing architecturally; said out loud because an absence leaves no trace, item 12.3's
+      rule). **Two decisions the item did not name.** (1) **The MAC key is HKDF-derived** under
+      `egl/utils:hmac:v1`, not the caller's `SecretKey` bytes: the common deployment is one
+      `APP_SECRET` behind everything, which would feed identical bytes to AES-256-GCM and to HMAC. No
+      published break, but "no published attack" is weaker than "the two primitives never see the same
+      key" and the stronger property costs one hash at construction. The alternative — documenting
+      "do not share a SecretKey" — was rejected as a correctness requirement on the caller with no
+      error when missed. (2) **`Base64Url` extracted from `Crypto` rather than copied** (separate
+      commit), on item 10.4's evidence: that item shipped two identifier corpora of ten and nineteen
+      payloads with both suites green, and the newer copy held to the weaker rule. **The algorithm is
+      never read from the token** — the one design point that is not a trade-off but the JWT
+      `alg`-confusion vulnerability; the consequence (changing algorithm invalidates outstanding
+      tokens) is pinned by a test rather than hidden.*
+      *★ **THE ITEM FOUND A DEAD GUARD IN THE SAFETY NET IT WAS HELD TO — [BUG-0001](docs/bugs/2026/08/BUG-0001-constant-time-registry-blind-to-prefixed-calls.md), the ledger's first
+      record.** `ConstantTimeComparisonTest`'s completeness scanner matched `T_STRING`, and ADR-0048
+      prefixed the whole tree at item **10.12** — so `\hash_equals` became `T_NAME_FULLY_QUALIFIED`
+      and the scanner saw **0 of 3** comparisons for ten items. Proven, not argued: with the scanner in
+      that state, `Hmac::verify()` unregistered and `hash_equals` replaced by `!==` in `src/main`, the
+      file reported **`OK (5 tests, 15 assertions)`**. Item 10.12's own audit had cleared the other
+      source-inspecting tests as matching "patterns, not spellings" — this one matched a **token
+      type**, a third category that audit did not have. **The transferable asymmetry: ADR-0048 turned
+      one mechanism assertion red (`NativeSessionApiTest`, fixed inside its own item) and this one
+      green. The red one was found in minutes; the green one survived ten items and two security
+      items, because a test passing on nothing looks exactly like a test passing.** The repaired guard
+      now also asserts it can *see* at least as many comparisons as are registered.*
+      *Campaign distribution is the evidence for ADR-0027 rather than an assertion of it: three plants
+      were caught by exactly one test each and every one of those was a mechanism assertion or the
+      conformance vector (expiry read before the MAC; payload length taken from the token; the HKDF
+      label changed), and substituting `===` for `hash_equals()` was caught by **no behavioural test
+      at all**. A fourth — MACing the message alone, symmetrically in both `sign()` and `verify()` so
+      every round trip still succeeds — was caught by exactly the one behavioural test written for it.*
+      *Process, and the third time this session a plant harness lied: `git checkout --` restores from
+      the **INDEX**, and mine ran against a stale one, silently deleting the unstaged HKDF work — so
+      three plants reported "did not land" when the feature under test had been erased. The recorded
+      lesson (item 11.4) says stage first; it did not say *re-stage after every edit the harness will
+      outlive*. A fourth plant "passed" because my pattern matched the docblock copy of a constant
+      before its declaration — verify a plant against the **declaration**, and by the property it
+      breaks, not by a string that occurs twice.*
 - [ ] 14.5 `Support\RetryPolicy` — **FR-49** (RFC-0003). Maximum attempts, jittered exponential
       delay, a retryable-exception allowlist, and — the part
       [ADR-0049](docs/adr/0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md)

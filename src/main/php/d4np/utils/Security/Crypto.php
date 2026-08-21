@@ -16,8 +16,8 @@ use D4np\Utils\Support\CryptoException;
  * decrypting it — {@see decrypt()} cannot succeed on tampered input, because there is no
  * "decrypt" step that does not also verify.
  *
- * **The token format is `"v1." . base64url(nonce ‖ ciphertext ‖ tag)`**, nonce and tag at fixed
- * lengths (12 and 16 bytes) sliced from fixed positions — never a length the token itself
+ * **The token format is `"v1." . base64url(nonce ‖ ciphertext ‖ tag)`** ({@see Base64Url}), nonce
+ * and tag at fixed lengths (12 and 16 bytes) sliced from fixed positions — never a length the token itself
  * states. That is not a style choice: probed, `openssl_decrypt()`'s tag check is only as strong
  * as the tag length it is given, and a **correct prefix** of a real tag — even one byte of it —
  * is accepted. A token format that let the tag's length vary would hand an attacker exactly the
@@ -102,7 +102,7 @@ final class Crypto
             throw new CryptoException('Encryption failed.');
         }
 
-        return self::VERSION_PREFIX . self::base64UrlEncode($nonce . $ciphertext . $tag);
+        return self::VERSION_PREFIX . Base64Url::encode($nonce . $ciphertext . $tag);
     }
 
     /**
@@ -125,7 +125,7 @@ final class Crypto
             ));
         }
 
-        $payload = self::base64UrlDecode(\substr($token, \strlen(self::VERSION_PREFIX)));
+        $payload = Base64Url::decode(\substr($token, \strlen(self::VERSION_PREFIX)));
         $minimumBytes = self::NONCE_BYTES + self::TAG_BYTES;
 
         if ($payload === false || \strlen($payload) < $minimumBytes) {
@@ -152,25 +152,5 @@ final class Crypto
         }
 
         return $plaintext;
-    }
-
-    private static function base64UrlEncode(string $bytes): string
-    {
-        return \rtrim(\strtr(\base64_encode($bytes), '+/', '-_'), '=');
-    }
-
-    /**
-     * @return string|false `false` on malformed input, never a partial decode
-     */
-    private static function base64UrlDecode(string $encoded): string|false
-    {
-        // No separate alphabet check: probed, base64_decode()'s own strict mode already rejects
-        // every case one would try to catch here — a stray character, a space, wrong padding —
-        // once the string has been through str_pad()/strtr() below. An earlier version added a
-        // preg_match() guard first; it never fired, because strict mode already had every case
-        // covered, which is the same "dead defensive code" shape ADR-0022 removed from `Hash`.
-        $padded = \str_pad($encoded, \strlen($encoded) + ((4 - \strlen($encoded) % 4) % 4), '=');
-
-        return \base64_decode(\strtr($padded, '-_', '+/'), true);
     }
 }
