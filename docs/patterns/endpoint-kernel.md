@@ -9,6 +9,9 @@
 The surveyed estate routed with the filesystem: **37 deployed folders**, each holding an
 `index.php` that differed from its neighbours in one line.
 
+*The estate's code, quoted — not this library's, and the only block on this page that is not meant
+to run.*
+
 ```php
 <?php
 require_once './../../Autoload.php';
@@ -40,9 +43,13 @@ use D4np\Utils\Http\Router;
 use D4np\Utils\Support\MethodNotAllowedException;
 use D4np\Utils\Support\RouteNotFoundException;
 
-$router = require __DIR__ . '/../config/routes.php';   // the table, below
+$container = require __DIR__ . '/../config/services.php';
+
+/** @var Router $router */
+$router = require __DIR__ . '/../config/routes.php';   // the table, below; it reads $container
 $request = Request::fromGlobals();
-$response = new Response();
+
+$allow = null;
 
 try {
     $matched = $router->matchRequest($request);
@@ -53,12 +60,21 @@ try {
     $status = 404;
 } catch (MethodNotAllowedException $e) {
     // RFC 9110 §15.5.6 makes this header mandatory, which is why the exception carries it.
-    $response->setHeader('Allow', $e->allowHeader());
+    $allow = $e->allowHeader();
     $payload = ['error' => 'method not allowed'];
     $status = 405;
 }
 
-$response->json($payload, $status)->send();
+// `Response` has no public constructor — the five named ones are the way in — and it is
+// immutable, so `withHeader()` returns a NEW instance. Assigning the result is not a style
+// preference: dropping it is how a mandatory header goes missing on one branch only.
+$response = Response::json($payload, $status);
+
+if ($allow !== null) {
+    $response = $response->withHeader('Allow', $allow);
+}
+
+$response->send();
 ```
 
 ```php
@@ -66,14 +82,23 @@ $response->json($payload, $status)->send();
 
 declare(strict_types=1);
 
+use App\Http\OrderController;
 use D4np\Utils\Http\Router;
+use Psr\Container\ContainerInterface;
+
+/** @var ContainerInterface $container — from services.php, in the caller's scope */
+$orders = $container->get(OrderController::class);
 
 return (new Router())
-    ->get('/orders', [$container->get(OrderController::class), 'index'])
-    ->post('/orders', [$container->get(OrderController::class), 'store'])
-    ->get('/orders/{id}', [$container->get(OrderController::class), 'show'])
-    ->delete('/orders/{id}', [$container->get(OrderController::class), 'destroy']);
+    ->get('/orders', [$orders, 'index'])
+    ->post('/orders', [$orders, 'store'])
+    ->get('/orders/{id}', [$orders, 'show'])
+    ->delete('/orders/{id}', [$orders, 'destroy']);
 ```
+
+A `require`d file runs in the caller's scope, which is why `$container` is visible here without
+being passed — and why `index.php` has to build it *before* the `require`, not after. Resolving the
+controller once rather than four times is the reason the four rows fit on one line each.
 
 ## What the kernel is for
 
@@ -101,8 +126,10 @@ which failure deserves which outcome. It belongs here:
 ```php
 <?php // src/Http/EnvelopeMapper.php — yours, not the library's
 
+use App\Domain\DomainRefusal;
 use D4np\Utils\Errors\Result;
 use D4np\Utils\Http\ApiEnvelope;
+use Psr\Log\LoggerInterface;
 
 final class EnvelopeMapper
 {
@@ -129,6 +156,12 @@ final class EnvelopeMapper
         $this->log->error('unhandled failure', ['reference' => $reference, 'exception' => $failure]);
 
         return ApiEnvelope::caught($reference);
+    }
+
+    /** Your locale's wording for a refusal the domain anticipated. */
+    private function translate(DomainRefusal $refusal): string
+    {
+        return $refusal->getMessage();
     }
 }
 ```

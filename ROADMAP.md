@@ -1687,14 +1687,54 @@ the release process around it.
       the mixed-vendor naming be stated in **`composer.json` and** the README; the README half now
       exists, the `composer.json` half still does not, and changing a published package's
       `description` is a Packagist-visible act rather than a docs edit.*
-- [ ] 13.3 Fix `docs/patterns/endpoint-kernel.md`'s flagship example, which **cannot run** against
+- [x] 13.3 Fix `docs/patterns/endpoint-kernel.md`'s flagship example, which **cannot run** against
       the API it documents: `new Response()` (line 45) hits a **private** constructor — the entry
       points are `Response::create/text/html/json/redirect` — `setHeader()` (line 56) does not exist
       (the API is `withHeader()`), and line 61 calls the static `json()` through an instance,
       discarding the `Allow` header the example built two lines earlier. Verified against
       `src/main/php/d4np/utils/Http/Response.php` at 1.0.0. Then sweep the remaining doc examples
       for the same rot, since nothing has ever executed them — size: S · route: standard / medium
-      *(now tracked as [issue #149](https://github.com/danielPoloWork/egl-util-php/issues/149) —
+      *(closed by [issue #149](https://github.com/danielPoloWork/egl-util-php/issues/149); route
+      matched — Opus 5)*. *The page's four blocks are not four snippets — they are `public/index.php`,
+      `config/routes.php` and `src/Http/EnvelopeMapper.php` of one application, naming their own
+      paths. So they were **assembled into that layout byte-for-byte and driven over HTTP** through
+      `php -S`, on `egl/utils` v1.0.0 installed from Packagist, with application symbols
+      (`App\Http\OrderController`, `App\Domain\DomainRefusal`, a PSR-11 container, a PSR-3 logger)
+      stubbed and **nothing under `D4np\Utils\` ever stubbed** — the rule that makes a pass mean
+      something. All three branches answer correctly, and the 405 carries **`Allow: GET, POST` on
+      the wire**.
+      **The issue named four defects; the reader hits a fifth first.** Run as a pair, the original
+      blocks die at `config/routes.php:8` on an **undefined `$container`** — used four times there
+      and created by no block on the page — before reaching the private constructor at all. Found
+      only by running the two together; neither the 2026-08-09 filing nor #149's own re-verification
+      caught it, because both read the blocks one at a time. **A page's examples can be individually
+      wrong and jointly worse.**
+      Fixed as a restructure, not three substitutions: `Response` has no public constructor and is
+      immutable, so the mutable-then-poke shape cannot work. The 405 branch now records `$allow` and
+      the response is built once, with `withHeader()`'s **result assigned** — and the comment says
+      why, because dropping it is how a mandatory header goes missing on one branch only.
+      **The control is the evidence.** With the assignment removed, the wire shows `405` and **no
+      `Allow`** — correct status, correct body, missing header. Invisible in everything a reader
+      would look at, which is how it survived a 1.0 release. Also proved the harness was not vacuous:
+      the first 405 driver used `DELETE /orders/1/extra`, a route **miss**, so it took the 404 branch
+      and still reported PASS — the 405 path, the only one that carries the header, had never run.
+      **The sweep, and what it deliberately did not touch.** Of 26 ` ```php ` blocks in 18 tracked
+      files: 4 are `README.md`'s (13.2). `packages/utils-psr7-bridge/README.md`'s example was run
+      against the bridge from a path repository plus Nyholm — **correct, unchanged**. Five are
+      **fragments** (ADR-0010's annotation shape, ADR-0028's one PHPStan annotation, ADR-0034's four
+      signatures, ADR-0055's enum case, spec 02's contract skeleton); they cannot execute, so their
+      **API claims were verified against the source instead** — all four `Request` readers, the
+      `Container` return annotation, and `Psr7Bridge`'s constructor and four methods still exist as
+      written. **Two categories are out of scope on principle, not by omission**: the 11 blocks in
+      `docs/journal/` and `.specs/d4np-php.md`'s pre-rename `D4np\Php\` example, which its own banner
+      declares an imported artifact — both are dated records, and "repairing" one falsifies history
+      rather than fixing rot. **ADR-0055's block is the sharpest case: it is deliberately invalid
+      PHP**, documenting what 8.1 rejects. A sweep that made every block compile would have destroyed
+      the ADR's point. #149's estimate of "11 live blocks in 8 files" is therefore corrected to **10
+      in 7**.
+      **Still true and stated in the README: nothing in CI executes a doc example**, so each is
+      verified as of the change that touched it, not continuously. That remains filed, not fixed.*
+      *(Kept from PR #150, which opened the issue:
       this item had been the only M13 entry without one. All three findings above **re-verified**
       against `9ee5ba6` rather than trusted from the 2026-08-09 filing, and the issue adds a fourth
       the filing missed: `Response` is **immutable**, so `withHeader()` returns a new instance and

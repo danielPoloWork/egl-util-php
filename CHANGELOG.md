@@ -176,6 +176,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **`docs/patterns/endpoint-kernel.md`'s flagship example runs** (ROADMAP 13.3, closes issue #149).
+  It had shipped since 1.0 unable to execute: `new Response()` against a **private** constructor,
+  `setHeader()` which does not exist (`withHeader()` does), the **static** `json()` called through an
+  instance — silently discarding the `Allow` header the 405 branch had just built — and `Response`'s
+  immutability, which makes the example's mutable-then-poke shape unworkable rather than merely
+  wrong. **A fifth defect only surfaced when the blocks were run as a pair**: `config/routes.php`
+  used `$container` four times and no block on the page created it, so a reader died there first.
+  Restructured: `$allow` is recorded, the response is built once, and `withHeader()`'s **result is
+  assigned**.
+  **Verified by assembling the page's blocks byte-for-byte into the application they describe and
+  driving it over HTTP** on `egl/utils` v1.0.0 from Packagist — 200, 404 and 405 all correct, with
+  `Allow: GET, POST` on the wire. Application symbols were stubbed; nothing under `D4np\Utils\` was.
+  The sweep also ran `packages/utils-psr7-bridge/README.md`'s example (correct, unchanged) and
+  verified the API claims of five fragments that cannot execute. `docs/journal/` blocks and
+  `.specs/d4np-php.md`'s pre-rename example are **out of scope on principle** — dated records, where
+  a repair falsifies history; ADR-0055's block is *deliberately* invalid PHP, documenting what 8.1
+  rejects. `README.md`'s caveat about the pattern pages is narrowed accordingly: nothing in CI
+  executes a doc example, so each is verified as of the change that touched it.
 - **The `links` check no longer depends on files that exist in no clone.** It merged green and left
   `master` red (run 32476537522): its six findings were `.eados-core/` factory-bundle paths that
   `.gitignore` admits only under `learning/runs/`, so they are present on a maintainer's machine and
