@@ -276,31 +276,19 @@ final class Hmac
     /**
      * An unsigned 64-bit big-endian instant.
      *
-     * Hand-rolled rather than `pack('J', …)`/`unpack('J', …)` so that both directions are visibly
-     * symmetric and the decoded value is an `int` to the analyser without an annotation —
-     * `unpack()` returns `array|false`, and the `false` branch would be a guard that provably
-     * cannot fire on an eight-byte input, which is the dead defensive code ADR-0022 removed from
-     * {@see Hash} and item 12.1 removed from {@see Crypto}.
+     * The codec itself is {@see Uint64}, shared with {@see RateLimiter}'s bucket state since item
+     * 14.7 — one big-endian eight-byte format in this group rather than two hand-rolled copies that
+     * can drift (item 10.4's lesson). These two wrappers stay because the domain meaning is worth a
+     * name at the call site: `decodeExpiry()` says what the bytes *are*, and it is the name
+     * `HmacTest`'s ordering assertion pins.
      */
     private static function encodeExpiry(int $expiry): string
     {
-        $bytes = '';
-
-        for ($shift = (self::EXPIRY_BYTES - 1) * 8; $shift >= 0; $shift -= 8) {
-            $bytes .= \chr(($expiry >> $shift) & 0xFF);
-        }
-
-        return $bytes;
+        return Uint64::encode($expiry);
     }
 
     private static function decodeExpiry(string $bytes): int
     {
-        $expiry = 0;
-
-        for ($index = 0; $index < self::EXPIRY_BYTES; $index++) {
-            $expiry = ($expiry << 8) | \ord($bytes[$index]);
-        }
-
-        return $expiry;
+        return Uint64::decode($bytes);
     }
 }

@@ -16,6 +16,7 @@ use D4np\Utils\Support\JsonException;
 use D4np\Utils\Support\MailException;
 use D4np\Utils\Support\MethodNotAllowedException;
 use D4np\Utils\Support\MissingKeyException;
+use D4np\Utils\Support\RateLimitStoreException;
 use D4np\Utils\Support\RouteNotFoundException;
 use D4np\Utils\Support\SequenceExhaustedException;
 use D4np\Utils\Support\TypeMismatchException;
@@ -105,6 +106,7 @@ final class ExceptionHierarchyTest extends TestCase
                 MailException::class,
                 MethodNotAllowedException::class,
                 MissingKeyException::class,
+                RateLimitStoreException::class,
                 RouteNotFoundException::class,
                 SequenceExhaustedException::class,
                 TypeMismatchException::class,
@@ -186,6 +188,7 @@ final class ExceptionHierarchyTest extends TestCase
             MailException::class,
             MethodNotAllowedException::class,
             MissingKeyException::class,
+            RateLimitStoreException::class,
             RouteNotFoundException::class,
             SequenceExhaustedException::class,
             TypeMismatchException::class,

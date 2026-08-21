@@ -12,6 +12,38 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`Security\RateLimiter` — a token bucket per key, behind a compare-and-swap store** (spec
+  **r22 FR-50**, RFC-0003; roadmap items **14.6**/**14.7**; **ADR-0061** design + **ADR-0067**
+  implementation; closes issue #91). Additive under ADR-0059. With it:
+  `Security\{RateLimitPolicy, RateLimitDecision, RateLimitRecord, RateLimitStore,
+  ArrayRateLimitStore, FileRateLimitStore}` and `Support\RateLimitStoreException`. Seven things
+  worth knowing before wiring it:
+  - **A rate limit exists at the scope its store is shared, and nowhere else.** Behind a load
+    balancer a per-machine store means each node enforces its own limit — the effective limit is N×
+    the configured one, and an attacker spreading requests across nodes is throttled by none of them.
+    Multi-node enforcement needs a store every node shares; this library ships the algorithm and the
+    seam, and deliberately no network client. Both shipped stores state their scope in the first
+    sentence of their own docblock: `ArrayRateLimitStore` is **one process** (under PHP-FPM, one
+    request), `FileRateLimitStore` is **one machine**.
+  - **Key on the target identity, not the source address.** A limiter bounds attempt frequency
+    through the keys you chose; keyed on IP alone it is defeated by address rotation.
+  - **A store failure is never a decision.** `RateLimitStoreException` propagates — you choose
+    whether this endpoint prefers lockout or exposure while the backend is down. **If you choose
+    fail-open, do it loudly** (log at error, alert): a `catch` that returns "allowed" silently
+    recreates protection that evaporates exactly when attacks are cheapest.
+  - **A denial is a value, not an exception.** `RateLimitDecision` carries `allowed()`,
+    `remaining()`, and `retryAfterSeconds()` — which rounds **up**, so a client is never told to come
+    back before its token exists.
+  - **Your keys never reach the store.** The limiter hashes namespace and key at its own boundary,
+    so store-syntax injection, path traversal into the file store's directory, kilobyte-key storage
+    inflation, and content-shaped timing are all gone by construction rather than per store.
+  - **A skewed clock cannot mint tokens.** Elapsed time is clamped at zero, so a node running behind
+    refills nothing: skew can under-grant, never over-grant.
+  - **Sizing the file store:** each key costs **two inodes** (the state file plus `File::update()`'s
+    sidecar lock), and nothing prunes expired files — a limiter keyed on user input wants a periodic
+    sweep of its directory.
+  **Deliberately absent:** no circuit breaker, no PSR-15 middleware, no automatic wiring into
+  `HttpClient` or `Session`, no in-library Redis store.
 - **`Support\RetryPolicy` and `Support\Retrier` — explicit retry with backoff**, plus the sleep
   seam they need: `Support\{Sleeper, SystemSleeper, FrozenSleeper}` (spec **r21 FR-49**, RFC-0003;
   roadmap item **14.5**; **ADR-0066**; closes issue #94). Additive under ADR-0059. Six things worth

@@ -2038,7 +2038,7 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       caller owns the availability-versus-security call at its own catch — what the library
       refuses is only the silent version of either policy — size: S · route: frontier-reasoning /
       extra (security, adr — protected floor; session model matched: Fable 5)
-- [ ] 14.7 Implement `Security\{RateLimiter, RateLimitPolicy, RateLimitDecision, RateLimitStore}`
+- [x] 14.7 Implement `Security\{RateLimiter, RateLimitPolicy, RateLimitDecision, RateLimitStore}`
       + the two stores, per **ADR-0061** — **FR-50** (spec amendment at landing, M14's pattern;
       suite number claimed then too). Adversarial tests the issue names, plus the ADR's mechanism
       assertions (ADR-0027): clock skew (a behind-clock node refills zero, never negative), burst
@@ -2048,7 +2048,45 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       lists. Benchmark subject **only if measurement says the path is hot** (ADR-0040 — the
       guarded call costs ~100 ms of Argon2id by design; the limiter's job is to be invisible next
       to it). **Depends on 14.1** (the clock) and on this design; closes issue #91 — size: L ·
-      route: frontier-reasoning / extra (security, adr — protected floor)
+      route: frontier-reasoning / extra (security, adr — protected floor) *(session model Opus 5 — route matched)*.
+      *`Security\{RateLimiter, RateLimitPolicy, RateLimitDecision, RateLimitRecord, RateLimitStore,
+      ArrayRateLimitStore, FileRateLimitStore}` + `Support\RateLimitStoreException` + **ADR-0067** +
+      spec **r22**; 3 169 tests (+95), **21 planted defects, 21 caught**, all local gates green
+      (deptrac 417 allowed, **no new rule** — exactly as ADR-0061 §7 predicted). **M14 CLOSES.**
+      The store contract is exercised against **both** shipped stores through one data provider,
+      because a contract only one implementation was ever checked against is not a contract — the
+      PSR-7 bridge suite's reasoning, and what makes a consumer's Redis store a drop-in.*
+      *★ **FOUR PLANTS ESCAPED FIRST, AND EACH ONE CHANGED THE WORK.** (1) Two capacity clamps
+      **masked each other** — removing either left the suite green, so neither had ever been tested;
+      the redundant one was deleted (ADR-0022's stance, third application). (2) The refill remainder
+      was invisible to a test that stopped at the first token: with `lastRefill = now` the first
+      token still arrives on schedule and only the carry is lost, so the test had to be extended to
+      a second refill. (3) `retryAfterSeconds` was tested on a whole-second value where `ceil` and
+      `floor` agree — it asserted the value, not the rule. (4) **The worst: `testRefillIsCappedAt
+      Capacity` idled an hour past a sixty-second TTL**, so the state had EXPIRED, the store returned
+      nothing, the limiter built a fresh bucket and the refill branch never ran at all. It passed
+      for the wrong reason and named a property it did not test. **Same defect class as BUG-0001 two
+      items ago, and a plant is the only thing that has caught either.** That one also exposed a
+      real property of the TTL: since `refilled > capacity` needs `elapsed > capacity x interval`,
+      which IS the TTL, the refill ceiling is nearly unreachable by idling — it stays for its other,
+      plainly reachable case (a capacity tightened between deployments), now tested directly.*
+      *★ **THE GUARD REPAIRED AT 14.4 FIRED ON MY OWN CODE, first real opportunity since.**
+      `ConstantTimeComparisonTest`'s completeness check named both stores' unregistered
+      `hash_equals()` at file and line. Registered rather than downgraded to `===` (weakening code
+      to quiet a guard inverts item 11.2's rule), and with **named locals on both sides**, because a
+      registered path whose compared values are method calls makes the negative assertion vacuously
+      green — item 14.4's own trap, avoided this time by having met it.*
+      *Implementation decisions ADR-0061 left open: **CAS bound of three** and exhaustion refuses
+      (every extra retry is work an attacker prices, the objection that ruled out a sliding log);
+      **microseconds-per-token, not a float rate**, with the division **rounding up** so the
+      effective rate is never faster than configured; TTL = `capacity x interval`. **No benchmark
+      subject, and that is the measurement ADR-0061 asked for rather than a shrug** — the guarded
+      call costs ~100 ms of Argon2id by design, and two integer divisions plus one short `sha256`
+      are not a subject. Also **corrected an omission from item 14.5**: the patterns catalogue's own
+      rule promoted *Retry with Backoff* to Implemented when that item landed, and its PR recorded
+      "no catalogue entry" instead — both it and *Rate Limiting* are now table rows. Two operator
+      facts written into the file store's docblock because nothing else would say them: each key
+      costs **two inodes** (ADR-0005's sidecar lock), and nothing prunes expired files.*
 
 ---
 
