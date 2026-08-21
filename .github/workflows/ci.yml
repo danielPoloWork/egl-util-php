@@ -112,6 +112,12 @@ jobs:
       # and the outcome written into an ADR; this one ships the proof so it re-runs on every PR.
       - name: Verify the per-diff coverage gate can fail
         run: python tools/tests/verify_diff_coverage_gate.py
+      # And the links check's own proof (issue #116, ADR-0069). Its strongest evidence is not
+      # synthetic -- it found nineteen broken links on master the first time it ran, against the
+      # five the review board had counted -- but that demonstration was single-use, so the
+      # repeatable half lives in a script beside the one above.
+      - name: Verify the documentation link check can fail
+        run: python tools/tests/verify_link_check.py
       # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
       # shape, and a version comment that lies is invisible to any purely local check when the
       # error is applied uniformly. CI is where the truthful half must run.

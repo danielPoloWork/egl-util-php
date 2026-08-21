@@ -14,9 +14,9 @@
   unknown key is refused, not ignored) ·
   [ADR-0026](0026-session-hardening-as-a-value-and-csrf-through-a-seam.md) (a policy exposed as
   a value so a wiring can be asserted) ·
-  [ADR-0040](0040-run-infection-outside-the-dependency-graph-and-keep-the-spec-s-own-floor.md)
+  [ADR-0040](0040-install-the-mutation-tester-outside-the-graph-and-keep-nfr07s-own-number.md)
   (the spec owns its own numbers) ·
-  [ADR-0045](0045-exclude-the-io-bound-and-memory-hard-subjects-from-the-relative-gate.md) and
+  [ADR-0045](0045-exclude-io-bound-and-memory-hard-subjects-from-the-relative-gate.md) and
   item 10.12 (a control subject; no claim below the runner's own spread)
 
 ## Context

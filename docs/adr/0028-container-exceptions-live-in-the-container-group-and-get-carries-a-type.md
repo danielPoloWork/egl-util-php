@@ -7,7 +7,7 @@
   imported [ADR-001](../../.specs/d4np_php_adr_001_di_container.md) (why a hand-written container
   at all) · [ADR-0004](0004-root-the-exception-hierarchy-on-an-interface.md) (the exception root) ·
   [ADR-0006](0006-shared-reflection-metadata-cache.md) (the one metadata cache, and the union-type
-  refusal this depends on) · [ADR-0012](0012-deptrac-layers-by-directory.md) (the layering this
+  refusal this depends on) · [ADR-0012](0012-enforce-the-layering-rule-by-directory-over-src-main.md) (the layering this
   obeys) · [ADR-0018](0018-querybuilder-benchmark-scope-and-the-measured-build-time-gap.md) (the
   benchmark caveat carried forward)
 

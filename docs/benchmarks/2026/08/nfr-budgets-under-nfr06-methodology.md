@@ -72,7 +72,7 @@ every subject in this run), not a per-subject delta. `MemoryBench` measures the 
 that into a gate needs a different reader than `bench_budget_gate.py`'s `stats/mode`, and is named
 here rather than quietly skipped.
 
-**NFR-05's wall clock is deliberately not gated**, per [ADR-0024](../../adr/0024-assert-the-work-factor-not-the-wall-clock.md).
+**NFR-05's wall clock is deliberately not gated**, per [ADR-0024](../../../adr/0024-assert-the-work-factor-not-the-wall-clock.md).
 That decision split the budget by what each half can prove: the security-relevant property is the
 **work factor** (`memory_cost` ≥ 19456 KiB, `time_cost` ≥ 2 against OWASP's floor), asserted in a
 unit test, because wall-clock time depends on hardware and the work factor does not. 148 ms landing

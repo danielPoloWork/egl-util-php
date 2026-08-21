@@ -27,7 +27,7 @@ names make it worse. Nothing short of a real PHP parser resolves it, and a regex
 `#[CollectionOf(AddressDto::class)]` has none of that problem. PHP resolves the argument at
 compile time and hands over a class-string; PHPStan type-checks it at the declaration site.
 
-So the decision changed, and [ADR-0010](../../adr/0010-collection-generics-by-attribute.md)
+So the decision changed, and [ADR-0010](../../../adr/0010-collection-generics-by-attribute.md)
 records it *as* a change rather than substituting quietly — ADR-0006 named the parser explicitly,
 and a later reader deserves to find out why it never appeared.
 

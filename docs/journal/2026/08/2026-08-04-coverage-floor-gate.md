@@ -19,7 +19,7 @@ ADR-0003: a policy stated in prose that no mechanism could contradict.
    (`--fail-on-risky`, `--fail-on-skipped`, …) and **no coverage threshold** among them —
    verified against `--help`, not assumed. So the comparison had to live outside PHPUnit.
 2. **What "new code ≥ 90%" means.** `AGENTS.md` explicitly deferred this to an ADR, and the two
-   readings differ enormously in cost. [ADR-0007](../../adr/0007-measure-total-line-coverage-against-a-floor.md)
+   readings differ enormously in cost. [ADR-0007](../../../adr/0007-measure-total-line-coverage-against-a-floor.md)
    settles it as **total** line coverage — and, more importantly, has the tool print
    `NOT measured: per-diff coverage of changed lines` on every successful run. Per-diff is the
    stronger check; claiming it while measuring the total is the failure this avoids.

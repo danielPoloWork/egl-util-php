@@ -249,7 +249,7 @@ that the gap existed and was closed, rather than being rewritten to hide the int
 1. **Milestone 2 (`v0.2.0`) — Support layer**: the exception hierarchy, `Str`, `File`, `Env`,
    `Json`, and the shared reflection-metadata cache. The first items with actual behavior to
    write; T-05 property tests land alongside them.
-2. **One-time admin** — [`docs/workflow/github-setup.md`](../../workflow/github-setup.md):
+2. **One-time admin** — [`docs/workflow/github-setup.md`](../../../workflow/github-setup.md):
    branch protection on `master`, squash-only, label import from `.github/labels.yml`. The
    label import matters more now: every PR in this milestone has carried `enhancement` or
    `documentation` as a stand-in because the repo's own type labels (`build`, `test`, `ci`,
