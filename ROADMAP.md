@@ -1694,6 +1694,15 @@ the release process around it.
       discarding the `Allow` header the example built two lines earlier. Verified against
       `src/main/php/d4np/utils/Http/Response.php` at 1.0.0. Then sweep the remaining doc examples
       for the same rot, since nothing has ever executed them — size: S · route: standard / medium
+      *(now tracked as [issue #149](https://github.com/danielPoloWork/egl-util-php/issues/149) —
+      this item had been the only M13 entry without one. All three findings above **re-verified**
+      against `9ee5ba6` rather than trusted from the 2026-08-09 filing, and the issue adds a fourth
+      the filing missed: `Response` is **immutable**, so `withHeader()` returns a new instance and
+      the example's build-then-poke shape does not fit the class at all — a restructure, not three
+      token substitutions. The sweep is bounded there too: of 26 ` ```php ` blocks in 18 tracked
+      files, 4 are `README.md`'s (proven to run under 13.2) and **11 live in `docs/journal/`, which
+      are dated records — an example there describes the API as it was, and rewriting it would
+      falsify history**. That leaves 11 live blocks in 8 files.)*
 - [x] 13.4 Make documentation cross-references checkable. Item 7.5's load-bearing defect was
       `SECURITY.md` deferring a definition to `maintenance.md`, to a section that did not exist —
       invisible for the entire pre-1.0 line, because the clause above the pointer still applied.
