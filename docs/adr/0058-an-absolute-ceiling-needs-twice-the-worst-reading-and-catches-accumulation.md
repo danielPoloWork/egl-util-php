@@ -17,7 +17,7 @@
   a non-goal this ADR *confirms* rather than reverses) ·
   [ADR-0024](0024-assert-the-work-factor-not-the-wall-clock.md) (NFR-05's precedent: the spec's
   number and what CI can assert are allowed to be different things) ·
-  [ADR-0040](0040-run-infection-outside-the-dependency-graph-and-hold-the-floor-at-the-specs-70.md)
+  [ADR-0040](0040-install-the-mutation-tester-outside-the-graph-and-keep-nfr07s-own-number.md)
   (the rule that reserved these numbers for the maintainer until now)
 
 ## Context

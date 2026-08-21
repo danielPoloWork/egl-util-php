@@ -42,8 +42,12 @@ python tools/consistency_lint.py
    untested addition can no longer hide inside the project's headroom. It needs a coverage
    driver, so it runs on the runner rather than here; if a changed line provably cannot execute,
    annotate it `@codeCoverageIgnore` with the reason rather than leaving it uncovered.
-3. `python tools/consistency_lint.py` passes, and so does
-   `python tools/tests/verify_diff_coverage_gate.py` — that one needs only git and Python, so
-   unlike the coverage gates themselves it runs on any machine.
+3. `python tools/consistency_lint.py` passes — its **`links`** check resolves every relative
+   link, `#anchor` and quoted `§ "Section"` reference in tracked Markdown, so a docs-only
+   change is not exempt from it (ADR-0069). Read the line it prints about what it does *not*
+   resolve rather than assuming a green run vouched for everything. The two tool proofs,
+   `python tools/tests/verify_diff_coverage_gate.py` and
+   `python tools/tests/verify_link_check.py`, need only git and Python — so unlike the coverage
+   gates themselves they run on any machine.
 4. The relevant docs (README, ROADMAP, ADRs, patterns, changelog) are updated in the same
    PR — see [`../workflow/documentation.md`](../workflow/documentation.md).

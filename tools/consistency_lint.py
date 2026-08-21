@@ -24,7 +24,12 @@ contract (the "congruence checks"):
      agrees with its id/discovered date, ids are unique and non-gapped, the index ↔ files
      bijection holds, and a `fixed` record names its `fixed-in`;
   7. i18n-freshness  — (only when i18n is enabled) no translated page is staler than its
-     English source.
+     English source;
+  8. posture         — the declared governance posture and the control register agree;
+  9. links           — every relative link in tracked Markdown resolves to a file that exists,
+     every `#anchor` finds a heading in its target, and a `§ "Section"` reference immediately
+     after a link names a real section of it (issue #116, ROADMAP 13.4, ADR-0069). Bare and
+     numeric `§` forms are out of scope and the check says so on every run.
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -387,6 +392,151 @@ def check_posture():
                    "enterprise governance posture — the register has no posture to serve")
 
 
+# ---------------------------------------------------------------------------
+# 9. Documentation cross-references (issue #116, ROADMAP 13.4, ADR-0069)
+# ---------------------------------------------------------------------------
+# Item 7.5's load-bearing defect was SECURITY.md deferring a definition to maintenance.md, to a
+# section that did not exist — invisible for the entire pre-1.0 line, because the clause above the
+# pointer still applied. Nothing in this file resolved a link until this check; when it landed it
+# found NINETEEN broken ones on master, against the five the review board had counted.
+#
+# Written here rather than delegated to lychee or markdown-link-check for one reason that decides
+# it: neither resolves a `§ "Section"` reference against the target's headings, and that prose form
+# is the shape the originating defect actually took. A second toolchain in CI that misses the
+# defect it was installed for is a worse arrangement than sixty lines of stdlib.
+
+_MD_LINK = re.compile(r'(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
+_MD_FENCE = re.compile(r"^\s*(```|~~~)")
+_MD_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$", re.MULTILINE)
+# A section reference that names its heading exactly: § "Quoted" or § *Italic*. The bare and
+# numeric forms are deliberately not matched — see the note in check_links().
+_SECTION_REF = re.compile(r'§\s*(?:"([^"\n]{2,80})"|\*([^*\n]{2,80})\*)')
+
+
+def _without_fenced_blocks(text):
+    """`text` with fenced code blocks blanked, keeping line numbers intact.
+
+    A link inside a fence is an example, not a reference — several ADRs and pattern pages show
+    markdown that deliberately points nowhere. Blanking rather than deleting so that a reported
+    line number still matches the file.
+    """
+    out, inside = [], False
+    for line in text.split("\n"):
+        if _MD_FENCE.match(line):
+            inside = not inside
+            out.append("")
+            continue
+        out.append("" if inside else line)
+    return "\n".join(out)
+
+
+def _heading_slugs(text):
+    """GitHub's anchor slugs for every heading in `text`.
+
+    Lower-cased, non-word characters dropped, spaces to hyphens — GitHub's rule. Inline markup is
+    stripped first so that `## The *hard* part` slugs as `the-hard-part`, which is what GitHub
+    links to.
+    """
+    slugs = set()
+    titles = set()
+    for _, title in _MD_HEADING.findall(_without_fenced_blocks(text)):
+        plain = re.sub(r"`|\*\*|\*|_|~~", "", title).strip()
+        titles.add(plain)
+        slug = re.sub(r"[^\w\- ]", "", plain.lower()).strip().replace(" ", "-")
+        if slug:
+            slugs.add(slug)
+    return slugs, titles
+
+
+def check_links():
+    name = "links"
+    listing = git("ls-files", "*.md")
+    if listing is None:
+        fail(name, "cannot list tracked Markdown files (is git available?)")
+        return
+    files = [f for f in listing.split("\n") if f]
+    if not files:
+        return
+
+    bodies = {}
+    for rel in files:
+        try:
+            with open(os.path.join(ROOT, rel), encoding="utf-8") as handle:
+                bodies[rel] = handle.read()
+        except OSError as exc:
+            fail(name, f"{rel}: cannot be read ({exc})")
+
+    resolved = 0
+
+    for rel, raw in bodies.items():
+        body = _without_fenced_blocks(raw)
+        base = os.path.dirname(rel)
+
+        for match in _MD_LINK.finditer(body):
+            target = match.group(1)
+            if target.startswith(("http://", "https://", "mailto:", "tel:")):
+                continue
+
+            line = body[: match.start()].count("\n") + 1
+            path, _, anchor = target.partition("#")
+            resolved += 1
+
+            if path:
+                absolute = os.path.normpath(os.path.join(ROOT, base, path))
+                if not os.path.exists(absolute):
+                    fail(name, f"{rel}:{line}: link target does not exist — {target}")
+                    continue
+                pointee = os.path.relpath(absolute, ROOT).replace(os.sep, "/")
+            else:
+                pointee = rel  # a same-file "#anchor"
+
+            if not anchor:
+                continue
+            if not pointee.endswith(".md"):
+                continue
+            if pointee not in bodies:
+                # Reachable on disk but not tracked: report rather than skip, because an anchor
+                # into an untracked file is a reference nobody can maintain.
+                fail(name, f"{rel}:{line}: anchor points into untracked file — {target}")
+                continue
+
+            slugs, _ = _heading_slugs(bodies[pointee])
+            if anchor.lower() not in slugs:
+                fail(name, f"{rel}:{line}: no heading matches anchor #{anchor} in {pointee}")
+
+        # A quoted or italicised section reference immediately after a link must name a heading in
+        # that link's target. Scoped to "immediately after" because prose is otherwise ambiguous
+        # about which document a § belongs to.
+        for match in _MD_LINK.finditer(body):
+            tail = body[match.end():match.end() + 120]
+            section = _SECTION_REF.match(tail.lstrip()) if tail.lstrip().startswith("§") else None
+            if section is None:
+                continue
+            wanted = section.group(1) or section.group(2)
+            path = match.group(1).partition("#")[0]
+            if not path or match.group(1).startswith(("http://", "https://", "mailto:")):
+                continue
+            absolute = os.path.normpath(os.path.join(ROOT, base, path))
+            pointee = os.path.relpath(absolute, ROOT).replace(os.sep, "/")
+            if pointee not in bodies:
+                continue
+            line = body[: match.start()].count("\n") + 1
+            _, titles = _heading_slugs(bodies[pointee])
+            if not any(wanted.lower() in title.lower() for title in titles):
+                fail(name, f'{rel}:{line}: {pointee} has no section named "{wanted}"')
+
+    # What this check does NOT resolve, printed rather than left for a reader to assume — the
+    # ADR-0007 pattern, which is what made issue #109 findable at all. The bare and NUMERIC §
+    # forms (`§2`, `§ the layering rule`) are not checked: 546 of this repository's 602 section
+    # references are numeric, they routinely refer to the enclosing document rather than to an
+    # adjacent link, and resolving them needs sentence parsing. A check that guessed would either
+    # cry wolf on all 546 or match none and report green.
+    print(f"  [links] {resolved} relative reference(s) resolved across {len(files)} tracked "
+          "Markdown file(s).")
+    print("          NOT resolved: external URLs, and bare or numeric § references "
+          "(`§2`) — see ADR-0069.")
+
+
 CHECKS = [
     check_version_lockstep,
     check_adr_index,
@@ -396,11 +546,29 @@ CHECKS = [
     check_bugs,
     check_i18n_freshness,
     check_posture,
+    check_links,
 ]
 
 
-def main():
-    for fn in CHECKS:
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+
+    # `--only <name>` runs one check. Added with the links check (issue #116) so that its own
+    # verification script can assert what THAT check reports without the other eight weighing in;
+    # a proof-it-can-fail that has to interpret nine checks' combined output is proving less.
+    selected = CHECKS
+    if argv and argv[0] == "--only":
+        if len(argv) < 2:
+            print("usage: consistency_lint.py [--only <check-name>]")
+            return 2
+        wanted = argv[1].replace("-", "_")
+        selected = [fn for fn in CHECKS if fn.__name__ in (wanted, f"check_{wanted}")]
+        if not selected:
+            names = ", ".join(fn.__name__.removeprefix("check_") for fn in CHECKS)
+            print(f"unknown check {argv[1]!r}. Available: {names}")
+            return 2
+
+    for fn in selected:
         try:
             fn()
         except Exception as exc:  # a check crashing is itself a failure

@@ -36,7 +36,7 @@ Each security feature in §2 names its mechanism, its scope, and its test (§7).
 3. **`Collection<T>`** — functional array wrapper (`map`, `filter`, `reduce`). **Genericity is static-analysis-level only** *(stated explicitly — PHP has no runtime generics)*: `@template T` docblocks enforced by PHPStan max level in CI; at runtime the collection checks nothing beyond an optional `instanceof` guard flag.
 
 ### Dependency Injection
-4. **`Container`** — minimal PSR-11 container: constructor autowiring, singletons/factories, no compilation — scope limits and the build-vs-adopt decision recorded in [ADR-001](adr/d4np_php_adr_001_di_container.md).
+4. **`Container`** — minimal PSR-11 container: constructor autowiring, singletons/factories, no compilation — scope limits and the build-vs-adopt decision recorded in [ADR-001](d4np_php_adr_001_di_container.md).
 5. **`ServiceProvider`** — abstract base for registering definitions.
 
 ### Database & PDO
@@ -59,7 +59,7 @@ Each security feature in §2 names its mechanism, its scope, and its test (§7).
 12. **`CsrfToken`** — CSPRNG token generation + constant-time validation (`hash_equals`), per-session storage, optional per-form scoping.
 
 ### HTTP & Session
-13. **`Request`** — typed superglobal reader (`$_GET/$_POST/$_SERVER/$_FILES`); optional **PSR-7 bridge** per [ADR-002](adr/d4np_php_adr_002_http_psr7.md).
+13. **`Request`** — typed superglobal reader (`$_GET/$_POST/$_SERVER/$_FILES`); optional **PSR-7 bridge** per [ADR-002](d4np_php_adr_002_http_psr7.md).
 14. **`Response`** — headers/JSON/status helpers; same bridge.
 15. **`Session`** — secure session API: `cookie_httponly`, `cookie_secure`, `cookie_samesite=Lax` set at start; `regenerate()` wraps `session_regenerate_id(true)` for login transitions (fixation defense — testable criterion in T-03).
 

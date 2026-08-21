@@ -14,7 +14,7 @@ decision risked one of two failures: under-building, and blocking a consumer lat
 speculating, and shipping fields and abstractions nobody ever uses.
 
 The discipline that resolved it: **every metadata field must cite a stated requirement**.
-[ADR-0006](../../adr/0006-shared-reflection-metadata-cache.md) carries the table — `name` from
+[ADR-0006](../../../adr/0006-shared-reflection-metadata-cache.md) carries the table — `name` from
 FR-01, `allowsNull`/`hasDefault`/`default` from RFC-0001 R-4's "neither nullable nor defaulted"
 rule, `declaredType` from imported ADR-001's *fail loudly* requirement, `isInstantiable` from
 FR-04. A field that cannot name its requirement does not belong.

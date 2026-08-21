@@ -12,6 +12,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Documentation cross-references are checked** — `consistency_lint.py` gains a **`links`** check
+  (ROADMAP 13.4, **ADR-0069**; closes issues #116 and #117). Every relative link in tracked Markdown
+  must resolve to a file that exists, every `#anchor` must find a heading in its target, and a
+  quoted or italicised `§ "Section"` reference immediately after a link must name a real section of
+  it — which is the shape item 7.5's originating defect took, `SECURITY.md` deferring a definition
+  to a section of `maintenance.md` that had never been written.
+  - **Written in the lint rather than delegated to lychee or markdown-link-check**, for one reason
+    that decides it: neither resolves a `§` reference against the target's headings, and a second
+    toolchain in CI that misses the defect it was installed for is worse than sixty lines of
+    standard library.
+  - **The numeric `§` form is refused, not attempted.** 546 of this repository's 602 section
+    references are numeric, they routinely point at the enclosing document rather than an adjacent
+    link, and a guess would either cry wolf across all 546 or match none and report green. The
+    limitation is printed on every run.
+  - Fenced code blocks are not followed (those are examples), images are not links, and external
+    URLs are out of scope — a gate that reddens on somebody else's downtime gets ignored.
+  - `consistency_lint.py --only <check>` runs one check, added so the proof below can assert what
+    *that* check reported. `tools/tests/verify_link_check.py` is that proof: 14 cases over throwaway
+    git repositories, including a direct reproduction of item 7.5's defect.
 - **A per-diff coverage gate** — `tools/diff_coverage_gate.py`, wired into CI on every pull
   request (**ADR-0068**; closes issue #109). The existing gate enforces **total** line coverage
   against spec NFR-07's 90% floor and prints, on every run, what it cannot see: with the suite well
@@ -140,6 +159,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **Nineteen dead relative links repaired**, found by the new `links` check on its first run —
+  against the five issue #117 had counted. Three distinct root causes, worth separating because
+  "five dead links" described only one of them:
+  - **Renamed ADRs (4).** ADR-0040 was cited under **three different wrong names** across two files;
+    ADR-0012 and ADR-0045 once each. Renaming an ADR file is a routine tidy-up that silently breaks
+    every inbound reference.
+  - **Wrong relative depth (7).** Six journal entries and one benchmark record wrote `../../adr/…`
+    from three directories down, where `../../../adr/…` is needed.
+  - **The unrebased changelog roll (6).** `CHANGELOG.md` sits at the repository root and its entries
+    write `docs/…`; the per-version file sits two directories down. `docs/workflow/release.md` §2
+    now says to rebase, and says the lint is what catches a miss.
 - **Three classes' default-clock construction path is now exercised.** `RateLimiter`,
   `ArrayRateLimitStore` and `FileRateLimitStore` each accept an optional `Psr\Clock\ClockInterface`
   and fall back to `SystemClock` — the path **every production caller takes**, and the one no test

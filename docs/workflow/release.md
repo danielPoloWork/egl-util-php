@@ -26,11 +26,26 @@ pre-1.0 milestone-driven.
    have to read a hundred engineering-record bullets to learn what shipped (issue #88, ROADMAP
    13.5's single-sourcing question is separate and unaffected — this step applies wherever the
    per-version file ends up living).
+
+   **Rebase every relative link as you move it.** `CHANGELOG.md` sits at the repository root, so
+   its entries write `docs/patterns/endpoint-kernel.md`; the per-version file sits two directories
+   down, where the same target is `../../patterns/endpoint-kernel.md`. Moving the text without
+   rebasing the paths **manufactures dead links mechanically** — which is exactly what happened at
+   `v1.0.0`: six of them, sitting in `docs/changelog/v1/v1.0.0.md` until issue #116 wired a checker
+   that found them (the review board had counted five).
+
+   The rule for a `docs/changelog/v<MAJOR>/` file: a root-relative `docs/…` becomes `../../…`, and
+   anything already relative was written against the root and needs the same two levels. **You do
+   not have to get this right by inspection** — step 5's lint now resolves every relative link in
+   tracked Markdown and names the file and line of any that does not exist, so a missed rebase is a
+   red gate rather than a defect a reader finds a year later.
 3. **Refresh the README** status badge (and milestone table on a MINOR that closes a
    milestone).
 4. **Draft release notes** under `docs/releases/v<X.Y.Z>.md`.
 5. **Run the consistency lint** (`python tools/consistency_lint.py`) — version lockstep must
-   pass.
+   pass, and so must the `links` check, which is what catches a missed rebase from step 2. Its
+   output states what it does *not* resolve (external URLs; bare and numeric `§` references), so
+   read that line rather than assuming a green run vouched for everything.
 6. **Open the release PR** — *the maintainer does this*. The agent prepares it.
 7. **Merge** — *the maintainer*.
 8. **Tag + draft (carry-through)** — the agent runs `git tag -a -s v<X.Y.Z> -m "<headline>"` and

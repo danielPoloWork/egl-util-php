@@ -13,7 +13,7 @@ proceeded on their standing decision.
 
 ## What landed
 
-Ten files under `src/main/php/d4np/utils/Support/`, and **[ADR-0004](../../adr/0004-root-the-exception-hierarchy-on-an-interface.md)**
+Ten files under `src/main/php/d4np/utils/Support/`, and **[ADR-0004](../../../adr/0004-root-the-exception-hierarchy-on-an-interface.md)**
 for the four mechanics RFC-0001 deliberately left open:
 
 - **An interface root, `UtilsThrowable extends \Throwable`**, alongside the concrete
@@ -87,4 +87,4 @@ and `JsonException::wrap()`. The empty leaf classes have no executable lines.
 - **2.7** whenever convenient; it turns a written quality bar into a checked one, the same shape
   as items 1.10 → 1.11.
 - One-time admin still open: branch protection and the label import
-  ([`github-setup.md`](../../workflow/github-setup.md)).
+  ([`github-setup.md`](../../../workflow/github-setup.md)).

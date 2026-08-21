@@ -1652,7 +1652,7 @@ the release process around it.
       discarding the `Allow` header the example built two lines earlier. Verified against
       `src/main/php/d4np/utils/Http/Response.php` at 1.0.0. Then sweep the remaining doc examples
       for the same rot, since nothing has ever executed them — size: S · route: standard / medium
-- [ ] 13.4 Make documentation cross-references checkable. Item 7.5's load-bearing defect was
+- [x] 13.4 Make documentation cross-references checkable. Item 7.5's load-bearing defect was
       `SECURITY.md` deferring a definition to `maintenance.md`, to a section that did not exist —
       invisible for the entire pre-1.0 line, because the clause above the pointer still applied.
       `consistency_lint.py` covers version lockstep, the ADR index, pattern rows, the spec coverage
@@ -1665,7 +1665,35 @@ the release process around it.
       dependency-graph-…md`, an ADR filename that has not existed since the file was renamed to
       `0040-install-the-mutation-tester-outside-the-graph-…md`. Repaired under 7.5 as mechanical
       rot; the point is that eleven files were enough to surface two, and nothing was looking —
-      size: M · route: standard / medium
+      size: M · route: standard / medium *(issues #116 + #117; session model Opus 5, above the
+      advisory route)*. *`consistency_lint.py` gains a **`links`** check and a `--only <check>`
+      flag; `tools/tests/verify_link_check.py` gains its proof (14 cases); **ADR-0069**. Chosen
+      over lychee and markdown-link-check for one reason that decides it: **neither resolves a
+      `§ "Section"` reference against the target's headings**, and that prose form is the shape
+      item 7.5's originating defect actually took — a second toolchain in CI that misses the defect
+      it was installed for is worse than sixty lines of stdlib.*
+      *★ **THE FIRST RUN FOUND NINETEEN BROKEN LINKS, not the five the review board counted**, and
+      they came from **three distinct root causes** — which is why "five dead links" described one
+      of them rather than the defect: (1) **renamed ADRs (4)**, with ADR-0040 cited under **three
+      different wrong names** across two files, ADR-0012 and ADR-0045 once each — renaming an ADR
+      is a routine tidy-up that silently breaks every inbound reference; (2) **wrong relative depth
+      (7)**, six journal entries and one benchmark record writing `../../adr/` where three levels
+      are needed, a template copied one level shallower; (3) **the unrebased changelog roll (6)**
+      at v1.0.0 — the mechanical cause issue #116 named. All 19 repaired here. **Closes #117 too,
+      and its own count was wrong**: six in that file, not five. Recorded because an issue's
+      estimate becoming the definition of done is how the other thirteen would have survived.*
+      *The **numeric `§` form is deliberately refused**, measured first: **546 of this repo's 602
+      section references are numeric**, they routinely point at the enclosing document rather than
+      an adjacent link, and resolving them needs sentence parsing. A guess would cry wolf across
+      546 or match none and report **green** — the vacuous-gate failure hit three times this
+      session. So the limit is printed on every run, `coverage_gate.py`'s pattern verbatim — and
+      worth noting what that pattern produced: ADR-0007 stated its own limitation in output and
+      eighteen ADRs later that sentence became issue #109 and got closed. **A stated gap is a filed
+      issue waiting to happen; a silent one is not.** Also amended `release.md` §2 with the
+      link-rebase step and said there that the lint enforces it — a procedure relying on memory is
+      a procedure that fails. `.specs/` deliberately NOT excluded (2 of the 19 live there): an
+      exclusion is a blind spot, and if the maintainer wants that input frozen it should be a
+      decision rather than a default.*
 - [ ] 13.5 Pick one home for release notes. `CHANGELOG.md`'s header directs readers to
       `docs/changelog/v<MAJOR>/`; `docs/README.md` documents `docs/releases/`. **Both exist and both
       hold a v1.0.0 file**, so a maintainer updating "the" release notes has even odds of editing
