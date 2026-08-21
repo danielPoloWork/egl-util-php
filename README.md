@@ -246,10 +246,14 @@ lives. For needs this library deliberately does not cover, see
 [third-party picks](docs/patterns/third-party-picks.md).
 
 The pattern pages under [`docs/patterns/`](docs/patterns/) explain *why* things are shaped the way
-they are, and are worth reading before extending the library. They are not yet a reliable source of
-copyable code: `endpoint-kernel.md`'s flagship example does not compile against the API it
-documents, and no doc example has ever been executed by CI (ROADMAP item **13.3**). The four above
-are the only examples in this repository proven to run.
+they are, and are worth reading before extending the library. Start with
+[the endpoint kernel](docs/patterns/endpoint-kernel.md) — a front controller wiring `Router`,
+`Response` and `ApiEnvelope`, whose blocks were assembled into a running application and driven over
+HTTP for the 200, 404 and 405 branches (ROADMAP 13.3).
+
+One caveat that still stands: **no doc example is executed by CI**, so every one of them is verified
+as of the change that touched it and not continuously. When an example and the code disagree, the
+code is right.
 
 ## Build, test, run
 
