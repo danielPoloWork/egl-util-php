@@ -44,7 +44,7 @@ final class Result
      *
      * @param U $value
      *
-     * @return self<U>
+     * @return Result<U>
      */
     public static function success(mixed $value): self
     {
@@ -52,11 +52,11 @@ final class Result
     }
 
     /**
-     * @return self<never>
+     * @return Result<never>
      */
     public static function failure(Throwable $error): self
     {
-        /** @var self<never> */
+        /** @var Result<never> */
         return new self(false, null, $error);
     }
 
@@ -70,7 +70,7 @@ final class Result
      *
      * @param callable(): U $operation
      *
-     * @return self<U>
+     * @return Result<U>
      */
     public static function try(callable $operation): self
     {
@@ -101,7 +101,7 @@ final class Result
      *
      * @param callable(T): U $fn
      *
-     * @return self<U>
+     * @return Result<U>
      */
     public function map(callable $fn): self
     {
@@ -124,9 +124,9 @@ final class Result
      *
      * @template U
      *
-     * @param callable(T): self<U> $fn
+     * @param callable(T): Result<U> $fn
      *
-     * @return self<U>
+     * @return Result<U>
      */
     public function flatMap(callable $fn): self
     {
@@ -154,7 +154,7 @@ final class Result
      *
      * @param callable(Throwable): U $fn
      *
-     * @return self<T|U>
+     * @return Result<T|U>
      */
     public function recover(callable $fn): self
     {

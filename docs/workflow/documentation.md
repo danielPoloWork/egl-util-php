@@ -27,7 +27,18 @@ README ↔ ROADMAP milestone agreement, and bug-ledger integrity.
 
 ## API documentation
 
-Public symbols are documented with `phpDocumentor`-compatible comments. The API-docs build
-must be warning-free (quality bar, `AGENTS.md` §10). Narrative documentation lives in
-Markdown under `docs/`; the split between generated API docs and hand-written narrative is
-recorded in an ADR if non-obvious.
+Public symbols are documented with `phpDocumentor`-compatible comments. The API-docs build must
+report no compilation errors (quality bar, `AGENTS.md` §10), and **that is asserted from
+phpDocumentor's own report rather than its exit code**, which is `0` even when the report names
+errors — see [ADR-0070](../adr/0070-read-phpdocumentors-report-not-its-exit-code.md).
+`.github/workflows/api-docs.yml` builds the reference on every pull request and publishes it to
+GitHub Pages from `master`; `phpdoc.dist.xml` is the configuration and covers `src/main` only.
+
+**One practical constraint this imposes on annotations.** PHPStan's generic `self<T>` form is
+rejected by phpDocumentor's type parser (*"self is not a collection"*), so a generic return names
+its class instead — `Result<U>`, `Collection<TItem>`. PHPStan accepts both identically, and the
+gate catches a reintroduction on the pull request that makes it. Nothing is suppressed to keep the
+build clean: `phpdoc.dist.xml` carries no `ignore-tags` block, deliberately.
+
+Narrative documentation lives in Markdown under `docs/`; the split between generated API docs and
+hand-written narrative is recorded in an ADR if non-obvious.

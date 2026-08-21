@@ -1861,13 +1861,53 @@ the release process around it.
       (ADR-0035 already established this for the pipeline generally), so any tracked file there —
       including this one — is included by construction, not by a check that could pass accidentally.
       README gains a pointer row for both new root files.
-- [ ] 13.7 Settle the `phpDocumentor` API-docs gate. `AGENTS.md` §10 lists "**API docs** —
+- [x] 13.7 Settle the `phpDocumentor` API-docs gate. `AGENTS.md` §10 lists "**API docs** —
       `phpDocumentor` builds without warnings" as a mandatory per-PR gate and
       `docs/workflow/documentation.md` repeats it, but there is **no phpDocumentor config, no CI
       job and no published API reference** anywhere in the repository — a gate in the contract that
       has never run once. Either wire it (publishing the output would also serve 13.2's reference
       need) or strike the claim: a documented gate nobody executes is the L-0011 failure class this
-      repository already named once — size: M · route: standard / medium
+      repository already named once — size: M · route: standard / medium *(closed by issue #107;
+      **maintainer chose to wire it and publish to Pages**; route matched — Opus 5. **ADR-0070**.)*
+      ***Wired, because measuring the alternative decided it.*** The fork was not argued: phpDocumentor
+      was run against `src/main` before choosing, and the build takes **20 seconds** over 109 files
+      and produces 236 pages. Striking the claim would have been the cheapest true state; keeping it
+      was three annotation fixes away, so keeping it won.
+      **★ THE FINDING THAT SHAPED THE GATE: phpDocumentor exits `0` while reporting errors.** The
+      console printed `All done in 20 seconds!`, the exit status was `0`, and
+      `build/api/reports/errors.html` held **five ERROR rows**. A CI job of the obvious shape — run
+      the tool, trust `$?` — would have gone green having verified nothing: **the fourth instance of
+      this failure class in this project**, after item 2.7 (a gate wired to nothing), item 10.8 (a
+      mutation gate passing in ~7s on an absent config) and item 13.2 (my own harness printing a PHP
+      block as text, exit 0, reported `PASS`). So `tools/api_docs_gate.py` takes its verdict from the
+      report, and a **missing or unparseable** report exits **2** rather than passing — "no failures
+      found" and "nothing was looked at" are the same output to anything that only greps.
+      **Eight annotations fixed at the source, nothing suppressed.** The errors were real: PHPStan's
+      generic `self<U>`, which phpDocumentor's parser rejects. Five in `Errors/Result.php` — and
+      **three more in `Dto/Collection.php` that only surfaced once the first five were gone**, which
+      is why the gate's own first run mattered more than the probe's. Rewritten to name the class
+      (`Result<U>`, `Collection<TItem>`), which PHPStan accepts identically: **PHPStan max still
+      reports `No errors`**, CS-Fixer clean across 282 files, 51 `Collection`/`Result` tests pass.
+      The rejected alternative was `<ignore-tags>` on `@template` — a clean build bought by hiding
+      the generics from the published reference, i.e. spending a consumer-facing guarantee to spare
+      one tool's parser. `phpdoc.dist.xml` carries no `ignore-tags` block, deliberately.
+      **`latest` is a version that crashes.** phpDocumentor **v3.10.0**, which the `latest` release
+      URL resolves to, dies on startup before printing its own `--version`
+      (`Finder::getInstalledPackagesByType()` returning null). **v3.7.1** is pinned by version *and*
+      SHA-256, and fetched as a PHAR rather than added to `require-dev` (ADR-0031/0040's stance —
+      this library's only hard deps are two PSR interface packages).
+      **Two process notes worth keeping.** The gate's first implementation counted the report's own
+      `Type | Line | Description` header row as a finding, reporting **5** where there were **3** — a
+      gate that cannot count is only marginally better than one that cannot see. And two ADR
+      cross-references in ADR-0070 pointed at filenames that do not exist, while
+      `consistency_lint.py` said **OK**: the `links` check reads `git ls-files`, so **a brand-new
+      file's links are unchecked until it is staged**. Run the lint after `git add`, not before.
+      `tools/tests/verify_api_docs_gate.py` (10 cases) proves the clean pass, the failing report, the
+      correct count, and **both** exit-2 refusals; it runs on every PR alongside the build.
+      Publishing is `.github/workflows/api-docs.yml`'s second job, `master`-only, to **GitHub Pages**
+      — and it **re-asserts the gate** rather than trusting the PR's green check, because that check
+      ran on the merge commit and a green result on a different tree is not this tree's proof
+      (ADR-0069's amendment, learned the hard way, applied in advance this time).*
 - [x] 13.8 Apply the GitHub-side configuration `docs/workflow/github-setup.md` describes, which has
       never been run. **Labels:** `.github/labels.yml` defines the ten Conventional-Commit type
       labels (`feat`, `fix`, `docs`, `perf`, `ci`, `security`, …) and the repository still carries
