@@ -236,7 +236,7 @@ jobs:
             --min-msi=70 --no-progress --no-interaction -j2
       - name: Keep the mutation report
         if: steps.cfg.outputs.present == 'true' && always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: mutation-report
           path: build/logs/infection*
@@ -437,7 +437,7 @@ jobs:
             --control "LoggingBench::benchSinkDirectly"
       - name: Keep the reports
         if: steps.cfg.outputs.present == 'true' && always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: benchmark-reports
           path: build/logs/*.xml
@@ -547,7 +547,7 @@ jobs:
 
       - name: Keep the BC report
         if: always() && steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backward-compatibility-report
           path: bc-report.md
