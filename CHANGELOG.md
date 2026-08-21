@@ -12,6 +12,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`README.md` has a consumer on-ramp** (ROADMAP 13.2, closes issue #118). An **Install** section
+  stating that `composer require egl/utils` resolves from Packagist with no VCS entry, that `^1.0`
+  resolves v1.0.0, the real platform requirements (`ext-pdo`, `ext-fileinfo`; `ext-iconv` and
+  `symfony/html-sanitizer` suggested), and a warning that **`master` is ahead of what installs** —
+  M14 is merged but unreleased, so `SystemClock`, `Str::ulid()`, `Hmac`, `RateLimiter`,
+  `PageRequest` and `RetryPolicy` are in the repository and not in v1.0.0. A **three-name table**
+  reconciling `egl-util-php` (the repository), `egl/utils` (the Composer package) and `D4np\Utils\`
+  (the namespace) — the statement spec §1 requires in the README and it had never carried. A
+  **nine-group surface table** replacing a "What it is" paragraph that described only the original
+  RFC-0001 scope. And a **Quickstart** of four complete programs: hydrate a DTO, build a safe query,
+  wire CSRF, handle a `Result`.
+  **Every example was verified by execution against `egl/utils` v1.0.0 installed from Packagist**,
+  in a throwaway project outside this repository — not against the working tree, which carries the
+  unreleased M14 surface. Two of them did not run when first written (a query against a table the
+  example never created; an undefined variable handed to `Json::decode()`), both invisible to
+  inspection: item 13.3's defect class, caught only because the blocks were run. Nothing in CI
+  executes a doc example yet; that is filed, not fixed here.
 - **Documentation cross-references are checked** — `consistency_lint.py` gains a **`links`** check
   (ROADMAP 13.4, **ADR-0069**; closes issues #116 and #117). Every relative link in tracked Markdown
   must resolve to a file that exists, every `#anchor` must find a heading in its target, and a
@@ -159,6 +176,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **`README.md` no longer claims "sanitizers" in its quality bar.** The word named no CI job in this
+  repository and collided with the library's own `Security\Sanitizer`, which is a feature rather
+  than a check. Replaced with the gates that actually run: the 8.1/8.2/8.3 matrix, PHPStan at max,
+  PHP-CS-Fixer, deptrac layer rules, the mutation-score floor, the per-diff coverage gate and the
+  benchmark budgets. Also removed: the bare `use D4np\Utils\Dto\DataTransferObject;` line offered as
+  the way "consumers import the public surface" — an import fragment standing in for usage, which
+  the Quickstart now supplies for real.
 - **Nineteen dead relative links repaired**, found by the new `links` check on its first run —
   against the five issue #117 had counted. Three distinct root causes, worth separating because
   "five dead links" described only one of them:

@@ -1633,7 +1633,7 @@ the release process around it.
       claim the item exists to remove — item 10.8's "read the job, not the checks column", now with a
       second instance. Named explicitly in the notes. The stale `0.x` text frozen inside the tagged
       copy of the document is acknowledged at HEAD, since a tag cannot be edited.*
-- [ ] 13.2 Give `README.md` a consumer on-ramp. All six reviewers independently found no path from
+- [x] 13.2 Give `README.md` a consumer on-ramp. All six reviewers independently found no path from
       landing on the repository to a first working call: no `composer require egl/utils` anywhere a
       consumer looks (it appears only in `docs/releases/v1.0.0.md`, which the README does not link),
       no statement of whether the package resolves from Packagist or needs a VCS entry, and **zero
@@ -1644,7 +1644,49 @@ the release process around it.
       `Security\Sanitizer`; and the `egl-util-php` / `egl/utils` / `D4np\Utils` naming system is
       never reconciled for the reader, although `docs/specs/01_spec_utils.md` requires it be stated
       in the README. Every example added must be verified against the frozen 1.0 signatures — item
-      13.3 is why that is not a formality — size: M · route: standard / medium
+      13.3 is why that is not a formality — size: M · route: standard / medium *(issue #118; route
+      matched — Opus 5)*. *The README gains an Install section stating that the package resolves
+      from Packagist with no VCS entry, its real platform requirements, a three-name reconciliation
+      table (`egl-util-php` the repository, `egl/utils` the package, `D4np\Utils\` the namespace —
+      the statement spec §1 requires and the README had never carried), a nine-group surface table,
+      and a four-task Quickstart: hydrate a DTO, build a safe query, wire CSRF, handle a `Result`.
+      "sanitizers" is gone from the quality bar, replaced by the checks that actually run.
+      **The examples were verified by execution, not by reading.** A throwaway project was created
+      outside the repository, `composer require egl/utils:^1.0` run in it — which resolved and
+      installed **v1.0.0 from Packagist**, three packages including `psr/container` and `psr/log` —
+      and then a harness extracted every ` ```php ` block from `README.md` byte-for-byte and ran
+      each as a standalone program against that installed package. Not against this working tree:
+      **`master` is ahead of what installs**, since M14 is merged but unreleased, so `SystemClock`,
+      `Str::ulid()`, `Hmac`, `RateLimiter`, `PageRequest` and `RetryPolicy` are all absent from
+      v1.0.0. Verifying against the tree would have certified a surface no consumer can install —
+      item 10.11's "measure the candidate in its real home", moved from benchmarks to docs. The
+      warning box in the README says so to the reader.
+      **The harness found two defects in my own examples, both of item 13.3's exact class.** The
+      query example selected from a `users` table it never created (`no such table: users` — a
+      reader copying it gets an exception, and reading the code will not tell you that), and the
+      `Result` example passed an undefined `$requestBody` to `Json::decode()`. Both were invisible
+      to inspection and instant under execution. **And the harness itself produced two false
+      verdicts before it could be trusted**: a first version spliced the `<?php` tag to inject a
+      preamble, so PHP printed the whole block as text, exited 0, and looked exactly like a pass —
+      a vacuous green of the same shape as items 10.8 and 2.7. Fixed by running the block untouched
+      through a two-line wrapper and adding a vacuity guard that reports `VACUOUS` when a block
+      exits 0 having printed nothing or having printed its own source. Then the guard itself fired
+      falsely twice, because PHP's output carries no trailing newline and concatenating stdout with
+      stderr fused the last real line onto the first noise line, where the noise filter ate both.
+      **Three attempts before the check could be believed** — and it failed conservatively each
+      time, which is the only reason the sequence was recoverable.
+      **One thing deliberately not linked.** The new *More* section points at the source tree and at
+      third-party picks, but **not** at `docs/patterns/endpoint-kernel.md`: item 13.3 is still open
+      and that page's flagship example does not compile. Sending a consumer from a brand-new on-ramp
+      into a known-broken example would have been the on-ramp's worst possible first referral, so the
+      section says plainly that the pattern pages explain *why* rather than supplying copyable code,
+      and that these four are the only examples in the repository proven to run.
+      **Filed, not done here** (one item per PR): a CI job that executes the README blocks, so this
+      verification is repeated rather than remembered — nothing in CI runs a doc example today, and
+      13.3's whole existence is the argument for it. Also noted for the maintainer: spec §1 requires
+      the mixed-vendor naming be stated in **`composer.json` and** the README; the README half now
+      exists, the `composer.json` half still does not, and changing a published package's
+      `description` is a Packagist-visible act rather than a docs edit.*
 - [ ] 13.3 Fix `docs/patterns/endpoint-kernel.md`'s flagship example, which **cannot run** against
       the API it documents: `new Response()` (line 45) hits a **private** constructor — the entry
       points are `Response::create/text/html/json/redirect` — `setHeader()` (line 56) does not exist
