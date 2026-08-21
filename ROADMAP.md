@@ -1962,7 +1962,7 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       outlive*. A fourth plant "passed" because my pattern matched the docblock copy of a constant
       before its declaration — verify a plant against the **declaration**, and by the property it
       breaks, not by a string that occurs twice.*
-- [ ] 14.5 `Support\RetryPolicy` — **FR-49** (RFC-0003). Maximum attempts, jittered exponential
+- [x] 14.5 `Support\RetryPolicy` — **FR-49** (RFC-0003). Maximum attempts, jittered exponential
       delay, a retryable-exception allowlist, and — the part
       [ADR-0049](docs/adr/0049-state-the-transport-policy-explicitly-and-bound-the-whole-request.md)
       already paid for once — a **total wall-clock deadline**. That ADR found PHP's per-phase
@@ -1972,7 +1972,47 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       the outage. Delay is consumed through 14.1's clock so tests never sleep. Consumed **opt-in** by
       `HttpClient` and transaction callers, never implicit — a library that silently retries has
       changed a caller's failure semantics without being asked. **Depends on 14.1.** Closes issue
-      #94 — size: M · route: frontier-reasoning / extra (adr, protected floor)
+      #94 — size: M · route: frontier-reasoning / extra (adr, protected floor) *(session model Opus 5 — route matched)*.
+      *`Support\{RetryPolicy, Retrier, Sleeper, SystemSleeper, FrozenSleeper}` + **ADR-0066** + spec
+      **r21**; 3 074 tests (+52), **16 planted defects, 16 caught**, all local gates green (deptrac 391
+      allowed, **no new rule** — `Support -> Psr` has been granted since ADR-0062). **No new exception
+      type**, so `ExceptionHierarchyTest` is untouched: construction validation raises PHP's
+      `InvalidArgumentException` on `Str::random()`'s precedent, and RFC-0003's anticipated
+      `UtilsException` descendant turned out not to be needed — said out loud because an absence leaves
+      no trace.*
+      *★ **THE ITEM AS WRITTEN WAS UNBUILDABLE, and the reason is a fact about PSR-20**: the requirement
+      says the delay is consumed through 14.1's clock seam, and `ClockInterface` has `now()` and nothing
+      else. A clock measures a deadline; it cannot spend a backoff. So waiting is a **second seam** —
+      `Sleeper` with both halves shipped per ADR-0062, and `FrozenSleeper` advances the `FrozenClock` it
+      holds by exactly what it was asked to wait. That coupling is what makes "tests never sleep" and
+      "the deadline is exercised" the same run instead of a trade. Same shape as items 10.4 and 11.1,
+      where the item's own text could not be implemented and the spec was corrected in the same PR.*
+      *★ **A PLANT PROVED MY OWN CLAIM FALSE BEFORE THE ADR SHIPPED IT.** I wrote that dropping the
+      clock advance reddens the deadline suite; it did not — it reddened only the sleeper's own file,
+      because every deadline test moved time from *inside the operation* and none rested on the coupling
+      I was arguing for. The gap that exposed: **the backoff itself spending the deadline** (a
+      fast-failing dependency behind a generous attempt count, no single attempt slow) had no coverage.
+      That test now exists and asserts elapsed wall clock equals the sum of recorded waits to the
+      millisecond. The plant found a missing test, not a defect — and it is the same shape as BUG-0001
+      one item earlier: a guarantee nothing was actually resting on. **Write the claim, then plant
+      against the claim, not only against the code.***
+      *Two decisions the item did not name. **Jitter is structural**: no parameter disables it, and it is
+      asserted by a distribution test (300 draws must not collapse to one value) plus a mechanism
+      assertion, because an un-jittered return satisfies every "the delay is within the band" test — the
+      plain value is inside its own band. **A bound carrying a runtime refusal must not also be a narrow
+      static range**: a `positive-int` parameter makes its own `< 1` throw unreachable from type-correct
+      code, so the guard could only be tested through a suppression this project forbids. Narrow types
+      moved to the return side. That settles a project-wide rule, and its converse holds too — where the
+      static type IS the mechanism (`SqlStatement`'s `literal-string` behind a private constructor,
+      ADR-0041) there is no runtime check to strand.*
+      *Also recorded: the deadline's honest limit went into the **spec**, not just the ADR — it cannot end
+      an attempt already running, so it bounds the loop, and a consumer reading only the parameter name
+      would take the wrong assurance from it (ADR-0049's finding one level up). Process: the plant
+      harness timed out mid-campaign and **left a defect on disk**, because its restore only ran at the
+      end — a harness that can fail halfway must restore before each plant, and belongs in the
+      background where a timeout cannot kill it. Third consecutive item where a replacement string
+      contained its own original and the plant silently edited nothing: **verify a plant by the property
+      it breaks**, which is what finally landed the restart-the-deadline plant.*
 - [x] 14.6 Decide the rate limiter — **issue #91, reopened by the maintainer 2026-08-13** against
       RFC-0003's deferral (annotated there, not erased; the revisit condition proved unreachable —
       the storage seam it waits for is this item's own deliverable, and nothing else in the backlog

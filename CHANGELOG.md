@@ -12,6 +12,33 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`Support\RetryPolicy` and `Support\Retrier` — explicit retry with backoff**, plus the sleep
+  seam they need: `Support\{Sleeper, SystemSleeper, FrozenSleeper}` (spec **r21 FR-49**, RFC-0003;
+  roadmap item **14.5**; **ADR-0066**; closes issue #94). Additive under ADR-0059. Six things worth
+  knowing before wiring it:
+  - **Nothing retries on its own.** `Retrier` is opt-in for `HttpClient` and transaction callers; a
+    library that silently retried would change your failure semantics without being asked, and a
+    non-idempotent operation retried once is a duplicate write.
+  - **Retry is transparent to your error handling.** When the attempts or the deadline run out, the
+    *last* exception is rethrown unwrapped — so an existing `catch (HttpClientException)` keeps
+    working. A non-retryable failure propagates immediately, with no delay spent. How much retrying
+    happened reaches you through the optional `onRetry` observer, not through a wrapper type.
+  - **The deadline bounds the loop, not an attempt.** It cannot end an operation that is already
+    running, so what it guarantees is that no *new* attempt begins past it. Bounding a single hung
+    call is still `HttpClient`'s wall-clock deadline (ADR-0049). A deadline here over an unbounded
+    attempt gives you less than the parameter name suggests, which is why it is written down.
+  - **Jitter cannot be switched off.** Full jitter over the exponential ceiling, with no argument
+    that disables it — without it, N clients that failed together retry together and the retry
+    storm is the outage. The trade is stated: a draw can come back near zero.
+  - **A delay that will not fit inside the deadline ends the loop rather than being shortened.**
+    Clamping the backoff means retrying soonest exactly when the dependency is struggling.
+  - **`FrozenSleeper` advances the `FrozenClock` you give it**, so your retry tests neither sleep
+    nor skip the deadline arithmetic. PSR-20 has no `sleep()`, which is why waiting is a second seam
+    rather than something the clock could cover.
+  Refused at construction rather than clamped: fewer than one attempt, a multiplier below `1.0`, a
+  ceiling below the base delay, a zero deadline (pass `null` for none), an empty retryable
+  allowlist, or a non-`Throwable` in it. **Non-goal, stated:** no circuit breaker — that is shared
+  state across calls, not a parameter.
 - **`Security\Hmac` — keyed authentication for signed URLs and webhook signatures** (spec
   **r20 FR-48**, RFC-0003; roadmap item **14.4**; **ADR-0065**; closes issue #92). Additive under
   ADR-0059. `sign(message, ttl = null)` returns `v1.` + base64url(8-byte big-endian expiry ||
