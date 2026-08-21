@@ -105,6 +105,13 @@ jobs:
           python-version: '3.12'
       - name: Run the consistency lint
         run: python tools/consistency_lint.py
+      # The per-diff coverage gate's own proof that it can fail (issue #109, ADR-0068). It lives
+      # here rather than in the `coverage` job because it needs neither PHP nor a coverage driver —
+      # only git and Python, both of which this job already has, and full history, which it already
+      # fetches. Every prior tools/*.py on this project was verified by hand in a scratch directory
+      # and the outcome written into an ADR; this one ships the proof so it re-runs on every PR.
+      - name: Verify the per-diff coverage gate can fail
+        run: python tools/tests/verify_diff_coverage_gate.py
       # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
       # shape, and a version comment that lies is invisible to any purely local check when the
       # error is applied uniformly. CI is where the truthful half must run.
@@ -257,6 +264,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The per-diff gate below needs the base commit to diff against, and checkout fetches a
+          # single commit by default. Without this the gate exits 2 ("cannot run") rather than
+          # treating an unresolvable base as an empty diff — but failing loudly on every PR is not
+          # the arrangement we want, so the history is here.
+          fetch-depth: 0
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.3'
@@ -269,6 +282,33 @@ jobs:
         run: vendor/bin/phpunit --coverage-clover build/logs/clover.xml --coverage-text
       - name: Enforce the coverage floor (ADR-0007)
         run: python tools/coverage_gate.py build/logs/clover.xml --min 90
+      # The other half of that floor (issue #109, ADR-0068). The step above measures TOTAL
+      # coverage, and says on every run what it cannot see: with the suite well above 90%, an
+      # untested addition rides inside the headroom. This intersects the report with the lines
+      # this change actually touched.
+      #
+      # pull_request only, and deliberately. On a push to master the change is already merged, so
+      # a per-diff figure there would report on history rather than gate anything — and the total
+      # floor above still runs on both events.
+      - name: Enforce per-diff coverage (issue #109)
+        if: github.event_name == 'pull_request'
+        run: |
+          python tools/diff_coverage_gate.py build/logs/clover.xml \
+            --base '${{ github.event.pull_request.base.sha }}' --min 90
+      # TEMPORARY, and removable once the floor is confirmed. There is no coverage driver on the
+      # maintainer's machine (a standing local quirk), so the first real per-diff readings this
+      # project has ever had can only come from a runner. This prints the figure for the three
+      # most recent merged PHP items against today's report, so the 90% floor above is confirmed
+      # or revised on evidence rather than on the argument that it is NFR-07's own number.
+      # Report-only: it must not fail a PR on the coverage of somebody else's merge.
+      - name: Measure per-diff coverage of recent merges (informational, remove after #109)
+        if: github.event_name == 'pull_request'
+        run: |
+          for ref in e781934 3a42911 1dea68c; do
+            echo "--- ${ref} ($(git log -1 --format=%s "${ref}" | cut -c1-60)) ---"
+            python tools/diff_coverage_gate.py build/logs/clover.xml \
+              --base "${ref}^" --head "${ref}" --min 90 --report-only || true
+          done
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   #

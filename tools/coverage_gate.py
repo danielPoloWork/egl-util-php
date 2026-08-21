@@ -138,9 +138,14 @@ def main(argv=None):
     # What this gate does NOT measure, stated in its own output rather than left to the reader
     # (ADR-0007): the figure above is TOTAL line coverage, not the coverage of the lines this
     # change touched. A large well-covered codebase can absorb an untested addition without the
-    # total moving. Diff-aware coverage needs the base ref and a per-line comparison, which is
-    # deliberately out of scope here.
-    print("  measured: total line coverage. NOT measured: per-diff coverage of changed lines.")
+    # total moving.
+    #
+    # That hole is no longer merely documented: `tools/diff_coverage_gate.py` closes it (issue
+    # #109, ADR-0068), and CI runs it on every pull request beside this step. The sentence below
+    # keeps naming the limitation anyway, because this tool can be run on its own and its own
+    # output should not imply a guarantee it does not give.
+    print("  measured: total line coverage. NOT measured: per-diff coverage of changed lines —")
+    print("  that is tools/diff_coverage_gate.py (issue #109, ADR-0068), a separate run.")
     return 0
 
 

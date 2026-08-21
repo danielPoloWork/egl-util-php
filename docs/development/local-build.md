@@ -37,6 +37,13 @@ python tools/consistency_lint.py
 
 1. `vendor/bin/php-cs-fixer fix --dry-run --diff` and `vendor/bin/phpstan analyse` are clean.
 2. `vendor/bin/phpunit` passes; new/changed behavior is covered (≥ 90% line, PHPStan max level).
-3. `python tools/consistency_lint.py` passes.
+   **CI now holds the diff to that floor as well as the whole tree** — `diff_coverage_gate.py`
+   intersects the coverage report with the lines you touched (issue #109, ADR-0068), so an
+   untested addition can no longer hide inside the project's headroom. It needs a coverage
+   driver, so it runs on the runner rather than here; if a changed line provably cannot execute,
+   annotate it `@codeCoverageIgnore` with the reason rather than leaving it uncovered.
+3. `python tools/consistency_lint.py` passes, and so does
+   `python tools/tests/verify_diff_coverage_gate.py` — that one needs only git and Python, so
+   unlike the coverage gates themselves it runs on any machine.
 4. The relevant docs (README, ROADMAP, ADRs, patterns, changelog) are updated in the same
    PR — see [`../workflow/documentation.md`](../workflow/documentation.md).
