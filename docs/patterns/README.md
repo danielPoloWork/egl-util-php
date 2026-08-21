@@ -41,6 +41,8 @@ _Patterns named in the spec at intake are seeded below as **Planned**; each beco
 | 2 | Front Controller | Implemented | Routing by filesystem: the surveyed estate deployed **37 folders**, each with an `index.php` differing from its neighbours in one line, so the autoloader, the response envelope and the error boundary existed 37 times and drifted apart. One entry point and one route table replace them — the kernel is written out in [`endpoint-kernel.md`](endpoint-kernel.md) | [`Http/Router.php`](../../src/main/php/d4np/utils/Http/Router.php) | [ADR-0050](../adr/0050-classify-the-miss-and-keep-the-router-a-table.md) · item 11.2 |
 | 3 | Decorator | Implemented | Level filtering that applies to **any** PSR-3 logger, including a third-party one: the estate instead built one logger per level — eight properties per class, re-created in every constructor — so "what is being dropped" was a property of twenty classes rather than of one wiring. Wrapping keeps the filter out of every destination that would otherwise re-implement it | [`Errors/LevelFilteredLogger.php`](../../src/main/php/d4np/utils/Errors/LevelFilteredLogger.php) | [ADR-0055](../adr/0055-one-ordering-validation-before-filtering-and-a-swallow-only-at-the-leaf.md) · item 12.3 |
 | 4 | Composite | Implemented | One record, several destinations, with nothing downstream of the wiring aware there is more than one — and the uniformity is load-bearing twice over: the **empty** composite is the disabled channel (it validates a level and discards the record, which PSR-3's own `NullLogger` does not), and the filter above it cannot tell one destination from ten | [`Errors/MultiLogger.php`](../../src/main/php/d4np/utils/Errors/MultiLogger.php) | [ADR-0055](../adr/0055-one-ordering-validation-before-filtering-and-a-swallow-only-at-the-leaf.md) · item 12.3 |
+| 5 | Retry with Backoff | Implemented | Transient failures retried by hand, wrongly in one of three ways the 2026-08-09 review board named: **no jitter**, so N clients that failed together retry together and the retry storm is the outage; **retrying non-retryable failures**, because a `400` will not become a `200`; and **unbounded total time**, since an attempt count bounds no loop when an attempt can hang. An explicit policy value object makes each of the three a decision somebody wrote down, and the jitter has no switch to turn it off | [`Support/RetryPolicy.php`](../../src/main/php/d4np/utils/Support/RetryPolicy.php) · [`Support/Retrier.php`](../../src/main/php/d4np/utils/Support/Retrier.php) | [ADR-0066](../adr/0066-a-second-seam-for-waiting-and-a-deadline-that-only-bounds-the-loop.md) · item 14.5 |
+| 6 | Rate Limiting / Throttling | Implemented | Hand-rolled throttles that are *"usually bypassable (per-node state, resettable windows)"* — issue #91's own words. A token bucket has no window edge to straddle, so the "resettable windows" defect (the fixed-window boundary burst, 2× the intended rate) cannot occur; and the store seam is **compare-and-swap**, because a `get()`/`set()` store cannot be composed race-free by any caller — two nodes read one remaining token, both approve, and the limit is exceeded by the limiter at exactly the concurrency a brute-force attack produces. Keys are hashed at the limiter's boundary, so no user-controlled byte reaches a store | [`Security/RateLimiter.php`](../../src/main/php/d4np/utils/Security/RateLimiter.php) · [`Security/RateLimitStore.php`](../../src/main/php/d4np/utils/Security/RateLimitStore.php) | [ADR-0061](../adr/0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md) (the design) · [ADR-0067](../adr/0067-the-bucket-refills-in-whole-tokens-and-the-store-contract-is-tested-twice.md) (the implementation) · items 14.6 / 14.7 |
 
 
 ## Rejected
@@ -69,23 +71,17 @@ Narrowed from the full taxonomy to what is plausibly applicable and not yet deci
 the other. A candidate remains a candidate until adopted (own ADR, moves to *Implemented*) or
 explicitly rejected (moves to *Rejected*).
 
-- **Cloud & Distributed Systems — Rate Limiting / Throttling — decided, awaiting code
-  (Planned-in-substance).** Issue #91 was reopened by the maintainer on 2026-08-13 and the design
-  is settled in [ADR-0061](../adr/0061-a-token-bucket-behind-a-compare-and-swap-store-and-keys-hashed-at-the-boundary.md)
-  (RFC-0003's deferral annotated there): a token bucket behind a compare-and-swap store seam, keys
-  hashed at the boundary, enforcement scope stated in every store's own docblock. Moves to
-  *Implemented* in the table above when roadmap item 14.7 lands (after 14.1's clock).
-  **Why this is a bullet and not a table row:** the status vocabulary defines *Planned* (decided
-  in an ADR, not yet in code), but `consistency_lint.py`'s patterns check requires a real source
-  location for every table row — the vocabulary and the lint disagree, found 2026-08-13 when this
-  entry became the first *Planned*-shaped pattern since the lint arrived. Recorded here rather
-  than resolved unilaterally: either the lint learns the Planned case or the vocabulary drops it,
-  and that call is the maintainer's (same class as ADR-0040's spec-owns-its-numbers rule).
-- **Cloud & Distributed Systems — Retry with Backoff.** Possible application: `Support\RetryPolicy`
-  consumed opt-in by `HttpClient` and transaction callers. **Accepted by RFC-0003 as FR-49**, on
-  the roadmap as Milestone 14 item 14.5; moves to *Implemented* with its own ADR when that item
-  lands, not before — an RFC deciding to build something is not the same record as the ADR that
-  names the pattern.
+- **Cloud & Distributed Systems — Rate Limiting / Throttling — adopted, now row 6 above.**
+  Kept as a pointer rather than deleted, because the *reason* this was a bullet outlived it: the
+  status vocabulary defines *Planned* (decided in an ADR, not yet in code), but
+  `consistency_lint.py`'s patterns check requires a real source location for every table row — so
+  between ADR-0061 (2026-08-13) and item 14.7 (2026-08-21) this entry had nowhere legal to live.
+  **That disagreement is now moot for this entry and still unresolved in general**: either the lint
+  learns the Planned case or the vocabulary drops it, and that call is the maintainer's (same class
+  as ADR-0040's spec-owns-its-numbers rule). The next decided-but-unbuilt pattern will hit it again.
+- **Cloud & Distributed Systems — Retry with Backoff — adopted, now row 5 above** (item 14.5,
+  ADR-0066). Recorded late: that item shipped reporting "no catalogue entry", while this bullet's
+  own promotion rule said it moves to *Implemented* when the item lands. Corrected at 14.7.
 - **Cloud & Distributed Systems — Circuit Breaker.** Possible application: guarding `HttpClient`
   or a future retry policy against a dependency that is failing outright rather than transiently.
   **Named a stated non-goal** of item 14.5's own acceptance criteria ("no circuit breaker in v1 of

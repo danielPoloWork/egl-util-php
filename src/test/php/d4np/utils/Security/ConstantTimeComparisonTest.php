@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace D4np\Utils\Tests\Security;
 
 use D4np\Utils\Http\CsrfToken;
+use D4np\Utils\Security\ArrayRateLimitStore;
+use D4np\Utils\Security\FileRateLimitStore;
 use D4np\Utils\Security\Hash;
 use D4np\Utils\Security\Hmac;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -58,6 +60,20 @@ final class ConstantTimeComparisonTest extends TestCase
         yield 'CsrfToken::validate()' => [CsrfToken::class, 'validate', 'hash_equals', 'stored', 'token'];
         yield 'Hash::verify()' => [Hash::class, 'verify', 'password_verify', 'password', 'hash'];
         yield 'Hmac::verify()' => [Hmac::class, 'verify', 'hash_equals', 'mac', 'expected'];
+
+        // The two below are **not** credential comparisons: they compare a compare-and-swap version
+        // token, which no user supplies and whose matching prefix length reveals nothing an
+        // attacker does not already know. They are registered anyway, because this registry's value
+        // is completeness — every constant-time call in the library accounted for — and because the
+        // comparator is still the right one there: a version is an opaque token, and comparing
+        // opaque tokens obliviously costs nothing. Registered rather than downgraded to `===`:
+        // weakening code to quiet a guard is the inversion of item 11.2's rule.
+        yield 'ArrayRateLimitStore::writeIfVersion()' => [
+            ArrayRateLimitStore::class, 'writeIfVersion', 'hash_equals', 'currentVersion', 'expectedVersion',
+        ];
+        yield 'FileRateLimitStore::writeIfVersion()' => [
+            FileRateLimitStore::class, 'writeIfVersion', 'hash_equals', 'currentVersion', 'expectedVersion',
+        ];
     }
 
     /**

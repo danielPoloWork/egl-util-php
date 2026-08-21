@@ -82,3 +82,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0064](0064-pagination-refuses-an-unordered-query-and-the-count-is-a-builder-clause.md) | Pagination refuses an unordered query, and the count is a builder clause | Accepted |
 | [0065](0065-a-detached-signature-over-a-derived-key-with-the-algorithm-never-in-the-token.md) | A detached signature over a derived key, with the algorithm never in the token | Accepted |
 | [0066](0066-a-second-seam-for-waiting-and-a-deadline-that-only-bounds-the-loop.md) | A second seam for waiting, and a deadline that only bounds the loop | Accepted |
+| [0067](0067-the-bucket-refills-in-whole-tokens-and-the-store-contract-is-tested-twice.md) | The bucket refills in whole tokens, and the store contract is tested twice | Accepted |
