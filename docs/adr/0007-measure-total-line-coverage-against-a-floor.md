@@ -1,6 +1,14 @@
 # ADR-0007: Enforce the coverage floor as total line coverage, measured once
 
-- **Status:** Accepted
+- **Status:** Accepted — **complemented by [ADR-0068](0068-intersect-the-report-with-the-diff-and-ship-the-proof-it-can-fail.md)**
+  (2026-08-21, issue #109 — issues-only, with no mirroring ROADMAP item): the limitation this ADR
+  documented in itself — that a total
+  floor lets an untested addition ride inside the headroom — is now gated by
+  `tools/diff_coverage_gate.py`, which intersects the same Clover report with the lines a change
+  touched. **Nothing decided here changes**: total line coverage, measured once on one interpreter,
+  against spec NFR-07's 90%, remains the floor this ADR is about, and the per-diff gate reuses that
+  same number rather than inventing a second one. Annotated rather than edited, per ADR-0041's
+  precedent.
 - **Date:** 2026-08-04
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 2.7 · `AGENTS.md` §10 · spec NFR-07 ·

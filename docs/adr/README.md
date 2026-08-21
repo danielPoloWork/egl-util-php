@@ -83,3 +83,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0065](0065-a-detached-signature-over-a-derived-key-with-the-algorithm-never-in-the-token.md) | A detached signature over a derived key, with the algorithm never in the token | Accepted |
 | [0066](0066-a-second-seam-for-waiting-and-a-deadline-that-only-bounds-the-loop.md) | A second seam for waiting, and a deadline that only bounds the loop | Accepted |
 | [0067](0067-the-bucket-refills-in-whole-tokens-and-the-store-contract-is-tested-twice.md) | The bucket refills in whole tokens, and the store contract is tested twice | Accepted |
+| [0068](0068-intersect-the-report-with-the-diff-and-ship-the-proof-it-can-fail.md) | Intersect the report with the diff, and ship the proof it can fail | Accepted |

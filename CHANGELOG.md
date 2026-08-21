@@ -12,6 +12,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A per-diff coverage gate** — `tools/diff_coverage_gate.py`, wired into CI on every pull
+  request (**ADR-0068**; closes issue #109). The existing gate enforces **total** line coverage
+  against spec NFR-07's 90% floor and prints, on every run, what it cannot see: with the suite well
+  above the floor, an untested addition rides inside the headroom without the total moving. This
+  intersects the same Clover report with the lines a change actually touched.
+  - **The floor is NFR-07's own 90%, not a new number.** A change that is itself 90% covered cannot
+    drag a 90%-covered library below its floor. `--min` exists so a different figure stays the
+    maintainer's decision rather than this tool's.
+  - **Only coverable statements count**, so blank lines, comments, docblocks and closing braces are
+    neither credit nor penalty — and `@codeCoverageIgnore` is the one escape for a line that
+    provably cannot execute, with **zero uses in the tree** so `grep -rn codeCoverageIgnore src/`
+    stays the whole review list.
+  - **Absence is failure.** A missing report, an unparseable one, or a base ref git cannot resolve
+    all exit 2. A change touching no coverable statement passes, saying so rather than dividing by
+    zero in either direction.
+  - **The proof that it can fail ships with it.** `tools/tests/verify_diff_coverage_gate.py` is the
+    first executable check for any `tools/*.py` here — fifteen cases over throwaway git
+    repositories, four of them the ones that matter, and CI runs it in the `consistency` job. Every
+    previous tool on this project was verified by hand and the outcome written into an ADR.
 - **`Security\RateLimiter` — a token bucket per key, behind a compare-and-swap store** (spec
   **r22 FR-50**, RFC-0003; roadmap items **14.6**/**14.7**; **ADR-0061** design + **ADR-0067**
   implementation; closes issue #91). Additive under ADR-0059. With it:
