@@ -102,6 +102,30 @@ unexplained failures in suites whose subject is injection binding and DTO projec
 therefore pinned in the schema **and** asserted on its own, against a table built with the
 engine's default type, in `DialectTest`.
 
+### What the first run found
+
+The leg's first execution (CI run 32743502415) reported **952 of 954 green on PostgreSQL 16.15 and
+954 of 954 on MySQL 8.4.11**. Most of what this ADR set out to measure came back confirming what
+the codebase had assumed — both engines return native `int` for a declared integer column *and* for
+a `COUNT(*)` on PHP 8.1, so strict DTO hydration works on all three and the cast in
+`Repository::countRowsOf()` is defensive rather than load-bearing.
+
+The two failures were one finding, and it is the reason the issue was worth doing:
+
+> **PDO_PGSQL silently truncates a bound parameter at its first NUL byte.**
+
+The corpus payload `admin\0' OR 1=1` inserts *successfully* and reads back as `admin`. Nothing
+raises, the row count is correct, and the tail is gone. The server is not responsible and would
+have refused the byte — `0x00` is not valid in a PostgreSQL `text` column. **libpq** is: a bound
+parameter is sent as a NUL-terminated C string, so no byte after the first NUL ever leaves the
+client. MySQL and SQLite store the whole value.
+
+There is nothing in this library to fix — the value is bound correctly and PDO shortens it below
+us — so it is **recorded rather than worked around**: `Engine::storedForm()` names the behaviour,
+the two round-trip suites compare against it, and `DialectTest` asserts it standalone against all
+three engines. A consumer's only defence is knowing, which is what a divergence-pinning suite is
+for.
+
 ## Alternatives Considered
 
 - **Three more cells in the `build` matrix.** Rejected: a service container is a per-job

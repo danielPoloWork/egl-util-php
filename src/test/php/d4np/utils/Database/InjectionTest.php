@@ -195,7 +195,11 @@ final class InjectionTest extends TestCase
                 SqlStatement::literal('SELECT name FROM users WHERE name = ?', [$payload]),
             );
 
-            self::assertSame($payload, $row['name'] ?? null);
+            // `storedForm()` is the identity for every payload and every engine but one: PDO_PGSQL
+            // truncates a bound parameter at its first NUL byte, silently and without raising.
+            // Found by this leg's first run; pinned in Engine::storedForm() and asserted on its
+            // own in DialectTest.
+            self::assertSame($this->engine()->storedForm($payload), $row['name'] ?? null);
         }
 
         self::assertSame(

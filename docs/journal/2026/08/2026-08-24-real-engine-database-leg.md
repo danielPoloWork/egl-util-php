@@ -80,11 +80,36 @@ literal — its default `sql_mode` reads double quotes the way SQLite does. It i
 because the library quotes MySQL identifiers with backticks. The divergence is a property of the
 library and the engine together, not of the engine alone, and `DialectTest` says so.
 
+## What the first run found
+
+952/954 on PostgreSQL 16.15, 954/954 on MySQL 8.4.11. Most of the audit came back *confirming* the
+code, which is a result and not a disappointment: both engines return native `int` for a declared
+integer column and for a `COUNT(*)` on PHP 8.1, so strict hydration works on all three and
+`countRowsOf()`'s cast is defensive rather than load-bearing. Quoting, savepoints, `ESCAPE '!'` —
+all fine.
+
+The two failures were one finding, and it is the one that justifies the whole issue:
+
+> **PDO_PGSQL silently truncates a bound parameter at its first NUL byte.**
+
+The corpus payload `admin\0' OR 1=1` **inserts successfully** and reads back as `admin`. No
+exception, correct row count, tail gone. I expected the opposite failure — PostgreSQL refusing
+`0x00` in a `text` column, which is what the *server* does. It never gets the chance: libpq sends a
+bound parameter as a NUL-terminated C string, so nothing past the first NUL leaves the client.
+MySQL and SQLite store the whole value.
+
+Two things about how that got handled. First, there is nothing in this library to fix — the value
+binds correctly and PDO shortens it below us — so it is **recorded, not worked around**:
+`Engine::storedForm()` names it, both round-trip suites compare against it, and `DialectTest`
+asserts it standalone on all three engines. Second, it is exactly the shape of defect a
+single-engine suite cannot find *by construction*, because it produces a passing test and a correct
+row count on the engine you happen to run.
+
 ## Where this leaves the project
 
-954 tests in the `database-engine` group, run three times over — once in the ordinary matrix on
+955 tests in the `database-engine` group, run three times over — once in the ordinary matrix on
 SQLite and once per engine in the new `database` job, on PHP **8.1** rather than 8.3, because the
-floor is where a type-coercion difference would show. Local suite: 3 181 tests green.
+floor is where a type-coercion difference would show. Local suite: 3 182 tests green.
 
 Open, and deliberately: the fourth arm of `Identifier`'s `match`, and any claim about server
 versions other than the two images pinned in the workflow.

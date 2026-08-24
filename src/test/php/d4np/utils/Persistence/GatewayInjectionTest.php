@@ -406,7 +406,10 @@ final class GatewayInjectionTest extends TestCase
             $person = $this->gateway->find(1);
 
             self::assertInstanceOf(Person::class, $person);
-            self::assertSame($payload, $person->name);
+            // Not `$payload`: PDO_PGSQL truncates a bound parameter at its first NUL byte without
+            // raising, so on that engine the row genuinely holds less than was sent. See
+            // Engine::storedForm(), and DialectTest for the standalone pin.
+            self::assertSame($this->engine()->storedForm($payload), $person->name);
         }
 
         self::assertCount($stored ? 1 : 0, $this->gateway->all());

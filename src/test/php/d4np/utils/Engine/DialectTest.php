@@ -336,6 +336,47 @@ final class DialectTest extends TestCase
         self::assertNull($row['quantity']);
     }
 
+    /**
+     * **The one thing this leg found that nobody had written down: PDO_PGSQL silently truncates a
+     * bound parameter at its first NUL byte.**
+     *
+     * Not an error, not a warning — the `INSERT` succeeds, one row appears, and the tail of the
+     * value is gone. The server is not the culprit and would in fact refuse the byte outright:
+     * `0x00` is not valid in a PostgreSQL `text` column. libpq is, because it sends a bound
+     * parameter as a NUL-terminated C string, so nothing after the first NUL ever leaves the
+     * client. MySQL 8.4 and SQLite store the whole value.
+     *
+     * This is silent data loss on one of three supported engines, and there is nothing in this
+     * library to fix: the value is bound correctly and PDO shortens it below us. So it is recorded
+     * — here, in {@see Engine::storedForm()}, and in ADR-0071 — because the only defence a
+     * consumer has is knowing.
+     *
+     * Discovered by CI run 32743502415 on PostgreSQL 16.15, which is exactly the kind of thing
+     * issue #110 was opened to surface.
+     */
+    public function testANulByteInABoundParameterIsTruncatedByThePostgresDriverAlone(): void
+    {
+        $payload = "before\0after";
+
+        $this->connection->execute(SqlStatement::literal(
+            'INSERT INTO dialect_rows (id, name, quantity) VALUES (?, ?, ?)',
+            [1, $payload, 1],
+        ));
+
+        $row = $this->connection->selectOne(SqlStatement::literal(
+            'SELECT name FROM dialect_rows WHERE id = ?',
+            [1],
+        ));
+
+        self::assertSame(
+            match ($this->engine()) {
+                Engine::PostgreSql => 'before',
+                Engine::Sqlite, Engine::MySql => $payload,
+            },
+            $row['name'] ?? null,
+        );
+    }
+
     // ---- collation ---------------------------------------------------------------------------------
 
     /**

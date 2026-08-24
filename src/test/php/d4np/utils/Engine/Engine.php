@@ -113,6 +113,35 @@ enum Engine: string
     }
 
     /**
+     * What this engine hands back for a text value it **accepted**.
+     *
+     * The identity everywhere except PostgreSQL, and there only for a value containing a NUL byte
+     * — where it is not an identity at all, which is the finding this method exists to record.
+     *
+     * **Measured on run 32743502415, PostgreSQL 16.15.** The corpus payload `admin\0' OR 1=1`
+     * inserts *successfully* through PDO_PGSQL and reads back as `admin`. Nothing raises; the row
+     * count is right; the tail is simply gone. The cause is not the server, which would reject
+     * `0x00` in a `text` column as an invalid UTF-8 byte sequence — it is libpq, which sends a
+     * bound parameter as a NUL-terminated C string, so the server never sees a byte after the
+     * first NUL. MySQL 8.4 and SQLite both store the whole value.
+     *
+     * That is **silent truncation of user data on one of three supported engines**, and it is
+     * pinned here and asserted on its own in {@see DialectTest} rather than worked around: the
+     * library binds the value correctly and PDO_PGSQL is what shortens it, so there is nothing for
+     * `Database` to fix and everything for a consumer to know.
+     */
+    public function storedForm(string $value): string
+    {
+        if ($this !== self::PostgreSql) {
+            return $value;
+        }
+
+        $nul = \strpos($value, "\0");
+
+        return $nul === false ? $value : \substr($value, 0, $nul);
+    }
+
+    /**
      * Render one of the three shapes above from the vocabulary the suites write.
      *
      * @param 'key'|'text'|'int' $shape

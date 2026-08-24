@@ -35,6 +35,14 @@ the GitHub Release body. Editing "the release notes" almost always means that on
   instead of rediscovered: quoting per driver, the unknown-column divergence ADR-0044 had only
   reasoned about, the implicit backslash `LIKE` escape MySQL and PostgreSQL have and SQLite does
   not, savepoint nesting, driver type coercion, and MySQL's case-insensitive default collation.
+  **The leg's first run found one thing nobody had written down, and consumers on PostgreSQL should
+  know it: `PDO_PGSQL` silently truncates a bound parameter at its first NUL byte.** The `INSERT`
+  succeeds, one row appears, and the tail is gone — libpq sends a bound parameter as a
+  NUL-terminated C string, so the server (which would have rejected the byte) never sees past it.
+  MySQL and SQLite store the whole value. Nothing in this library can fix that, so it is pinned by
+  test and documented instead. Everything else the leg measured came back confirming the code:
+  both engines return native `int` for integer columns and for `COUNT(*)` on PHP 8.1, so strict DTO
+  hydration works on all three.
 
 ### Fixed
 
