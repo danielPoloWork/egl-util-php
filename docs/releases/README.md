@@ -22,4 +22,5 @@ keeps the latest file here in step with the version constant and the README badg
 
 | Version | Date | Highlights | Notes |
 |---------|------|------------|-------|
+| v1.1.0 | 2026-08-21 | Milestone 14's five additive seams — PSR-20 clock, sortable ids, pagination values, detached HMAC, rate limiter — plus Milestone 13's documentation and release-hygiene close-out | [v1.1.0.md](v1.1.0.md) |
 | v1.0.0 | 2026-08-09 | The first release — every milestone M1–M12: DTOs, Database + Persistence, Security, Http, Errors, Mail, Support — and the API freeze (ADR-0059) | [v1.0.0.md](v1.0.0.md) |

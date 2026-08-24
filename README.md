@@ -2,7 +2,7 @@
 
 > General-purpose PHP utility helpers shared across EGL projects
 
-![Status](https://img.shields.io/badge/Status-v1.0.0-blue)
+![Status](https://img.shields.io/badge/Status-v1.1.0-blue)
 
 A library written in **PHP 8.1+**, built and governed to an enterprise quality bar: a full CI
 matrix on 8.1/8.2/8.3, PHPStan at max level, PHP-CS-Fixer (PSR-12), enforced layer boundaries
