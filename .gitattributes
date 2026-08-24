@@ -10,10 +10,15 @@
 # contains, never a full `git clone` — nothing here removes a file from the repository
 # or from CI. Everything a consumer needs is: the autoloaded source (`src/main`),
 # `composer.json`, `LICENSE`, and `README.md` for the page Packagist itself renders.
-# Silence rather than a positive list, because the alternative (allowlisting src/main
-# only) breaks the moment a new top-level file is added and nobody remembers this rule.
+# NOTE, and it corrects what this comment used to claim. It argued for a deny-list on the
+# grounds that "allowlisting src/main only breaks the moment a new top-level file is added and
+# nobody remembers this rule". That has the failure direction backwards: a deny-list INCLUDES a
+# new top-level file by default, so it rots the same way and silently, while an allowlist would
+# have failed loudly the first time something legitimate was missing. `phpdoc.dist.xml` proved
+# it — added in #154, after these rules, and it shipped in v1.1.0's dist.
 #
-# Verify with: git archive HEAD | tar -t
+# Neither list is self-maintaining, so the contents are asserted instead of the rules:
+#   python tools/dist_gate.py       (CI runs it on every PR)
 /.eados-core export-ignore
 /.github export-ignore
 /.specs export-ignore
@@ -23,6 +28,7 @@
 /src/test export-ignore
 /tools export-ignore
 /.php-cs-fixer.dist.php export-ignore
+/phpdoc.dist.xml export-ignore
 /.gitattributes export-ignore
 /.gitignore export-ignore
 /AGENTS.md export-ignore

@@ -15,7 +15,21 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **`phpdoc.dist.xml` no longer ships in the Packagist dist**, and a gate now asserts the dist's
+  contents rather than trusting the rule list (issue #119). `.gitattributes`' `export-ignore` rules
+  cut the archive from 524 files to 121 at `v1.1.0` — and `phpdoc.dist.xml` shipped inside it
+  anyway, added in a later PR with no rule of its own and unnoticed until the tag was published.
+  **The reasoning that failed was written down as if it were sound**: `.gitattributes` argued a
+  deny-list avoids the rot an allowlist suffers, when a deny-list **includes** a new top-level file
+  by default and so rots the same way, silently. Neither list is self-maintaining. `tools/dist_gate.py`
+  asserts what is actually in `git archive` — everything under `src/main/` plus `LICENSE`,
+  `README.md`, `composer.json`, and nothing else — and refuses (exit 2) an archive it cannot read
+  or one containing no source at all. It found the real leak on its first run, before any synthetic
+  case existed; `tools/tests/verify_dist_gate.py` is the repeatable half.
+  `v1.1.0`'s published dist is unchanged: one 1.5 KB config file does not justify moving a tag.
+
 
 ## Released versions
 

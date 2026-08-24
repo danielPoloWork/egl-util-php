@@ -129,6 +129,14 @@ jobs:
       # is exactly what must not rot between releases, and this is where it gets checked.
       - name: Verify the BC gate's version-constant discount is narrow
         run: python tools/tests/verify_bc_gate.py
+      # The dist's CONTENTS, not .gitattributes' rules (issue #119). A rule list cannot tell you
+      # about a file nobody wrote a rule for, which is exactly how phpdoc.dist.xml shipped in
+      # v1.1.0's archive. Runs on every PR, because the PR that adds a top-level file is the only
+      # moment anyone would think about it.
+      - name: Assert the dist contains only what a consumer needs
+        run: python tools/dist_gate.py
+      - name: Verify the dist gate can fail
+        run: python tools/tests/verify_dist_gate.py
       # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
       # shape, and a version comment that lies is invisible to any purely local check when the
       # error is applied uniformly. CI is where the truthful half must run.
