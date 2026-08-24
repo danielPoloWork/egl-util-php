@@ -9,7 +9,19 @@ on Linux (PHP 8.1, 8.2, 8.3); reproducing them locally avoids a red round-trip.
 - **Build system:** Composer (PSR-4 autoload).
 - **Package manager:** Composer (composer.lock committed).
 - **Formatter / linter:** PHP-CS-Fixer (PSR-12), PHPStan (max level).
-- **Docs:** phpDocumentor (for the API docs build).
+- **Docs:** phpDocumentor **v3.7.1**, fetched as a PHAR rather than installed as a dependency
+  (ADR-0031's stance, ADR-0070). Not required to work on the code — CI builds the reference on
+  every PR — but to reproduce that build locally:
+
+  ```bash
+  curl -sSfL -o phpDocumentor.phar https://github.com/phpDocumentor/phpDocumentor/releases/download/v3.7.1/phpDocumentor.phar
+  php phpDocumentor.phar --config=phpdoc.dist.xml --no-interaction
+  python tools/api_docs_gate.py build/api
+  ```
+
+  **Do not use `latest`**: v3.10.0 crashes on startup before printing its own `--version`.
+  And run the gate — phpDocumentor exits `0` even when its report names errors, so its exit
+  status is not the verdict.
 
 ## Commands
 

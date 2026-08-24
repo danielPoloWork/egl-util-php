@@ -314,7 +314,7 @@ Every PR must clear, at minimum:
 | Unit tests | cover the new/changed behavior; pass on every CI cell |
 | Sanitizers / checkers | PHPStan max level (type soundness); PCOV for coverage green where applicable |
 | Coverage | ≥ 90% total line coverage, enforced in CI by `tools/coverage_gate.py` (**ADR-0007**, which finalizes what is measured: total, not per-diff) |
-| API docs | `phpDocumentor` builds without warnings |
+| API docs | `phpDocumentor` reports no compilation errors — asserted by `python tools/api_docs_gate.py build/api`, which reads phpDocumentor's own report because the tool exits `0` even when that report names errors (**ADR-0070**). CI builds and publishes the reference to GitHub Pages. |
 | Performance claims | backed by a reproducible benchmark under `src/bench/` |
 | Versioning | SemVer; `CHANGELOG.md` updated for user-visible changes |
 | Congruence | `python tools/consistency_lint.py` passes |

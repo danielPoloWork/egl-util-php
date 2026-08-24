@@ -1,0 +1,133 @@
+name: api-docs
+
+# The API reference AGENTS.md §10 has claimed since this repository was generated (issue #107,
+# ROADMAP 13.7, ADR-0070). Two jobs, and the split is the point:
+#
+#   `gate`      runs on every pull request. It builds the reference and asserts phpDocumentor
+#               reported no compilation errors — read out of the report it writes, NOT out of its
+#               exit code, which is 0 even when the report names errors. Measured before this
+#               existed: `All done in 20 seconds!`, exit 0, five ERROR rows in the report.
+#   `publish`   runs only on master, and deploys to GitHub Pages.
+#
+# A doc-only PR still runs the gate: a docblock is exactly what this checks.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# Least privilege by default; the publish job widens it for itself only.
+permissions:
+  contents: read
+
+concurrency:
+  group: api-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned by version AND checksum. v3.10.0 — the release `latest` resolves to — crashes on
+  # startup with `Finder::getInstalledPackagesByType(): Return value must be of type array, null
+  # returned` before printing its own --version, so `latest` is not a safe reference here.
+  PHPDOC_VERSION: 3.7.1
+  PHPDOC_SHA256: 5223cc8455d53c51fcd5a3d4ac7817acdbec3f3e325981688d345f2468097230
+
+jobs:
+  gate:
+    name: api docs / phpDocumentor builds clean
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: fileinfo, pdo
+
+      - name: Fetch phpDocumentor and verify its checksum
+        shell: bash
+        run: |
+          # ADR-0031's stance applied to one more tool: phpDocumentor is NOT a require-dev entry.
+          # It would drag its own dependency tree into a library whose only hard runtime deps are
+          # two PSR interface packages, and `--prefer-lowest` would then resolve against it.
+          curl -sSfL -o phpDocumentor.phar \
+            "https://github.com/phpDocumentor/phpDocumentor/releases/download/v${PHPDOC_VERSION}/phpDocumentor.phar"
+          echo "${PHPDOC_SHA256}  phpDocumentor.phar" | sha256sum --check --strict
+          php phpDocumentor.phar --version
+
+      - name: Build the API reference
+        run: php phpDocumentor.phar --config=phpdoc.dist.xml --no-interaction
+
+      # THE GATE. phpDocumentor's exit code is deliberately not the verdict — see the tool's
+      # docblock and ADR-0070. A missing or unparseable report fails too, because "no failures
+      # found" and "nothing was looked at" are the same output to any check that only greps.
+      - name: Assert phpDocumentor reported no compilation errors
+        run: python tools/api_docs_gate.py build/api
+
+      - name: Verify the api-docs gate can fail
+        run: python tools/tests/verify_api_docs_gate.py
+
+      - name: Keep the reference for inspection
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: api-reference
+          path: build/api
+          retention-days: 14
+
+  publish:
+    name: api docs / publish to Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [gate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: fileinfo, pdo
+
+      - name: Fetch phpDocumentor and verify its checksum
+        shell: bash
+        run: |
+          curl -sSfL -o phpDocumentor.phar \
+            "https://github.com/phpDocumentor/phpDocumentor/releases/download/v${PHPDOC_VERSION}/phpDocumentor.phar"
+          echo "${PHPDOC_SHA256}  phpDocumentor.phar" | sha256sum --check --strict
+
+      - name: Build the API reference
+        run: php phpDocumentor.phar --config=phpdoc.dist.xml --no-interaction
+
+      # Re-asserted here rather than trusted from `gate`. That job ran on the PR's merge commit;
+      # this one runs on master's, and a green check on a different tree is not this tree's proof.
+      - name: Assert phpDocumentor reported no compilation errors
+        run: python tools/api_docs_gate.py build/api
+
+      # `enablement: true` creates the Pages site through the API on first run, so the deployment
+      # does not require a manual settings change. If the token is not permitted to create it, this
+      # step fails loudly and the maintainer enables Pages once (Settings → Pages → Source: GitHub
+      # Actions) — a failure here never publishes a partial reference.
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        with:
+          enablement: true
+
+      - name: Upload the reference
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: build/api
+
+      - name: Deploy to Pages
+        id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
