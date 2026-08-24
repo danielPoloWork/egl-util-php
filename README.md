@@ -60,25 +60,30 @@ composer require egl/utils
 ```
 
 It resolves from **[Packagist](https://packagist.org/packages/egl/utils)** — no VCS repository
-entry needed. `^1.0` resolves **v1.0.0** today, the only published release; the API is frozen for
-the whole 1.x line ([ADR-0059](docs/adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md)).
-Installing pulls three packages in total — this one plus the interface-only `psr/container` and
-`psr/log`.
+entry needed. The API is frozen for the whole 1.x line
+([ADR-0059](docs/adr/0059-freeze-the-api-at-1-0-0-with-internal-symbols-outside-the-frozen-surface.md)),
+so `^1.0` is a safe constraint and picks up every release in it. Its only hard dependencies are
+interface-only packages — `psr/container`, `psr/log`, and `psr/clock` from v1.1.0 onward.
+
+Released so far: **v1.1.0** (M14's five additive seams and M13's close-out) and **v1.0.0** (the
+first release and the freeze). What each contains is in [`CHANGELOG.md`](CHANGELOG.md); why you
+might upgrade is in [`docs/releases/`](docs/releases/).
 
 **Requires** PHP ≥ 8.1 with `ext-pdo` and `ext-fileinfo`. Two things are *suggested* rather than
 required, and each refuses at the call site when absent rather than degrading silently:
 `ext-iconv` (for `Str::transcode()`) and `symfony/html-sanitizer` (for `Sanitizer::richText()`).
 
-> **`master` is ahead of what installs.** Milestone 14 is merged but unreleased, so
-> `SystemClock`/`FrozenClock`, `Str::ulid()`/`uuidV7()`, `Hmac`, `RateLimiter`, `PageRequest`/`Page`
-> and `RetryPolicy` are in this repository but **not in v1.0.0**. Read the surface tables above as
-> the repository's; read [`CHANGELOG.md`](CHANGELOG.md) for what a given version contains.
+> **`master` runs ahead of the newest tag, by design.** Work lands on `master` continuously and is
+> released in batches, so the surface tables above describe the *repository*. For what a given
+> version actually contains, read [`CHANGELOG.md`](CHANGELOG.md) — `[Unreleased]` is exactly the
+> part you cannot install yet.
 
 ## Quickstart
 
-Four tasks, each a complete program. Every example below was executed against `egl/utils` **v1.0.0
-installed from Packagist** — not against this working tree — and the output shown is what it
-printed.
+Four tasks, each a complete program. Every example below was executed against `egl/utils`
+**installed from Packagist** — not against this working tree — and the output shown is what it
+printed. They were verified at **v1.0.0** and the 1.x freeze keeps them valid: nothing they use has
+changed shape since.
 
 ### Hydrate a DTO
 
