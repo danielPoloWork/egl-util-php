@@ -1,6 +1,15 @@
 # ADR-0032: Verify the tag before a draft exists, ask GitHub about the signature, and let Packagist pull
 
-- **Status:** Accepted
+- **Status:** Accepted — **a local guard added, and the bypass made explicit** (2026-08-24, issue
+  #115). This ADR named the signing key as a one-time prerequisite and put the check in CI, where it
+  fires *after* the tag is public — the one moment a tag cannot be corrected in place. `v0.11.0`,
+  `v1.0.0` and `v1.1.0` each failed that check, three for three. `tools/tag_guard.py` plus
+  `.githooks/pre-push` now refuse an unsigned or lightweight `v*.*.*` tag **before** the push.
+  **Nothing decided here changes**, and the guard deliberately does *not* make an unsigned release
+  impossible: the maintainer has chosen one three times with the outcome known, and a guard that
+  simply blocked that would be bypassed with `--no-verify` and teach nothing. It requires the choice
+  to be stated instead — `EGL_UNSIGNED_TAG_REASON="…"` — which is what #115 means by making the
+  failure impossible to repeat *silently*. Annotated rather than edited, per ADR-0041's precedent.
 - **Date:** 2026-08-05
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 7.3 · spec §8 (CI/CD & release engineering), NFR-07 ·

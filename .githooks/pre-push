@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+# Refuse to push an unsigned release tag (issue #115, ADR-0032).
+#
+# Enable once per clone — git does not install hooks from a checkout, deliberately:
+#
+#     git config core.hooksPath .githooks
+#
+# git feeds this hook one line per ref being pushed on stdin:
+#     <local ref> <local sha> <remote ref> <remote sha>
+# The guard reads those and concerns itself only with refs/tags/v<MAJOR>.<MINOR>.<PATCH>.
+# Every other push — every branch, every other tag shape — passes through in silence, so
+# this does not become noise that someone disables.
+#
+# A hook is bypassable with `git push --no-verify`, and that is fine: the point is not to
+# make an unsigned release impossible, it is to make it impossible to do BY ACCIDENT.
+# For a deliberate one there is a documented override that asks for a reason:
+#
+#     EGL_UNSIGNED_TAG_REASON="no key registered yet; see #115" git push origin v1.2.0
+
+set -eu
+
+if command -v python3 >/dev/null 2>&1; then
+    PY=python3
+elif command -v python >/dev/null 2>&1; then
+    PY=python
+else
+    # Refusing beats waving a release tag through because an interpreter was missing.
+    echo "pre-push: neither python3 nor python is on PATH, so tools/tag_guard.py cannot run." >&2
+    echo "  Refusing the push. Install Python, or bypass deliberately with --no-verify." >&2
+    exit 1
+fi
+
+exec "$PY" "$(git rev-parse --show-toplevel)/tools/tag_guard.py" --stdin

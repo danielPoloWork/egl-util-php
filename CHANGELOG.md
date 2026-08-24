@@ -17,6 +17,23 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Fixed
 
+- **An unsigned release tag can no longer be pushed by accident** — `tools/tag_guard.py` and
+  `.githooks/pre-push` (issue #115, **ADR-0032** annotated). Enable once per clone with
+  `git config core.hooksPath .githooks`.
+  `v0.11.0`, `v1.0.0` and `v1.1.0` each went up annotated but unsigned; `release.yml`'s signing gate
+  refused each one **after** the tag was public, which is the one moment a tag cannot be corrected in
+  place. The guard moves that discovery to the second before the push, and refuses a lightweight tag
+  too — a lightweight tag cannot carry a signature at all.
+  **It does not make an unsigned release impossible, deliberately.** That choice has been made three
+  times with the outcome known, and a guard that simply blocked it would be bypassed with
+  `--no-verify` and teach nothing. It requires the choice to be *stated*:
+  `EGL_UNSIGNED_TAG_REASON="why" git push origin v1.2.0` prints the reason and the consequences.
+  A tag it cannot read exits **2** rather than 0, and an ordinary branch push produces **no output at
+  all** — a guard that comments on every push gets switched off for being noisy.
+  `tools/tests/verify_tag_guard.py` (15 cases) proves the refusals, the override, the blank-override
+  rejection, and the silence. The signed path is the one branch not exercised, because no signing key
+  exists on any machine that runs it — which is this issue's first criterion and the maintainer's.
+
 - **`README.md`'s install section no longer describes a one-release world.** It said `^1.0` resolves
   v1.0.0, *"the only published release"*, and carried a warning box announcing that Milestone 14 was
   *"merged but unreleased"*. Both were true when written in #147 and were made false by v1.1.0 — and
