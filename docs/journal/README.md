@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-21 - The gate that would have failed every release, forever](2026/08/2026-08-21-bc-gate-version-constant.md)
 - [2026-08-21 — The tool said "All done", exited 0, and had five errors](2026/08/2026-08-21-api-docs-gate.md)
 - [2026-08-21 — Two documents, not two copies](2026/08/2026-08-21-one-home-for-release-notes.md)
 - [2026-08-21 — What Packagist ships, measured rather than sampled](2026/08/2026-08-21-dist-hygiene-export-ignore.md)
