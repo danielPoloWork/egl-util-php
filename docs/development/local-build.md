@@ -23,6 +23,17 @@ on Linux (PHP 8.1, 8.2, 8.3); reproducing them locally avoids a red round-trip.
   And run the gate — phpDocumentor exits `0` even when its report names errors, so its exit
   status is not the verdict.
 
+## One-time setup
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Git does not install hooks from a checkout, deliberately, so this is per clone. It enables the
+pre-push guard that refuses an unsigned or lightweight `v*.*.*` release tag before it reaches the
+remote (issue #115, ADR-0032) and is silent on every other push. Not needed unless you cut releases,
+and harmless if you do not.
+
 ## Commands
 
 ```bash

@@ -20,6 +20,7 @@
 # Neither list is self-maintaining, so the contents are asserted instead of the rules:
 #   python tools/dist_gate.py       (CI runs it on every PR)
 /.eados-core export-ignore
+/.githooks export-ignore
 /.github export-ignore
 /.specs export-ignore
 /orchestrator export-ignore

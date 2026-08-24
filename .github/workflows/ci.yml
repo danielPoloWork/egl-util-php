@@ -137,6 +137,11 @@ jobs:
         run: python tools/dist_gate.py
       - name: Verify the dist gate can fail
         run: python tools/tests/verify_dist_gate.py
+      # The pre-push tag guard (issue #115, ADR-0032). It is a LOCAL hook, so CI can never exercise
+      # it in anger -- which is exactly why its proof runs here: the guard nobody can test is the
+      # guard nobody notices rotting.
+      - name: Verify the pre-push tag guard can fail
+        run: python tools/tests/verify_tag_guard.py
       # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
       # shape, and a version comment that lies is invisible to any purely local check when the
       # error is applied uniformly. CI is where the truthful half must run.

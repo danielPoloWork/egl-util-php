@@ -119,6 +119,12 @@ Two things to know before cutting one:
 
 Both are the maintainer's, not the agent's, and the first release cannot succeed without them.
 
+0. **The pre-push guard enabled**, once per clone: `git config core.hooksPath .githooks`. It
+   refuses an unsigned or lightweight `v*.*.*` tag before it reaches the remote, which is where
+   `v0.11.0`, `v1.0.0` and `v1.1.0` each went wrong — the CI check fires after publication, and a
+   published tag cannot be corrected in place. Check any tag by hand with
+   `python tools/tag_guard.py --tag v<X.Y.Z>`. A deliberate unsigned release is still possible and
+   must say so: `EGL_UNSIGNED_TAG_REASON="why" git push origin v<X.Y.Z>` (issue #115, ADR-0032).
 1. **A signing key registered on the GitHub account** whose identity cuts tags — GPG or SSH. The
    workflow asks GitHub whether the tag verifies rather than importing key material onto the
    runner, so nothing needs configuring in CI; but an unsigned tag fails the release.
