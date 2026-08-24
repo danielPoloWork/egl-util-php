@@ -1,6 +1,18 @@
 # ADR-0031: Run the BC checker outside this package's dependency graph, and gate breaks by the bump they arrive in
 
-- **Status:** Accepted
+- **Status:** Accepted — **one narrow discount added** (2026-08-21, the `v1.1.0` release PR): the
+  gate discounts a single finding, `Value of constant D4np\Utils\Version::VERSION changed`, and
+  nothing else. **The decision below is unchanged** — breaks are still gated by the bump they
+  arrive in, and any other `[BC]` line still fails on the same rules.
+  Why it was needed: `Version::VERSION` is a public constant, so Roave reports its value changing
+  as a break — and a release PR changes exactly that constant. **The gate therefore failed every
+  release PR by construction**, and nobody knew, because the job self-skips when no tag exists to
+  compare against: before `v1.0.0` it reported green having compared nothing. The `v1.1.0` PR was
+  the first time it ever really ran, and that one line was its only finding.
+  The discount is keyed on that exact symbol rather than on "constant value changes are fine", it
+  is printed on every run that uses it, and `tools/tests/verify_bc_gate.py` pins the case that
+  matters: the version line **alongside** a real break still fails. Annotated rather than edited,
+  per ADR-0041's precedent.
 - **Date:** 2026-08-05
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 7.2 · spec **NFR-07**, NFR-08 (dependency policy) · imported spec §8

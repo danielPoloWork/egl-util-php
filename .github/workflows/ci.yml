@@ -124,6 +124,11 @@ jobs:
       # tool's refusal would read as a broken release rather than as prose that needs fixing.
       - name: Verify the Release-body renderer can fail
         run: python tools/tests/verify_release_body.py
+      # And the BC gate's discount (ADR-0031, amended). It runs here rather than only in the
+      # backward-compatibility job because that job is release-PR-only: the discount's narrowness
+      # is exactly what must not rot between releases, and this is where it gets checked.
+      - name: Verify the BC gate's version-constant discount is narrow
+        run: python tools/tests/verify_bc_gate.py
       # ADR-0003's gate. Runs WITH --verify-upstream: the offline half only checks the pin
       # shape, and a version comment that lies is invisible to any purely local check when the
       # error is applied uniformly. CI is where the truthful half must run.
@@ -542,10 +547,15 @@ jobs:
         if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
         shell: bash
         run: |
+          # --report is what lets the gate tell the version bump apart from a real break.
+          # Roave reports Version::VERSION changing value as a BC break, and a release PR
+          # changes exactly that constant, so without this the gate fails EVERY release by
+          # construction. Nothing else is discounted (ADR-0031, amended).
           python3 tools/bc_gate.py \
             --previous "${{ steps.scope.outputs.previous }}" \
             --current "${{ steps.scope.outputs.current }}" \
-            --bc-exit "${{ steps.bc.outputs.code }}"
+            --bc-exit "${{ steps.bc.outputs.code }}" \
+            --report bc-report.md
 
       - name: Keep the BC report
         if: always() && steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''

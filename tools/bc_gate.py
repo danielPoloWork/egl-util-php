@@ -38,6 +38,22 @@ import sys
 
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
 
+# Every finding line the checker emits, in its markdown format.
+BREAK_LINE = re.compile(r"^\s*-\s*\[BC\]\s*(?P<detail>.+?)\s*$", re.M)
+
+# The ONE finding a release cannot avoid producing. `Version::VERSION` is a public constant, so
+# Roave reports its value changing as a break — and a release PR changes it by definition, which
+# means the gate failed every release PR by construction. Discovered the first time the job ever
+# actually ran: before v1.0.0 existed there was no tag to compare against, so it self-skipped and
+# reported green having compared nothing.
+#
+# Deliberately keyed on this exact symbol, not on "constant value changes are fine". A consumer
+# reading a version string does not break when the string changes; a consumer reading any OTHER
+# constant might. Anchored to the class so a same-named constant elsewhere is still a break.
+VERSION_CONSTANT = re.compile(
+    r"^Value of constant D4np\\Utils\\Version::VERSION changed from ", re.I
+)
+
 
 class GateError(Exception):
     """A condition that must fail the gate rather than be reported as a verdict."""
@@ -80,6 +96,12 @@ def main(argv=None):
         required=True,
         help="exit code from roave/backward-compatibility-check: 0 means no breaks",
     )
+    ap.add_argument(
+        "--report",
+        help="the checker's markdown report. When given, the version-constant line every release "
+             "necessarily produces is discounted — see DISCOUNTED below. Without it the gate "
+             "behaves exactly as before.",
+    )
     args = ap.parse_args(argv)
 
     try:
@@ -104,11 +126,50 @@ def main(argv=None):
 
     breaks = bc_exit != 0
     pre_one_zero = previous[0] == 0
+    discounted = 0
+
+    if breaks and args.report:
+        try:
+            # utf-8-sig, not utf-8: a BOM would sit in front of the first `- [BC]` and defeat the
+            # line anchor, which reads as "the format changed" when it has not. CI's `tee` writes
+            # no BOM, but a report produced on Windows does, and the gate refusing for that reason
+            # would be a confusing false alarm.
+            with open(args.report, encoding="utf-8-sig", errors="replace") as handle:
+                findings = [m.group("detail") for m in BREAK_LINE.finditer(handle.read())]
+        except OSError as exc:
+            # Absence is failure, as everywhere else here: a report we cannot read is not a
+            # report saying there is nothing to see.
+            print(f"bc gate: FAIL\n\n  cannot read --report {args.report}: {exc}")
+            return 1
+
+        if not findings:
+            print(
+                f"bc gate: FAIL\n\n  the checker exited {bc_exit} (breaks found) but "
+                f"{args.report} contains no `- [BC]` line this gate recognises. Read the report, "
+                "then fix this parser — do not relax the check."
+            )
+            return 1
+
+        remaining = [f for f in findings if not VERSION_CONSTANT.match(f)]
+        discounted = len(findings) - len(remaining)
+        breaks = bool(remaining)
 
     print(
         f"bc gate: {'.'.join(map(str, previous))} -> {'.'.join(map(str, current))} "
         f"({level.upper()} bump), breaks detected: {'yes' if breaks else 'no'}"
     )
+
+    if discounted:
+        # Printed on every run that uses it. A discount nobody sees is a discount nobody can
+        # audit, and this one is narrow enough to be worth reading each time.
+        print(
+            f"\n  DISCOUNTED {discounted} finding(s): the value of "
+            "`D4np\\Utils\\Version::VERSION` changed.\n"
+            "  Roave reports a public constant's value changing as a break, and a release PR\n"
+            "  changes exactly that constant — so this one finding is what a release IS, not\n"
+            "  something a release does to a consumer. Nothing else is discounted: any other\n"
+            "  `[BC]` line still fails this gate on the same rules as before."
+        )
 
     if not breaks:
         print("\nbc gate: OK — no backward-incompatible change since the previous release.")
