@@ -11,20 +11,24 @@ use D4np\Utils\Persistence\TableGateway;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Support\HydrationException;
 use D4np\Utils\Support\ReflectionCache;
+use D4np\Utils\Tests\Engine\Engine;
+use D4np\Utils\Tests\Engine\RunsAgainstADatabaseEngine;
 use D4np\Utils\Tests\Persistence\Fixture\Mismatched;
 use D4np\Utils\Tests\Persistence\Fixture\Person;
 use D4np\Utils\Tests\Persistence\Fixture\PersonGateway;
-use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\RequiresPhpExtension;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
  * `TableGateway` — spec r3 FR-35 (RFC-0002), ADR-0044, catalogued as *Table Data Gateway*.
  *
- * Against real SQLite, for the reason every suite in these two groups gives: the claims are about
- * what a database did with the statement, and a doubled connection would return whatever it was
- * told to.
+ * Against a real engine, for the reason every suite in these two groups gives: the claims are
+ * about what a database did with the statement, and a doubled connection would return whatever it
+ * was told to. Since issue #110 (ADR-0071) that engine is SQLite by default and MySQL or
+ * PostgreSQL when the harness is pointed at one -- which matters here more than anywhere else,
+ * because two of the assertions below were *written about SQLite specifically* and had never been
+ * run against the engines they made claims about.
  *
  * Three groups of assertions carry the item's promises, and each is a property behaviour alone
  * would not notice: **empty criteria are refused** on every filtered operation (a silent `[]` is
@@ -32,19 +36,20 @@ use PHPUnit\Framework\TestCase;
  * arrive — criteria keys and value keys alike — and **reads project the DTO**, which is what keeps
  * strict hydration satisfiable on a table with columns the DTO does not want.
  */
-#[RequiresPhpExtension('pdo_sqlite')]
+#[Group('database-engine')]
 final class TableGatewayTest extends TestCase
 {
+    use RunsAgainstADatabaseEngine;
+
     private DatabaseConnection $connection;
 
     protected function setUp(): void
     {
-        $this->connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $this->connection->execute(SqlStatement::literal(
-            'CREATE TABLE people ('
-            . 'id INTEGER PRIMARY KEY, name TEXT, age INTEGER, status TEXT, secret TEXT'
-            . ')',
-        ));
+        $pdo = $this->enginePdo();
+        $this->connection = new DatabaseConnection($pdo);
+        $this->createFixtureTable($pdo, 'people', [
+            'id' => 'key', 'name' => 'text', 'age' => 'int', 'status' => 'text', 'secret' => 'text',
+        ]);
     }
 
     /**
@@ -188,13 +193,19 @@ final class TableGatewayTest extends TestCase
      * loud at the driver on MySQL, PostgreSQL and SQL Server, where those quotes are identifier
      * quotes and an unknown column is an error. Two mechanisms, one outcome — which is the useful
      * part: the gateway does not depend on either one being the loud one.
+     *
+     * **"Two mechanisms" was an argument until issue #110; here it is a measurement.** The
+     * expected exception is now chosen by engine, so both arms run in CI and the paragraph above
+     * is answerable rather than merely reasonable.
      */
-    public function testADtoDeclaringAColumnTheTableLacksIsRefusedByStrictHydration(): void
+    public function testADtoDeclaringAColumnTheTableLacksIsRefused(): void
     {
         $this->seed(1, 'Ada', 36);
         $gateway = new TableGateway($this->connection, 'people', Mismatched::class, 'id');
 
-        $this->expectException(HydrationException::class);
+        $this->expectException(
+            $this->engine() === Engine::Sqlite ? HydrationException::class : DatabaseException::class,
+        );
 
         $gateway->all();
     }
@@ -203,14 +214,27 @@ final class TableGatewayTest extends TestCase
      * …and the one case where nothing catches it, asserted rather than left as silence.
      *
      * With no rows there is no hydration, and SQLite has already accepted the statement — so a
-     * gateway wired to the wrong DTO looks healthy until the table has a row in it. The blind spot
-     * is SQLite-only (every other supported driver rejects the unknown identifier at prepare time)
-     * and it is recorded in ADR-0044 rather than papered over: closing it would mean a schema
-     * round trip per gateway, which is a real cost for a mistake that surfaces on the first row.
+     * gateway wired to the wrong DTO looks healthy until the table has a row in it. ADR-0044
+     * recorded the blind spot as SQLite-only rather than papering over it: closing it would mean a
+     * schema round trip per gateway, a real cost for a mistake that surfaces on the first row.
+     *
+     * **The "SQLite-only" half of that sentence is what issue #110 turned from a claim into a
+     * result.** It was written from the double-quoted-string misfeature, which is documented
+     * SQLite behaviour, but nothing in this repository had ever executed the other arm. Now both
+     * run: on MySQL and PostgreSQL the unknown identifier is rejected when the statement is
+     * prepared, so an empty table is *not* a blind spot there, and ADR-0044's cost argument
+     * applies to exactly one engine.
      */
-    public function testOnSqliteTheSameMismatchIsInvisibleWhileTheTableIsEmpty(): void
+    public function testTheSameMismatchIsInvisibleOnAnEmptyTableOnlyOnSqlite(): void
     {
         $gateway = new TableGateway($this->connection, 'people', Mismatched::class, 'id');
+
+        if ($this->engine() !== Engine::Sqlite) {
+            $this->expectException(DatabaseException::class);
+            $gateway->all();
+
+            return;
+        }
 
         self::assertSame([], $gateway->all());
     }

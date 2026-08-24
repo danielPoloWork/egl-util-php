@@ -1,6 +1,15 @@
 # ADR-0044: The write builder `QueryBuilder` never had, and one allowlist for both
 
-- **Status:** Accepted
+- **Status:** Accepted — **the "SQLite-only" blind spot is now measured rather than reasoned**
+  (2026-08-24, issue #110, [ADR-0071](0071-one-dsn-points-the-behavioural-suites-at-an-engine-and-an-unreachable-one-is-red.md)).
+  This ADR accepts that a `TableGateway` cannot tell, without a schema round trip, that its DTO
+  declares a column the table lacks, on the argument that the mistake is loud anyway: at the driver
+  on MySQL and PostgreSQL, and one layer up in strict hydration on SQLite, whose double-quoted-string
+  misfeature turns the unknown name into a string literal. **That argument had never been executed
+  against MySQL or PostgreSQL** — this repository ran on SQLite exclusively. It now runs on all
+  three, and `TableGatewayTest` asserts both arms by engine, so the cost argument for not doing the
+  schema round trip is confirmed to apply to exactly one engine. **Nothing decided here changes.**
+  Annotated rather than edited, per ADR-0041's precedent.
 - **Date:** 2026-08-06
 - **Deciders:** maintainer (`@danielPoloWork`), agent acting as tech-lead
 - **Related:** ROADMAP item 10.4 · spec r3 **FR-35** (RFC-0002, corrected here — see Decision) ·
