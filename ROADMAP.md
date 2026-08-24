@@ -26,9 +26,18 @@ API-freeze review below settled the whole line into a single first release, **`v
   the API is frozen at `v1.0.0`, with `@internal` symbols outside the frozen surface, and the
   unpublished `v0.11.0` superseded. Post-1.0 versioning follows
   [`maintenance.md`](docs/workflow/maintenance.md)'s decision tree, not the milestone mapping.
+  **First MINOR under that tree: `v1.1.0` (2026-08-21)** — M14's five additive seams plus
+  M13's close-out. Additive under ADR-0059, so `^1.0` still resolves; the milestone mapping
+  is not resumed, and M15 will not imply `v1.2.0` by itself.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-09 — The section SECURITY.md had been pointing at for its whole life](docs/journal/2026/08/2026-08-09-finish-v1-transition.md).
+  [2026-08-21 — The tool said "All done", exited 0, and had five errors](docs/journal/2026/08/2026-08-21-api-docs-gate.md).
   Previous:
+  [2026-08-21 — Two documents, not two copies](docs/journal/2026/08/2026-08-21-one-home-for-release-notes.md),
+  [2026-08-21 — What Packagist ships, measured rather than sampled](docs/journal/2026/08/2026-08-21-dist-hygiene-export-ignore.md),
+  [2026-08-21 — Four blocks that were one application, and the fifth defect that proved it](docs/journal/2026/08/2026-08-21-doc-examples-that-run.md),
+  [2026-08-21 — The link checker merged green and left master red](docs/journal/2026/08/2026-08-21-lint-eados-out-of-scope.md),
+  [2026-08-21 — Four examples, and the three attempts it took to believe them](docs/journal/2026/08/2026-08-21-consumer-onramp.md),
+  [2026-08-09 — The section SECURITY.md had been pointing at for its whole life](docs/journal/2026/08/2026-08-09-finish-v1-transition.md),
   [2026-08-08 — Two open decisions, one table, and the number I nearly picked](docs/journal/2026/08/2026-08-08-nfr-ceiling-decisions.md),
   [2026-08-08 — Closing the milestone by fixing the tool that kept flagging it as open](docs/journal/2026/08/2026-08-08-benchmark-run-invalidation.md),
   [2026-08-08 — The last planned item, and the milestone that still doesn't close](docs/journal/2026/08/2026-08-08-crypto-benchmark.md),
