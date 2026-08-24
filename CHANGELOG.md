@@ -17,6 +17,16 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Fixed
 
+- **`README.md`'s install section no longer describes a one-release world.** It said `^1.0` resolves
+  v1.0.0, *"the only published release"*, and carried a warning box announcing that Milestone 14 was
+  *"merged but unreleased"*. Both were true when written in #147 and were made false by v1.1.0 — and
+  `README.md` is the page Packagist renders, so they were the first thing a consumer read.
+  Rewritten to be **version-independent** rather than re-pinned to the newest tag: the constraint
+  advice no longer names a resolving version, the dependency list says which package arrives when
+  instead of counting them, and the box now explains that `master` runs ahead of the newest tag by
+  design, pointing at `[Unreleased]` as the part you cannot install yet. A claim that has to be
+  edited on every release is a claim that will be wrong between them.
+
 - **`phpdoc.dist.xml` no longer ships in the Packagist dist**, and a gate now asserts the dist's
   contents rather than trusting the rule list (issue #119). `.gitattributes`' `export-ignore` rules
   cut the archive from 524 files to 121 at `v1.1.0` — and `phpdoc.dist.xml` shipped inside it
