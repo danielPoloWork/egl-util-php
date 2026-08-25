@@ -14,10 +14,10 @@ use D4np\Utils\Security\Sanitizer;
 use D4np\Utils\Tests\Database\Fixture\InjectionPayloads;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\QueryLog;
+use D4np\Utils\Tests\Engine\RunsAgainstADatabaseEngine;
 use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -39,11 +39,19 @@ use PHPUnit\Framework\TestCase;
  * written at item 4.4 — is closed by roadmap item 5.2, with
  * {@see self::testLikeWildcardsAreNeutralisedWhileTheValueStillBinds()} here and the driver-level
  * cases in `SanitizerTest`. **T-02 is now complete.**
+ *
+ * **This suite runs against whichever engine the harness is pointed at** (issue #110, ADR-0071).
+ * The binding guarantee is the same claim on all three, and it is the claim most worth re-running
+ * somewhere other than SQLite: a driver that interpolated, or an engine whose prepares were
+ * emulated after all, would fail here and nowhere else. What differs per engine is only whether a
+ * bound payload is *storable* once it arrives — see {@see RunsAgainstADatabaseEngine::attempt()}.
  */
 #[Group('T-02')]
-#[RequiresPhpExtension('pdo_sqlite')]
+#[Group('database-engine')]
 final class InjectionTest extends TestCase
 {
+    use RunsAgainstADatabaseEngine;
+
     private QueryLog $log;
 
     private DatabaseConnection $connection;
@@ -52,13 +60,12 @@ final class InjectionTest extends TestCase
     {
         $this->log = new QueryLog();
 
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = $this->enginePdo();
         $pdo->setAttribute(PDO::ATTR_STATEMENT_CLASS, [LoggedStatement::class, [$this->log]]);
 
         $this->connection = new DatabaseConnection($pdo);
-        $this->connection->execute(SqlStatement::literal('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)'));
-        $this->connection->execute(SqlStatement::literal('CREATE TABLE secrets (token TEXT)'));
+        $this->createFixtureTable($pdo, 'users', ['id' => 'key', 'name' => 'text']);
+        $this->createFixtureTable($pdo, 'secrets', ['token' => 'text']);
         $this->connection->execute(SqlStatement::literal("INSERT INTO secrets (token) VALUES ('do-not-leak')"));
 
         // Only the payload traffic matters; drop the fixture's own setup from the log.
@@ -105,7 +112,9 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testConnectionExecuteBindsRatherThanInterpolates(string $payload): void
     {
-        $this->connection->execute(SqlStatement::literal('INSERT INTO users (name) VALUES (?)', [$payload]));
+        $this->attempt(fn () => $this->connection->execute(
+            SqlStatement::literal('INSERT INTO users (name) VALUES (?)', [$payload]),
+        ));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -113,7 +122,9 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testConnectionSelectBindsRatherThanInterpolates(string $payload): void
     {
-        $this->connection->select(SqlStatement::literal('SELECT * FROM users WHERE name = ?', [$payload]));
+        $this->attempt(fn () => $this->connection->select(
+            SqlStatement::literal('SELECT * FROM users WHERE name = ?', [$payload]),
+        ));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -121,7 +132,9 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testConnectionSelectOneBindsRatherThanInterpolates(string $payload): void
     {
-        $this->connection->selectOne(SqlStatement::literal('SELECT * FROM users WHERE name = :name', ['name' => $payload]));
+        $this->attempt(fn () => $this->connection->selectOne(
+            SqlStatement::literal('SELECT * FROM users WHERE name = :name', ['name' => $payload]),
+        ));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -129,11 +142,11 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testQueryBuilderWhereBindsRatherThanInterpolates(string $payload): void
     {
-        (new QueryBuilder($this->connection, 'users'))
+        $this->attempt(fn () => (new QueryBuilder($this->connection, 'users'))
             ->where('name', Operator::Equals, $payload)
             ->orderBy('id', Sort::Desc)
             ->limit(10)
-            ->get();
+            ->get());
 
         $this->assertNeverInStatementText($payload);
     }
@@ -141,9 +154,9 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testQueryBuilderWhereInBindsRatherThanInterpolates(string $payload): void
     {
-        (new QueryBuilder($this->connection, 'users'))
+        $this->attempt(fn () => (new QueryBuilder($this->connection, 'users'))
             ->whereIn('name', [$payload, 'harmless'])
-            ->get();
+            ->get());
 
         $this->assertNeverInStatementText($payload);
     }
@@ -151,9 +164,9 @@ final class InjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testBindingHoldsInsideATransaction(string $payload): void
     {
-        (new Transaction($this->connection))->run(function () use ($payload): void {
+        $this->attempt(fn () => (new Transaction($this->connection))->run(function () use ($payload): void {
             $this->connection->execute(SqlStatement::literal('INSERT INTO users (name) VALUES (?)', [$payload]));
-        });
+        }));
 
         $this->assertNeverInStatementText($payload);
     }
@@ -162,18 +175,67 @@ final class InjectionTest extends TestCase
      * Binding is not only about syntax: the value must survive intact, and the schema must be
      * untouched. A payload that were escaped rather than bound could still round-trip — which is
      * why this runs *alongside* the query-log assertion rather than instead of it.
+     *
+     * **Refused is also an answer.** A payload MySQL or PostgreSQL will not store — a NUL byte, a
+     * byte sequence that is not valid UTF-8 — cannot round-trip there, and pretending otherwise
+     * would mean either skipping those corpus members or asserting something untrue. What is
+     * asserted instead is the half that still has content: the write was refused *cleanly*, no row
+     * appeared, and the other table is untouched. Both branches end at the same place — the
+     * payload did not become SQL.
      */
     #[DataProvider('payloads')]
     public function testThePayloadRoundTripsAndTheSchemaSurvives(string $payload): void
     {
-        $this->connection->execute(SqlStatement::literal('INSERT INTO users (name) VALUES (?)', [$payload]));
+        $stored = $this->attempt(fn () => $this->connection->execute(
+            SqlStatement::literal('INSERT INTO users (name) VALUES (?)', [$payload]),
+        ));
 
-        $row = $this->connection->selectOne(SqlStatement::literal('SELECT name FROM users WHERE name = ?', [$payload]));
+        if ($stored) {
+            $row = $this->connection->selectOne(
+                SqlStatement::literal('SELECT name FROM users WHERE name = ?', [$payload]),
+            );
 
-        self::assertSame($payload, $row['name'] ?? null);
-        self::assertSame([['n' => 1]], $this->connection->select(SqlStatement::literal('SELECT COUNT(*) AS n FROM users')));
+            // `storedForm()` is the identity for every payload and every engine but one: PDO_PGSQL
+            // truncates a bound parameter at its first NUL byte, silently and without raising.
+            // Found by this leg's first run; pinned in Engine::storedForm() and asserted on its
+            // own in DialectTest.
+            self::assertSame($this->engine()->storedForm($payload), $row['name'] ?? null);
+        }
+
+        self::assertSame(
+            $stored ? 1 : 0,
+            $this->rowCount(SqlStatement::literal('SELECT COUNT(*) AS n FROM users')),
+            $stored ? 'the payload was accepted but did not land as one row' : 'a refused write left a row behind',
+        );
         // Exfiltration and destruction both leave traces here.
-        self::assertSame([['n' => 1]], $this->connection->select(SqlStatement::literal('SELECT COUNT(*) AS n FROM secrets')));
+        self::assertSame(1, $this->rowCount(SqlStatement::literal('SELECT COUNT(*) AS n FROM secrets')));
+    }
+
+    /**
+     * `COUNT(*)` as an `int`, whatever the driver called it.
+     *
+     * The cast is the engine-portable part: the three drivers do not agree on the PHP type of a
+     * `COUNT(*)`, which is a divergence with a consequence — `Repository::countRowsOf()` carries
+     * the same cast for the same reason — and it is pinned as its own assertion in
+     * {@see \D4np\Utils\Tests\Engine\DialectTest} rather than re-litigated in every suite that
+     * counts rows.
+     */
+    private function rowCount(SqlStatement $count): int
+    {
+        $value = $this->connection->selectOne($count)['n'] ?? null;
+
+        if (\is_int($value)) {
+            return $value;
+        }
+
+        if (\is_string($value) && \is_numeric($value)) {
+            return (int) $value;
+        }
+
+        self::fail(\sprintf(
+            'COUNT(*) came back as %s, which is neither an int nor a numeric string.',
+            \get_debug_type($value),
+        ));
     }
 
     /**

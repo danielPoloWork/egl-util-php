@@ -14,12 +14,12 @@ use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Tests\Database\Fixture\InjectionPayloads;
 use D4np\Utils\Tests\Database\Fixture\LoggedStatement;
 use D4np\Utils\Tests\Database\Fixture\QueryLog;
+use D4np\Utils\Tests\Engine\RunsAgainstADatabaseEngine;
 use D4np\Utils\Tests\Persistence\Fixture\Person;
 use D4np\Utils\Tests\Persistence\Fixture\PersonGateway;
 use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -42,11 +42,19 @@ use PHPUnit\Framework\TestCase;
  * The identifier leg carries an assertion the value leg cannot: a refused column name must leave
  * the log **empty**. Refusing an identifier after preparing a statement would be a refusal that
  * arrives too late to matter, and no round-trip assertion can see the difference.
+ *
+ * **Re-run against MySQL and PostgreSQL as well as SQLite** (issue #110, ADR-0071). T-13's claim
+ * is about the composed path -- gateway to builder to statement to driver -- and every layer of
+ * it renders identifiers through `Identifier::forDriver()`, the one part of the library that
+ * behaves *differently* per engine. Proving the boundary on one dialect proved two thirds of a
+ * `match` and left the other two arms unexecuted.
  */
 #[Group('T-13')]
-#[RequiresPhpExtension('pdo_sqlite')]
+#[Group('database-engine')]
 final class GatewayInjectionTest extends TestCase
 {
+    use RunsAgainstADatabaseEngine;
+
     private QueryLog $log;
 
     private DatabaseConnection $connection;
@@ -58,15 +66,14 @@ final class GatewayInjectionTest extends TestCase
     {
         $this->log = new QueryLog();
 
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = $this->enginePdo();
         $pdo->setAttribute(PDO::ATTR_STATEMENT_CLASS, [LoggedStatement::class, [$this->log]]);
 
         $this->connection = new DatabaseConnection($pdo);
-        $this->connection->execute(SqlStatement::literal(
-            'CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT, age INTEGER, status TEXT, secret TEXT)',
-        ));
-        $this->connection->execute(SqlStatement::literal('CREATE TABLE secrets (token TEXT)'));
+        $this->createFixtureTable($pdo, 'people', [
+            'id' => 'key', 'name' => 'text', 'age' => 'int', 'status' => 'text', 'secret' => 'text',
+        ]);
+        $this->createFixtureTable($pdo, 'secrets', ['token' => 'text']);
         $this->connection->execute(SqlStatement::literal("INSERT INTO secrets (token) VALUES ('do-not-leak')"));
 
         $this->gateway = new TableGateway($this->connection, 'people', Person::class, 'id');
@@ -135,7 +142,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayInsertBindsTheValue(string $payload): void
     {
-        $this->gateway->insert(['name' => $payload]);
+        $this->attempt(fn () => $this->gateway->insert(['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -143,7 +150,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayFindBindsTheKey(string $payload): void
     {
-        $this->gateway->find($payload);
+        $this->attempt(fn () => $this->gateway->find($payload));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -151,7 +158,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayFindByBindsTheCriterion(string $payload): void
     {
-        $this->gateway->findBy(['name' => $payload]);
+        $this->attempt(fn () => $this->gateway->findBy(['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -159,7 +166,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayFindOneByBindsTheCriterion(string $payload): void
     {
-        $this->gateway->findOneBy(['name' => $payload]);
+        $this->attempt(fn () => $this->gateway->findOneBy(['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -167,7 +174,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayPaginateByBindsTheCriterion(string $payload): void
     {
-        $this->gateway->paginateBy(['name' => $payload], PageRequest::of(1, 10));
+        $this->attempt(fn () => $this->gateway->paginateBy(['name' => $payload], PageRequest::of(1, 10)));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -178,7 +185,7 @@ final class GatewayInjectionTest extends TestCase
         // A paginated read issues TWO statements, and the COUNT is the one a value could slip
         // into unnoticed: the rows are covered by the leg above, and a count that inlined its
         // filter would still return a plausible number nobody would question.
-        $this->gateway->paginateBy(['name' => $payload], PageRequest::of(1, 10));
+        $this->attempt(fn () => $this->gateway->paginateBy(['name' => $payload], PageRequest::of(1, 10)));
 
         $counts = \array_values(\array_filter(
             $this->log->entries,
@@ -204,7 +211,7 @@ final class GatewayInjectionTest extends TestCase
     {
         $this->seed(1, 'Ada');
 
-        $this->gateway->update(1, ['name' => $payload]);
+        $this->attempt(fn () => $this->gateway->update(1, ['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -212,7 +219,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayUpdateByBindsTheCriterion(string $payload): void
     {
-        $this->gateway->updateBy(['name' => $payload], ['status' => 'reviewed']);
+        $this->attempt(fn () => $this->gateway->updateBy(['name' => $payload], ['status' => 'reviewed']));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -220,7 +227,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testGatewayDeleteByBindsTheCriterion(string $payload): void
     {
-        $this->gateway->deleteBy(['name' => $payload]);
+        $this->attempt(fn () => $this->gateway->deleteBy(['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -230,9 +237,9 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testMutationBuilderInsertBindsThroughTheConnection(string $payload): void
     {
-        $this->connection->execute(SqlStatement::fromMutation(
+        $this->attempt(fn () => $this->connection->execute(SqlStatement::fromMutation(
             MutationBuilder::insert($this->connection, 'people', ['name' => $payload]),
-        ));
+        )));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -240,9 +247,9 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testMutationBuilderUpdateBindsBothGroups(string $payload): void
     {
-        $this->connection->execute(SqlStatement::fromMutation(
+        $this->attempt(fn () => $this->connection->execute(SqlStatement::fromMutation(
             MutationBuilder::update($this->connection, 'people', ['name' => $payload], ['name' => $payload]),
-        ));
+        )));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -250,9 +257,9 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testMutationBuilderDeleteBindsTheCriterion(string $payload): void
     {
-        $this->connection->execute(SqlStatement::fromMutation(
+        $this->attempt(fn () => $this->connection->execute(SqlStatement::fromMutation(
             MutationBuilder::delete($this->connection, 'people', ['name' => $payload]),
-        ));
+        )));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -262,7 +269,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testRepositoryFetchAllBindsTheValue(string $payload): void
     {
-        (new PersonGateway($this->connection))->named($payload);
+        $this->attempt(fn () => (new PersonGateway($this->connection))->named($payload));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -270,7 +277,7 @@ final class GatewayInjectionTest extends TestCase
     #[DataProvider('payloads')]
     public function testBindingHoldsInsideAGatewayTransaction(string $payload): void
     {
-        (new PersonGateway($this->connection))->insertInTransaction(['name' => $payload]);
+        $this->attempt(fn () => (new PersonGateway($this->connection))->insertInTransaction(['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -291,7 +298,7 @@ final class GatewayInjectionTest extends TestCase
             new RowNormalizer(),
         );
 
-        $gateway->findBy(['name' => $payload]);
+        $this->attempt(fn () => $gateway->findBy(['name' => $payload]));
 
         $this->assertBoundNeverInlined($payload);
     }
@@ -382,22 +389,59 @@ final class GatewayInjectionTest extends TestCase
     /**
      * Binding is a claim about syntax; this is the claim about consequences. The payload survives
      * a full write-read cycle through hydration, and neither table has been touched by it.
+     *
+     * On MySQL and PostgreSQL a handful of corpus members are not storable at all — a NUL byte, a
+     * sequence that is not valid UTF-8 — and there the assertion is that the refusal was clean:
+     * no row, and the neighbouring table still holds exactly what it held. T-02's own round-trip
+     * test is split the same way and for the same reason (issue #110).
      */
     #[DataProvider('payloads')]
     public function testThePayloadRoundTripsThroughHydrationAndTheSchemaSurvives(string $payload): void
     {
-        $this->gateway->insert(['id' => 1, 'name' => $payload, 'age' => 1, 'status' => 'active']);
+        $stored = $this->attempt(fn () => $this->gateway->insert(
+            ['id' => 1, 'name' => $payload, 'age' => 1, 'status' => 'active'],
+        ));
 
-        $person = $this->gateway->find(1);
+        if ($stored) {
+            $person = $this->gateway->find(1);
 
-        self::assertInstanceOf(Person::class, $person);
-        self::assertSame($payload, $person->name);
-        self::assertCount(1, $this->gateway->all());
+            self::assertInstanceOf(Person::class, $person);
+            // Not `$payload`: PDO_PGSQL truncates a bound parameter at its first NUL byte without
+            // raising, so on that engine the row genuinely holds less than was sent. See
+            // Engine::storedForm(), and DialectTest for the standalone pin.
+            self::assertSame($this->engine()->storedForm($payload), $person->name);
+        }
+
+        self::assertCount($stored ? 1 : 0, $this->gateway->all());
         // Exfiltration and destruction both leave traces here.
-        self::assertSame(
-            [['n' => 1]],
-            $this->connection->select(SqlStatement::literal('SELECT COUNT(*) AS n FROM secrets')),
-        );
+        self::assertSame(1, $this->secretCount());
+    }
+
+    /**
+     * The rows in `secrets`, as an `int` whatever the driver called a `COUNT(*)`.
+     *
+     * The cast rather than an `assertSame([['n' => 1]], …)` on the raw row: the three drivers do
+     * not agree on the PHP type of a count, which is a divergence with its own pinning test in
+     * {@see \D4np\Utils\Tests\Engine\DialectTest} and not a claim this suite is making.
+     */
+    private function secretCount(): int
+    {
+        $value = $this->connection->selectOne(
+            SqlStatement::literal('SELECT COUNT(*) AS n FROM secrets'),
+        )['n'] ?? null;
+
+        if (\is_int($value)) {
+            return $value;
+        }
+
+        if (\is_string($value) && \is_numeric($value)) {
+            return (int) $value;
+        }
+
+        self::fail(\sprintf(
+            'COUNT(*) came back as %s, which is neither an int nor a numeric string.',
+            \get_debug_type($value),
+        ));
     }
 
     /**

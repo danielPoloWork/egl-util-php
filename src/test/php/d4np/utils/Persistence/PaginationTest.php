@@ -12,16 +12,16 @@ use D4np\Utils\Persistence\Page;
 use D4np\Utils\Persistence\PageRequest;
 use D4np\Utils\Persistence\TableGateway;
 use D4np\Utils\Support\DatabaseException;
+use D4np\Utils\Tests\Engine\RunsAgainstADatabaseEngine;
 use D4np\Utils\Tests\Persistence\Fixture\Person;
 use LogicException;
-use PDO;
-use PHPUnit\Framework\Attributes\RequiresPhpExtension;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
  * `PageRequest`, `Page` and the paginated reads — spec r19 FR-47 (RFC-0003), ADR-0064.
  *
- * Against real SQLite, for the reason every suite in this group gives: the claims are about what a
+ * Against a real engine, for the reason every suite in this group gives: the claims are about what a
  * database did with the statement, and a doubled connection would return whatever it was told to.
  *
  * The assertions that carry the item's promises are the ones behaviour alone would not notice:
@@ -29,19 +29,20 @@ use PHPUnit\Framework\TestCase;
  * before it can produce pages that each look correct while the set is wrong, and a **total that
  * was never requested throws** rather than reporting a zero a template renders as "no results".
  */
-#[RequiresPhpExtension('pdo_sqlite')]
+#[Group('database-engine')]
 final class PaginationTest extends TestCase
 {
+    use RunsAgainstADatabaseEngine;
+
     private DatabaseConnection $connection;
 
     protected function setUp(): void
     {
-        $this->connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $this->connection->execute(SqlStatement::literal(
-            'CREATE TABLE people ('
-            . 'id INTEGER PRIMARY KEY, name TEXT, age INTEGER, status TEXT, secret TEXT'
-            . ')',
-        ));
+        $pdo = $this->enginePdo();
+        $this->connection = new DatabaseConnection($pdo);
+        $this->createFixtureTable($pdo, 'people', [
+            'id' => 'key', 'name' => 'text', 'age' => 'int', 'status' => 'text', 'secret' => 'text',
+        ]);
     }
 
     /** @return TableGateway<Person> */
@@ -303,8 +304,9 @@ final class PaginationTest extends TestCase
 
     public function testTheGatewayOrdersByItsKeySoCallersNeedNotThinkAboutIt(): void
     {
-        // Inserted out of key order: an unordered read returns them in whatever order SQLite
-        // chooses, and this assertion is what pins that the gateway imposed one.
+        // Inserted out of key order: an unordered read returns them in whatever order the engine
+        // chooses -- and the three do not choose alike -- so this assertion is what pins that the
+        // gateway imposed an order of its own rather than inheriting one.
         foreach ([5, 1, 4, 2, 3] as $id) {
             $this->seed($id);
         }

@@ -87,6 +87,113 @@ jobs:
         run: vendor/bin/phpunit
 
   # ---------------------------------------------------------------------------
+  # Real-engine database leg (issue #110, ADR-0071).
+  #
+  # Everything the `Database` and `Persistence` groups claim about a real database was proved
+  # against SQLite and nothing else. The PDO-boundary binding proof is engine-independent, but the
+  # dialect behaviour around it is not: identifier quoting is a per-driver `match` with one arm
+  # ever executed, LIKE's default escape differs, savepoint syntax is three statements nobody had
+  # sent to MySQL, and driver type coercion decides whether strict DTO hydration works at all.
+  # SQLite is also the engine already caught being too lenient once — the double-quoted-string
+  # misfeature ADR-0044 rests on.
+  #
+  # So the `database-engine` group re-runs here against MySQL and PostgreSQL. It is a separate job
+  # rather than three more cells in the `build` matrix because a service container is a per-job
+  # thing and the ordinary matrix must stay fast and dependency-free.
+  #
+  # `--fail-on-skipped` is the mechanical form of the issue's third criterion. A leg that reports
+  # success without reaching a database is worse than no leg: it certifies coverage nobody has.
+  # Three independent things now make that impossible — the service health check gates the job,
+  # the preflight step below refuses an unreachable server with our own message, and PHPUnit fails
+  # if a single test in the group skips for any reason at all.
+  # ---------------------------------------------------------------------------
+  database:
+    name: database / ${{ matrix.label }}
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: mysql 8.4
+            image: mysql:8.4
+            port: 3306
+            user: root
+            password: egl-test
+            health: mysqladmin ping -h 127.0.0.1 --silent
+            dsn: mysql:host=127.0.0.1;port=3306;dbname=egl_utils_test;charset=utf8mb4
+          - label: postgres 16
+            image: postgres:16
+            port: 5432
+            user: postgres
+            password: egl-test
+            health: pg_isready -U postgres -d egl_utils_test
+            dsn: pgsql:host=127.0.0.1;port=5432;dbname=egl_utils_test
+    services:
+      db:
+        image: ${{ matrix.image }}
+        env:
+          # Both images read only their own variables and ignore the rest, which is what lets one
+          # service definition serve both matrix legs. Splitting this into two jobs to avoid the
+          # unused half would duplicate every step below.
+          MYSQL_ROOT_PASSWORD: ${{ matrix.password }}
+          MYSQL_DATABASE: egl_utils_test
+          POSTGRES_USER: ${{ matrix.user }}
+          POSTGRES_PASSWORD: ${{ matrix.password }}
+          POSTGRES_DB: egl_utils_test
+        ports:
+          - ${{ matrix.port }}:${{ matrix.port }}
+        options: >-
+          --health-cmd "${{ matrix.health }}"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 20s
+    env:
+      EGL_TEST_DB_DSN: ${{ matrix.dsn }}
+      EGL_TEST_DB_USER: ${{ matrix.user }}
+      EGL_TEST_DB_PASSWORD: ${{ matrix.password }}
+    steps:
+      - name: Check out the source tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          # The floor, not the ceiling. Driver type coercion is the one behaviour in this leg that
+          # changed across the 8.x line, so the version that reveals a difference is the oldest one
+          # this library supports rather than the newest one CI happens to have.
+          php-version: '8.1'
+          extensions: pdo_sqlite, pdo_mysql, pdo_pgsql
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: The engine must be reachable, and say so in our words
+        shell: bash
+        run: |
+          # The service health check already gates the job, so reaching this step means the
+          # container is up. What it does not prove is that PHP can authenticate against it with
+          # the credentials this job will hand the suite — a different failure with a much less
+          # obvious symptom, since PHPUnit would report it once per test.
+          php -r '
+            $dsn = getenv("EGL_TEST_DB_DSN");
+            try {
+                $pdo = new PDO($dsn, getenv("EGL_TEST_DB_USER"), getenv("EGL_TEST_DB_PASSWORD"));
+                printf("connected: %s %s%s", $pdo->getAttribute(PDO::ATTR_DRIVER_NAME),
+                    $pdo->getAttribute(PDO::ATTR_SERVER_VERSION), PHP_EOL);
+            } catch (PDOException $e) {
+                fwrite(STDERR, "::error title=Engine unreachable::" . $dsn . " -- " . $e->getMessage() . PHP_EOL);
+                exit(1);
+            }'
+
+      - name: The behavioural suites, against ${{ matrix.label }}
+        run: vendor/bin/phpunit --group database-engine --fail-on-skipped
+
+  # ---------------------------------------------------------------------------
   # Cross-artifact congruence — the agent-runnable consistency lint.
   # ---------------------------------------------------------------------------
   consistency:

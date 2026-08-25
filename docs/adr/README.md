@@ -86,3 +86,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0068](0068-intersect-the-report-with-the-diff-and-ship-the-proof-it-can-fail.md) | Intersect the report with the diff, and ship the proof it can fail | Accepted |
 | [0069](0069-resolve-links-in-the-lint-and-refuse-to-guess-a-numbered-section.md) | Resolve links in the lint, and refuse to guess a numbered section | Accepted |
 | [0070](0070-read-phpdocumentors-report-not-its-exit-code.md) | Read phpDocumentor's report, not its exit code | Accepted |
+| [0071](0071-one-dsn-points-the-behavioural-suites-at-an-engine-and-an-unreachable-one-is-red.md) | One DSN points the behavioural suites at an engine, and an unreachable one is red | Accepted |

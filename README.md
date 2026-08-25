@@ -272,6 +272,23 @@ vendor/bin/phpunit
 - **Toolchain:** Composer (PSR-4 autoload), PHPUnit, PHP-CS-Fixer (PSR-12), PHPStan (max level),
   deptrac, Infection, phpbench.
 - **Supported platforms:** Linux (PHP 8.1, 8.2, 8.3).
+- **Engines:** SQLite, MySQL and PostgreSQL. The `Database` and `Persistence` suites run against
+  SQLite by default and against a real server when you point them at one.
+
+### Running the suites against MySQL or PostgreSQL
+
+One environment variable switches the engine (issue #110,
+[ADR-0071](docs/adr/0071-one-dsn-points-the-behavioural-suites-at-an-engine-and-an-unreachable-one-is-red.md));
+CI runs both legs on every PR.
+
+```bash
+EGL_TEST_DB_DSN='pgsql:host=127.0.0.1;port=5432;dbname=egl_utils_test' \
+EGL_TEST_DB_USER=postgres EGL_TEST_DB_PASSWORD=secret \
+vendor/bin/phpunit --group database-engine --fail-on-skipped
+```
+
+A configured engine that cannot be reached **fails** rather than skipping — a green run that never
+opened a connection reports coverage nobody has.
 
 See [`docs/development/local-build.md`](docs/development/local-build.md) for the full local setup,
 and [`CONTRIBUTING.md`](CONTRIBUTING.md) for what a change must clear.

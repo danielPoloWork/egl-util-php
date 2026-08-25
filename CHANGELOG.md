@@ -15,6 +15,35 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ## [Unreleased]
 
+### Added
+
+- **The `Database` and `Persistence` suites now run against MySQL and PostgreSQL, not only SQLite**
+  — issue #110, **ADR-0071**. Every behavioural proof these two groups carry had run on one engine,
+  which left three of the four arms of `Identifier::forDriver()` — a security control — never
+  executed, `Transaction`'s three savepoint statements parsed by SQLite alone, and
+  `Sanitizer::LIKE_ESCAPE`'s choice of `!` over `\` resting on documentation rather than on a run.
+  One environment variable now points the suites at an engine (`EGL_TEST_DB_DSN`, unset =
+  `sqlite::memory:`, so the default developer run is unchanged), and a new CI job re-runs T-02,
+  T-13 and the gateway/repository/pagination suites against MySQL 8.4 and PostgreSQL 16 service
+  containers on PHP 8.1 — the library's floor, because driver type coercion is the one behaviour
+  here that moved across the 8.x line.
+  **An unreachable engine fails the leg.** Four things make a silent green impossible: the service
+  health check, a preflight that authenticates with the suite's own credentials, a harness that
+  raises rather than skipping when a *configured* engine cannot be opened, and
+  `--fail-on-skipped`.
+  A new `DialectTest` pins what the engines do **differently**, so each difference is answered once
+  instead of rediscovered: quoting per driver, the unknown-column divergence ADR-0044 had only
+  reasoned about, the implicit backslash `LIKE` escape MySQL and PostgreSQL have and SQLite does
+  not, savepoint nesting, driver type coercion, and MySQL's case-insensitive default collation.
+  **The leg's first run found one thing nobody had written down, and consumers on PostgreSQL should
+  know it: `PDO_PGSQL` silently truncates a bound parameter at its first NUL byte.** The `INSERT`
+  succeeds, one row appears, and the tail is gone — libpq sends a bound parameter as a
+  NUL-terminated C string, so the server (which would have rejected the byte) never sees past it.
+  MySQL and SQLite store the whole value. Nothing in this library can fix that, so it is pinned by
+  test and documented instead. Everything else the leg measured came back confirming the code:
+  both engines return native `int` for integer columns and for `COUNT(*)` on PHP 8.1, so strict DTO
+  hydration works on all three.
+
 ### Fixed
 
 - **An unsigned release tag can no longer be pushed by accident** — `tools/tag_guard.py` and

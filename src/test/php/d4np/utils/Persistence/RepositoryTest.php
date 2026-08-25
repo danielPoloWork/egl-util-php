@@ -9,9 +9,10 @@ use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Persistence\RowNormalizer;
 use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Support\HydrationException;
+use D4np\Utils\Tests\Engine\RunsAgainstADatabaseEngine;
 use D4np\Utils\Tests\Persistence\Fixture\UserRepository;
 use D4np\Utils\Tests\Persistence\Fixture\UserRow;
-use PDO;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -21,7 +22,7 @@ use RuntimeException;
 /**
  * `Repository` — spec r3 FR-34 (RFC-0002), ADR-0043.
  *
- * Against real SQLite rather than a doubled connection, for the reason every `Database` suite
+ * Against a real engine rather than a doubled connection, for the reason every `Database` suite
  * here gives: the assertions are about what actually came back and what actually survived a
  * rollback, and a mock would return whatever it was told to.
  *
@@ -31,17 +32,20 @@ use RuntimeException;
  * keep every happy-path test green. So each failure path is asserted to propagate, and the
  * class is additionally asserted to contain no catch at all.
  */
-#[RequiresPhpExtension('pdo_sqlite')]
+#[Group('database-engine')]
 final class RepositoryTest extends TestCase
 {
+    use RunsAgainstADatabaseEngine;
+
     private DatabaseConnection $connection;
 
     protected function setUp(): void
     {
-        $this->connection = new DatabaseConnection(new PDO('sqlite::memory:'));
-        $this->connection->execute(SqlStatement::literal(
-            'CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER, secret TEXT)',
-        ));
+        $pdo = $this->enginePdo();
+        $this->connection = new DatabaseConnection($pdo);
+        $this->createFixtureTable($pdo, 'users', [
+            'id' => 'key', 'name' => 'text', 'age' => 'int', 'secret' => 'text',
+        ]);
     }
 
     private function repository(?RowNormalizer $normalizer = null): UserRepository
