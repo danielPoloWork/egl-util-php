@@ -36,6 +36,13 @@ the GitHub Release body. Editing "the release notes" almost always means that on
   **What a fake does not inherit:** real prepares, `ERRMODE_EXCEPTION`, `utf8mb4`. Those are
   properties of `DatabaseConnection` pinning them on a PDO, not of the interface — which is why
   this library's own injection suites keep running against a real engine.
+  **One narrow incompatibility, stated rather than buried:** `Repository::$connection` is
+  `protected` and its declared type widened. No subclass can assign to it (`readonly`), and reading
+  it to call any of the five methods is unaffected — but a subclass that *re-exposes* it, say
+  `function connection(): DatabaseConnection`, must widen that return type. Everything else the BC
+  report flags is Roave being literal: it compares against v1.0.0, where `DatabaseConnection`
+  implemented nothing, so it cannot see that the supertype each parameter widened to is one the
+  same release gives the class. ADR-0072 works through all eleven findings.
 
 - **The BC checker now also runs report-only on every PR, against the frozen `v1.0.0` surface** —
   issue #112, **ADR-0031** annotated. The gate is unchanged: it still runs on release PRs only and

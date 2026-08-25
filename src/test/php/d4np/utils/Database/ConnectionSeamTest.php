@@ -10,7 +10,9 @@ use D4np\Utils\Database\MutationBuilder;
 use D4np\Utils\Database\Operator;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\SqlStatement;
+use D4np\Utils\Database\Transaction;
 use D4np\Utils\Persistence\TableGateway;
+use D4np\Utils\Support\DatabaseException;
 use D4np\Utils\Tests\Database\Fixture\PdolessConnection;
 use D4np\Utils\Tests\Engine\RunsAgainstADatabaseEngine;
 use D4np\Utils\Tests\Persistence\Fixture\Person;
@@ -45,6 +47,37 @@ final class ConnectionSeamTest extends TestCase
         // The whole of the additive promise in one line: nothing about DatabaseConnection changed
         // except that it now satisfies a type consumers can also satisfy.
         self::assertInstanceOf(Connection::class, new DatabaseConnection($this->enginePdo()));
+    }
+
+    /**
+     * **Every call shape written against v1.0.0 still works, named as a test rather than left to emerge.**
+     *
+     * `roave/backward-compatibility-check` reports each widened parameter as *"changed … to a
+     * non-contravariant `Connection`"*, and it is wrong — but wrong for an interesting reason
+     * worth pinning rather than arguing (ADR-0072 § *What the BC report says*). Roave compares the
+     * v1.0.0 tree against this one, and in the v1.0.0 tree `DatabaseConnection` implements
+     * nothing, so it cannot see that the supertype it is being widened to is one the same release
+     * gives it.
+     *
+     * A caller cannot tell. This constructs all five widened surfaces exactly the way code written
+     * against v1.0.0 does — passing the concrete class — and that is the claim the report cannot
+     * evaluate.
+     */
+    public function testEveryCallShapeWrittenAgainstTheConcreteClassStillWorks(): void
+    {
+        $connection = new DatabaseConnection($this->enginePdo());
+
+        $repository = new UserRepository($connection);
+        $gateway = new TableGateway($connection, 'people', Person::class, 'id');
+        $query = new QueryBuilder($connection, 'people');
+        $insert = MutationBuilder::insert($connection, 'people', ['name' => 'Ada']);
+        $transaction = new Transaction($connection);
+
+        self::assertInstanceOf(UserRepository::class, $repository);
+        self::assertInstanceOf(TableGateway::class, $gateway);
+        self::assertInstanceOf(QueryBuilder::class, $query);
+        self::assertInstanceOf(MutationBuilder::class, $insert);
+        self::assertInstanceOf(Transaction::class, $transaction);
     }
 
     // ---- what a consumer can now do, and could not before ----------------------------------------
@@ -178,7 +211,7 @@ final class ConnectionSeamTest extends TestCase
     {
         $connection = new PdolessConnection();
 
-        $this->expectException(\D4np\Utils\Support\DatabaseException::class);
+        $this->expectException(DatabaseException::class);
 
         new TableGateway($connection, 'people; DROP TABLE people', Person::class);
     }

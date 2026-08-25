@@ -68,10 +68,33 @@ the divergence is a decision rather than a slip.
 anywhere: every existing signature accepts everything it accepted before, `DatabaseConnection` is
 still `final` with the same constructor and the same four pinned defaults.
 
-One thing to watch on review, and it is why the ADR names it rather than burying it:
-`Repository::$connection` is **protected**, and its declared type widened. A subclass reading it
-and calling the five methods is unaffected; a subclass that re-stores it under a
-`DatabaseConnection` declaration would need to narrow. Issue #112's per-PR BC report — merged
-yesterday — runs on this pull request against the frozen `v1.0.0` surface, which is where that
-judgement gets checked instead of asserted. Two issues in two days, and the second one is already
+## The BC report, which is the reason yesterday's item was worth doing
+
+Issue #112's per-PR report — merged yesterday — ran on this pull request against the frozen
+`v1.0.0` surface and returned **11 findings**. The acceptance criterion said "BC gate proves zero
+breaks". It does not, and working out why was the most useful hour of the item.
+
+Ten of the eleven are the same sentence:
+
+> The parameter `$connection` … changed from `DatabaseConnection` to a **non-contravariant**
+> `Connection`
+
+That is false — widening to a supertype is contravariant, which is the safe direction. Roave is
+not being careless, it is being **literal**: it compares the v1.0.0 tree against this one, and in
+the v1.0.0 tree `DatabaseConnection` implements nothing. It cannot see that the supertype each
+parameter widened to is one the same release gives the class. **No arrangement of the change fixes
+this** — an extracted interface is always new in the version that extracts it.
+
+So the safety is proved the only way it can be, by call sites: a named test constructing all five
+widened surfaces the way v1.0.0 code does, plus 3 100-odd untouched tests that are already a corpus
+of exactly those call shapes.
+
+**The eleventh is real and narrow.** `Repository::$connection` is `protected readonly`. No subclass
+can assign to it; reading it to call the five methods is unaffected; a subclass that *re-exposes*
+it — `function connection(): DatabaseConnection` — must widen that return type.
+
+What I am handing the maintainer is therefore a judgement rather than a green tick: ship an
+additive seam whose one true break is a subclass re-exposing a protected property, or hold it for a
+MAJOR. That is the right shape for ADR-0059's freeze to be decided under, and it only exists as a
+question because the report landed yesterday. Two issues in two days, and the second is already
 doing work for the first.

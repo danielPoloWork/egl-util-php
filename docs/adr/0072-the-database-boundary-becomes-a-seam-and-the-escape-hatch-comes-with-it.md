@@ -86,6 +86,41 @@ carries the suffix: `Transport`, `MailApi`, `Mailer`, `SessionApi`, `SessionStor
 literally would make this the only one, so the house convention wins over the shorthand in a
 sentence. `final class DatabaseConnection implements Connection` reads as the relationship it is.
 
+### What the BC report says, and why it is not the last word
+
+Issue #113's second criterion is *"BC gate proves zero breaks"*. It does not, and the reason is
+worth recording because it is a limitation of the tool rather than a property of this change.
+
+The per-PR report added by issue #112 ran on this pull request against the frozen `v1.0.0` surface
+and returned **11 findings** (run 32829039455). Ten of them are one sentence repeated:
+
+> The parameter `$connection` of `…#__construct()` changed from
+> `D4np\Utils\Database\DatabaseConnection` to a **non-contravariant**
+> `D4np\Utils\Database\Connection`
+
+That claim is false, and Roave is not being careless — it is being literal. It compares the v1.0.0
+tree against this one, and **in the v1.0.0 tree `DatabaseConnection` implements nothing**. Widening
+a parameter to a supertype is contravariant and safe; Roave cannot see that the supertype is one
+the same release gives the class. There is no way to arrange the change so it can: an extracted
+interface is always new in the version that extracts it.
+
+So the safety is proved the only way it can be — by call sites.
+`ConnectionSeamTest::testEveryCallShapeWrittenAgainstTheConcreteClassStillWorks()` constructs all
+five widened surfaces exactly the way code written against v1.0.0 does, and the entire pre-existing
+suite (3 100-odd tests, unmodified in this PR) is a corpus of v1.0.0-shaped call sites that still
+pass.
+
+**The eleventh finding is real, and narrow.** `Repository::$connection` is `protected readonly`,
+and its declared type widened. `readonly` means no subclass can assign to it, and a subclass
+reading it and calling any of the five methods is unaffected — but a subclass that *re-exposes* it,
+`function connection(): DatabaseConnection { return $this->connection; }`, now returns a value the
+declaration no longer promises. That is a real incompatibility for a real, if unusual, subclass, and
+it is named here rather than absorbed into the ten.
+
+What this leaves for the reviewer is a judgement, not a rubber stamp: ship an additive seam whose
+one true break is a subclass re-exposing a protected property, or hold it for a MAJOR. ADR-0059's
+freeze makes that the maintainer's call.
+
 ## Alternatives Considered
 
 - **Two interfaces — a narrow `Connection` (statements only) and a `PdoConnection extends
@@ -116,11 +151,11 @@ sentence. `final class DatabaseConnection implements Connection` reads as the re
   widened parameter refuses nothing it used to take. `DatabaseConnection` stays `final`, keeps its
   constructor, and pins the same four defaults.
 - **The one thing that moved and is worth naming:** `Repository::$connection` is `protected` and its
-  declared type widened from `DatabaseConnection` to `Connection`. A subclass reading
-  `$this->connection` and calling any of the five methods is unaffected. A subclass that *stores it
-  elsewhere* under a `DatabaseConnection` type declaration would now need to narrow it. The
-  per-PR BC report added by issue #112 runs on this pull request against the frozen `v1.0.0`
-  surface, which is where that judgement gets checked rather than asserted.
+  declared type widened from `DatabaseConnection` to `Connection`. `readonly` means no subclass can
+  assign to it, and a subclass reading it and calling any of the five methods is unaffected — but a
+  subclass that *re-exposes* it under a `DatabaseConnection` declaration would need to narrow. This
+  is the single real finding out of the eleven the BC report returned; see *What the BC report says*
+  above for the other ten and why they are modelling artefacts.
 - **A guarantee does not travel through the interface, and the docblocks say so.** Real prepares,
   `ERRMODE_EXCEPTION`, `SET NAMES utf8mb4` (ADR-0014) are properties of `DatabaseConnection` pinning
   them on a PDO. An arbitrary `Connection` promises none of them, which is exactly why spec §7's
