@@ -48,9 +48,12 @@ def check(name, condition, detail=""):
         failures.append(name)
 
 
-def run(previous, current, bc_exit, report=None):
-    args = [sys.executable, GATE, "--previous", previous, "--current", current,
-            "--bc-exit", str(bc_exit)]
+def run(previous, current, bc_exit, report=None, report_only=False):
+    args = [sys.executable, GATE, "--previous", previous, "--bc-exit", str(bc_exit)]
+    if current is not None:
+        args += ["--current", current]
+    if report_only:
+        args.append("--report-only")
     path = None
     if report is not None:
         fd, path = tempfile.mkstemp(suffix=".md")
@@ -58,7 +61,15 @@ def run(previous, current, bc_exit, report=None):
             handle.write(report)
         args += ["--report", path]
     try:
-        proc = subprocess.run(args, capture_output=True, text=True, encoding="utf-8")
+        # PYTHONIOENCODING, because the gate's output is read back and asserted against. Without
+        # it the child writes stdout in the console codepage — cp1252 on Windows — while this
+        # decodes as UTF-8, and the first em dash raises UnicodeDecodeError inside subprocess's
+        # reader thread. The result is worse than a crash: the exit codes still arrive, so the
+        # `code == N` cases pass while every "…and says so" case fails for a reason that has
+        # nothing to do with the gate. Three cases were failing that way on Windows and green on
+        # CI's UTF-8 Linux, which is how it went unnoticed.
+        env = dict(os.environ, PYTHONIOENCODING="utf-8")
+        proc = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", env=env)
         return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
     finally:
         if path:
@@ -114,6 +125,60 @@ check("a missing report FAILS rather than passing", proc.returncode == 1,
 # 8. No breaks at all: --report is irrelevant and must not be consulted.
 code, out = run("1.0.0", "1.1.0", 0, REAL_BREAK)
 check("bc-exit 0 passes regardless of what the report file contains", code == 0, f"exit {code}")
+
+# ---- --report-only, the per-PR mode added for issue #112 --------------------------------------
+#
+# Its contract is exactly two claims, and they pull against each other: it must NEVER fail for a
+# finding, and it must ALWAYS fail when it could not read one. A mode that got the second half
+# wrong would be a permanently green tick over an unanswered question — the failure this
+# repository has now had six times.
+
+# 9. A real break reports and does not fail...
+code, out = run("v1.0.0", None, 3, REAL_BREAK, report_only=True)
+check("report-only exits 0 on a real break", code == 0, f"exit {code}")
+check("...and names the break rather than only counting it", "orElseThrow" in out,
+      out.strip()[:200])
+check("...and says it is report-only, so nobody reads it as a gate", "REPORT ONLY" in out,
+      out.strip()[:200])
+check("...and ends with a machine-readable count for the workflow", "findings=1" in out,
+      out.strip()[-80:])
+
+# 10. The version-constant discount applies here too — and it is the ONLY finding a normal PR
+#     produces against the frozen baseline, because master's VERSION is ahead of it by design.
+code, out = run("v1.0.0", None, 3, VERSION_ONLY, report_only=True)
+check("report-only discounts the version constant", "DISCOUNTED 1 finding" in out,
+      out.strip()[:200])
+check("...leaving nothing to report", "findings=0" in out, out.strip()[-80:])
+check("...and no REPORT ONLY warning when there is nothing to warn about",
+      "REPORT ONLY" not in out, out.strip()[:200])
+
+# 11. ★ The half that must still fail: absence.
+code, out = run("v1.0.0", None, 3, UNRECOGNISED, report_only=True)
+check("report-only FAILS on a report it cannot parse", code == 1, f"exit {code}")
+
+proc = subprocess.run(
+    [sys.executable, GATE, "--previous", "v1.0.0", "--bc-exit", "3", "--report-only",
+     "--report", os.path.join(HERE, "no-such-report.md")],
+    capture_output=True, text=True, encoding="utf-8",
+    env=dict(os.environ, PYTHONIOENCODING="utf-8"),
+)
+check("report-only FAILS on a missing report", proc.returncode == 1, f"exit {proc.returncode}")
+
+code, out = run("v1.0.0", None, 3, None, report_only=True)
+check("report-only FAILS when breaks were found and no --report was given", code == 1,
+      f"exit {code}")
+
+code, out = run("v1.0.0", None, "not-a-number", None, report_only=True)
+check("report-only FAILS on a non-integer --bc-exit", code == 1, f"exit {code}")
+
+# 12. The clean case, which is what every PR should print.
+code, out = run("v1.0.0", None, 0, None, report_only=True)
+check("report-only passes and says nothing broke when nothing broke", code == 0, f"exit {code}")
+check("...naming the baseline it compared against", "v1.0.0" in out, out.strip()[:200])
+
+# 13. The gate is untouched by the new flag: no --current is a usage error outside report-only.
+code, out = run("1.0.0", None, 3, REAL_BREAK)
+check("without --report-only, a missing --current is refused", code != 0, f"exit {code}")
 
 print()
 if failures:

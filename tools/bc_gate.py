@@ -30,6 +30,18 @@ that conflates them is how a consumer gets surprised.
 
 **Absence is failure**, as in the sibling gates: a version that does not parse, a non-increasing
 bump, or a missing argument exits non-zero rather than being treated as "probably fine".
+
+`--report-only` is a second mode, added post-1.0 for issue #112, and it asks a **different
+question**: not *"are these breaks allowed in this bump?"* but *"does the working tree still honour
+the frozen contract?"* (ADR-0059 freezes the public API at 1.0.0, so every 1.x release is additive
+by promise). The bump is irrelevant to that question, so this mode does not compute one — it
+reports the findings that survive the version-constant discount and **always exits 0**.
+
+    python tools/bc_gate.py --report-only --previous v1.0.0 --bc-exit "$CODE" --report bc.md
+
+Exiting 0 covers the *findings*, never the tool's own inputs: an unreadable report or a
+non-integer `--bc-exit` still exits 1 in this mode too. A report-only step that goes green because
+it could not read anything is the vacuous green this repository has now been bitten by six times.
 """
 
 import argparse
@@ -55,8 +67,109 @@ VERSION_CONSTANT = re.compile(
 )
 
 
+DISCOUNT_NOTE = (
+    "  DISCOUNTED {n} finding(s): the value of "
+    "`D4np\\Utils\\Version::VERSION` changed.\n"
+    "  Roave reports a public constant's value changing as a break, and a release PR\n"
+    "  changes exactly that constant — so this one finding is what a release IS, not\n"
+    "  something a release does to a consumer. Nothing else is discounted: any other\n"
+    "  `[BC]` line still counts, on exactly the same rules as before.\n"
+    "\n"
+    "  Post-1.0 this is load-bearing for the per-PR report too, not only for releases:\n"
+    "  `master` runs ahead of the frozen tag by design, so the constant differs on every\n"
+    "  single pull request and without the discount the report would cry wolf forever."
+)
+
+
 class GateError(Exception):
     """A condition that must fail the gate rather than be reported as a verdict."""
+
+
+def read_findings(path, bc_exit):
+    """Every `- [BC]` detail in the checker's markdown report.
+
+    Shared by both modes so that "what counts as a finding" has one definition. Raises
+    {@see GateError} rather than returning empty on a report that cannot be read or cannot be
+    parsed — absence is failure here as everywhere else in this file.
+    """
+    try:
+        # utf-8-sig, not utf-8: a BOM would sit in front of the first `- [BC]` and defeat the
+        # line anchor, which reads as "the format changed" when it has not. CI's `tee` writes
+        # no BOM, but a report produced on Windows does, and refusing for that reason would be
+        # a confusing false alarm.
+        with open(path, encoding="utf-8-sig", errors="replace") as handle:
+            findings = [m.group("detail") for m in BREAK_LINE.finditer(handle.read())]
+    except OSError as exc:
+        raise GateError(f"cannot read --report {path}: {exc}") from exc
+
+    if not findings:
+        raise GateError(
+            f"the checker exited {bc_exit} (breaks found) but {path} contains no `- [BC]` line "
+            "this gate recognises. Read the report, then fix this parser — do not relax the "
+            "check."
+        )
+
+    return findings
+
+
+def discount_version_constant(findings):
+    """(findings that still count, how many were discounted)."""
+    remaining = [f for f in findings if not VERSION_CONSTANT.match(f)]
+
+    return remaining, len(findings) - len(remaining)
+
+
+def report_only(baseline, bc_exit, report):
+    """Say what stands between the working tree and the frozen contract, and never fail for it.
+
+    The release gate's question is *"are these breaks allowed in this bump?"*. This one's is
+    *"is the frozen public surface still intact?"* — so there is no bump here, and no table. Post
+    the 1.0.0 freeze (ADR-0059) the answer is meant to be zero, every time, and any line printed
+    below is either a change that has to wait for a MAJOR or a mistake to fix in the pull request
+    that is being read right now. Which is the whole point of moving the discovery here (#112):
+    the release PR finds it far from the change that caused it.
+
+    The last line is `findings=N`, for the workflow step that turns a non-zero count into an
+    annotation.
+    """
+    if bc_exit == 0:
+        print(f"bc report: no backward-incompatible change since {baseline}.")
+        print("\nfindings=0")
+        return 0
+
+    try:
+        findings = read_findings(report, bc_exit)
+    except GateError as exc:
+        # Not suppressed by --report-only: this is the step being broken, not the code being
+        # broken, and a report-only run that cannot read its own report must not go green.
+        print(f"bc report: FAIL\n\n  {exc}")
+        return 1
+
+    remaining, discounted = discount_version_constant(findings)
+
+    print(
+        f"bc report: {len(remaining)} backward-incompatible change(s) since {baseline}, "
+        "which is the frozen public surface (ADR-0059)."
+    )
+
+    if discounted:
+        print()
+        print(DISCOUNT_NOTE.format(n=discounted))
+
+    if remaining:
+        print("\n  Findings:")
+        for finding in remaining:
+            print(f"    - {finding}")
+        print(
+            "\n  REPORT ONLY — this never fails the build; the gate that does runs on release\n"
+            "  PRs (ADR-0031 §3, amended for issue #112). But the freeze says a 1.x release is\n"
+            "  additive, so each line above is either a change that must wait for a MAJOR or a\n"
+            "  mistake to correct in this pull request."
+        )
+
+    print(f"\nfindings={len(remaining)}")
+
+    return 0
 
 
 def parse(version, label):
@@ -90,7 +203,17 @@ def main(argv=None):
         description="Gate detected BC breaks against the version bump they arrive in."
     )
     ap.add_argument("--previous", required=True, help="version of the previous release (the tag)")
-    ap.add_argument("--current", required=True, help="version being released (Version.php)")
+    ap.add_argument(
+        "--current",
+        help="version being released (Version.php). Required unless --report-only, which does "
+             "not reason about the bump.",
+    )
+    ap.add_argument(
+        "--report-only",
+        action="store_true",
+        help="report findings against a baseline and exit 0 regardless (issue #112). The "
+             "release gate is unaffected: this is a separate path, not a relaxation of it.",
+    )
     ap.add_argument(
         "--bc-exit",
         required=True,
@@ -103,6 +226,26 @@ def main(argv=None):
              "behaves exactly as before.",
     )
     args = ap.parse_args(argv)
+
+    if args.report_only:
+        try:
+            bc_exit = int(args.bc_exit)
+        except ValueError as exc:
+            print(f'bc report: FAIL\n\n  --bc-exit "{args.bc_exit}" is not an integer: {exc}')
+            return 1
+
+        if bc_exit != 0 and args.report is None:
+            print(
+                f"bc report: FAIL\n\n  the checker exited {bc_exit} (breaks found) but no "
+                "--report was given, so there is nothing to read them from. A report-only run "
+                "with no report is a green tick over an unanswered question."
+            )
+            return 1
+
+        return report_only(args.previous, bc_exit, args.report)
+
+    if args.current is None:
+        ap.error("--current is required unless --report-only is given")
 
     try:
         previous = parse(args.previous, "previous")
@@ -130,28 +273,14 @@ def main(argv=None):
 
     if breaks and args.report:
         try:
-            # utf-8-sig, not utf-8: a BOM would sit in front of the first `- [BC]` and defeat the
-            # line anchor, which reads as "the format changed" when it has not. CI's `tee` writes
-            # no BOM, but a report produced on Windows does, and the gate refusing for that reason
-            # would be a confusing false alarm.
-            with open(args.report, encoding="utf-8-sig", errors="replace") as handle:
-                findings = [m.group("detail") for m in BREAK_LINE.finditer(handle.read())]
-        except OSError as exc:
             # Absence is failure, as everywhere else here: a report we cannot read is not a
             # report saying there is nothing to see.
-            print(f"bc gate: FAIL\n\n  cannot read --report {args.report}: {exc}")
+            findings = read_findings(args.report, bc_exit)
+        except GateError as exc:
+            print(f"bc gate: FAIL\n\n  {exc}")
             return 1
 
-        if not findings:
-            print(
-                f"bc gate: FAIL\n\n  the checker exited {bc_exit} (breaks found) but "
-                f"{args.report} contains no `- [BC]` line this gate recognises. Read the report, "
-                "then fix this parser — do not relax the check."
-            )
-            return 1
-
-        remaining = [f for f in findings if not VERSION_CONSTANT.match(f)]
-        discounted = len(findings) - len(remaining)
+        remaining, discounted = discount_version_constant(findings)
         breaks = bool(remaining)
 
     print(
@@ -162,14 +291,7 @@ def main(argv=None):
     if discounted:
         # Printed on every run that uses it. A discount nobody sees is a discount nobody can
         # audit, and this one is narrow enough to be worth reading each time.
-        print(
-            f"\n  DISCOUNTED {discounted} finding(s): the value of "
-            "`D4np\\Utils\\Version::VERSION` changed.\n"
-            "  Roave reports a public constant's value changing as a break, and a release PR\n"
-            "  changes exactly that constant — so this one finding is what a release IS, not\n"
-            "  something a release does to a consumer. Nothing else is discounted: any other\n"
-            "  `[BC]` line still fails this gate on the same rules as before."
-        )
+        print("\n" + DISCOUNT_NOTE.format(n=discounted))
 
     if not breaks:
         print("\nbc gate: OK — no backward-incompatible change since the previous release.")

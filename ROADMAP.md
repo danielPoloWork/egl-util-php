@@ -30,8 +30,9 @@ API-freeze review below settled the whole line into a single first release, **`v
   M13's close-out. Additive under ADR-0059, so `^1.0` still resolves; the milestone mapping
   is not resumed, and M15 will not imply `v1.2.0` by itself.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-24 — One arm of the `match` had ever run](docs/journal/2026/08/2026-08-24-real-engine-database-leg.md).
+  [2026-08-25 — The rejection that expired](docs/journal/2026/08/2026-08-25-bc-report-on-every-pr.md).
   Previous:
+  [2026-08-24 — One arm of the `match` had ever run](docs/journal/2026/08/2026-08-24-real-engine-database-leg.md),
   [2026-08-24 — Three for three, and the guard that had to allow the fourth](docs/journal/2026/08/2026-08-24-pre-push-tag-guard.md),
   [2026-08-21 — The tool said "All done", exited 0, and had five errors](docs/journal/2026/08/2026-08-21-api-docs-gate.md),
   [2026-08-21 — Two documents, not two copies](docs/journal/2026/08/2026-08-21-one-home-for-release-notes.md),
