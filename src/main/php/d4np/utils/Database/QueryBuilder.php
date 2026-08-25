@@ -108,7 +108,7 @@ final class QueryBuilder
      * @throws DatabaseException if the table name fails the allowlist
      */
     public function __construct(
-        private readonly DatabaseConnection $connection,
+        private readonly Connection $connection,
         string $table,
     ) {
         $this->identifiers = Identifier::forDriver($connection->driver());

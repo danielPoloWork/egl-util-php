@@ -171,6 +171,27 @@ library, so `grep composed(` is the whole review list.
 Table and column names are checked against an allowlist when they enter the builder; values never
 enter the SQL at all.
 
+**Testing your own repositories.** `DatabaseConnection` implements
+`D4np\Utils\Database\Connection`, and `Repository`, `TableGateway`, `QueryBuilder`,
+`MutationBuilder` and `Transaction` all accept that interface — so a unit test can substitute the
+persistence boundary instead of running a database (issue #113,
+[ADR-0072](docs/adr/0072-the-database-boundary-becomes-a-seam-and-the-escape-hatch-comes-with-it.md)):
+
+```php
+final class InMemoryConnection implements D4np\Utils\Database\Connection
+{
+    public function pdo(): PDO { throw new LogicException('reads only'); }
+    public function driver(): string { return 'sqlite'; }
+    public function select(SqlStatement $s): array { return [['id' => 1, 'name' => 'Ada']]; }
+    public function selectOne(SqlStatement $s): ?array { return ['id' => 1, 'name' => 'Ada']; }
+    public function execute(SqlStatement $s): int { return 1; }
+}
+```
+
+`pdo()` may throw in a fake: only `Transaction` calls it, and constructing a repository does not.
+Note what a fake does *not* inherit — real prepares, `ERRMODE_EXCEPTION`, `utf8mb4` — so keep
+proofs about SQL injection on a real engine, as this library's own suites do.
+
 ### Wire CSRF
 
 ```php

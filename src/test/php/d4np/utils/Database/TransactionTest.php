@@ -36,6 +36,9 @@ final class TransactionTest extends TestCase
         $this->connection->execute(SqlStatement::literal('CREATE TABLE t (v TEXT)'));
     }
 
+    /**
+     * @return Transaction<DatabaseConnection>
+     */
     private function transaction(): Transaction
     {
         return new Transaction($this->connection);

@@ -54,8 +54,14 @@ use PDOStatement;
  * variables a caller could assemble incorrectly — the estate's 199 interpolation sites were
  * exactly that assembly going wrong, 199 times, because nothing forced the two to travel
  * together.
+ *
+ * **It implements {@see Connection}** (issue #113, ADR-0072), which is additive and
+ * changes nothing here: the class, its signatures and its guarantees are what they were. What the
+ * interface adds is the ability for a consumer to substitute this boundary in their own tests,
+ * which every other I/O boundary in the library already allowed. Everything above stays a property
+ * of *this* implementation and not of the interface — an arbitrary `Connection` pins nothing.
  */
-final class DatabaseConnection
+final class DatabaseConnection implements Connection
 {
     /**
      * @throws DatabaseException when a pinned default cannot be applied

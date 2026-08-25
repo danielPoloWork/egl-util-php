@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-25 — The consumer ADR-0006 was waiting for](2026/08/2026-08-25-connection-seam.md)
 - [2026-08-25 — The rejection that expired](2026/08/2026-08-25-bc-report-on-every-pr.md)
 - [2026-08-24 — One arm of the `match` had ever run](2026/08/2026-08-24-real-engine-database-leg.md)
 - [2026-08-24 - Three for three, and the guard that had to allow the fourth](2026/08/2026-08-24-pre-push-tag-guard.md)

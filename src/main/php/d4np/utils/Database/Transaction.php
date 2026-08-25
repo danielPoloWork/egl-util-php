@@ -19,7 +19,7 @@ use Throwable;
  * `finally`.
  *
  * ```php
- * $total = (new Transaction($connection))->run(function (DatabaseConnection $db): int {
+ * $total = (new Transaction($connection))->run(function (Connection $db): int {
  *     $db->execute(SqlStatement::literal('UPDATE accounts SET balance = balance - ? WHERE id = ?', [100, 1]));
  *     $db->execute(SqlStatement::literal('UPDATE accounts SET balance = balance + ? WHERE id = ?', [100, 2]));
  *
@@ -46,6 +46,17 @@ use Throwable;
  * longer covered, and a later rollback will not undo what the DDL already committed. That is a
  * MySQL behaviour, not a PDO or library one, and no wrapper can intercept it — named here because
  * the failure is silent and the natural assumption is that the closure is atomic throughout.
+ *
+ * **Generic over the connection it was handed** (issue #113, ADR-0072), which is a docblock-only
+ * detail with a real consequence. The constructor's native type widened from `DatabaseConnection`
+ * to {@see Connection} so a repository built on a fake can still hold one. Left there, `run()`
+ * would advertise `callable(Connection): T`, and every existing consumer whose closure declares
+ * `function (DatabaseConnection $db)` would start failing *their* static analysis -- contravariance,
+ * on a change whose whole premise is that nothing broke. The template carries the caller's own type
+ * through instead: `new Transaction($databaseConnection)` still hands the closure a
+ * `DatabaseConnection`.
+ *
+ * @template TConnection of Connection
  */
 final class Transaction
 {
@@ -62,8 +73,11 @@ final class Transaction
      */
     private static int $savepointSequence = 0;
 
+    /**
+     * @param TConnection $connection
+     */
     public function __construct(
-        private readonly DatabaseConnection $connection,
+        private readonly Connection $connection,
     ) {
     }
 
@@ -72,7 +86,7 @@ final class Transaction
      *
      * @template T
      *
-     * @param callable(DatabaseConnection): T $work
+     * @param callable(TConnection): T $work
      *
      * @return T whatever the closure returned
      *
@@ -89,7 +103,7 @@ final class Transaction
     /**
      * @template T
      *
-     * @param callable(DatabaseConnection): T $work
+     * @param callable(TConnection): T $work
      *
      * @return T
      *
@@ -125,7 +139,7 @@ final class Transaction
     /**
      * @template T
      *
-     * @param callable(DatabaseConnection): T $work
+     * @param callable(TConnection): T $work
      *
      * @return T
      *

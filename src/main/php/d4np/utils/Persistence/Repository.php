@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Persistence;
 
-use D4np\Utils\Database\DatabaseConnection;
+use D4np\Utils\Database\Connection;
 use D4np\Utils\Database\QueryBuilder;
 use D4np\Utils\Database\SqlStatement;
 use D4np\Utils\Database\Transaction;
@@ -38,7 +38,7 @@ use D4np\Utils\Support\DatabaseException;
  * path"*, and the surveyed estate's data-access classes contained **74** `catch (Throwable)`
  * blocks that swallowed the failure and returned exactly those sentinels, with the reason
  * accumulated into a local variable nothing read. Satisfying FR-34 therefore meant **not
- * writing** the catches, not adding handling: `DatabaseConnection` already raises
+ * writing** the catches, not adding handling: {@see Connection} already raises
  * {@see DatabaseException} (ADR-0014), hydration raises `HydrationException` naming the path
  * that failed (ADR-0008), and {@see RowNormalizer} raises `DatabaseException` naming the
  * column (ADR-0042). Every one of those propagates untouched, and
@@ -59,10 +59,17 @@ use D4np\Utils\Support\DatabaseException;
  */
 abstract class Repository
 {
+    /**
+     * The connection type here is the interface rather than whatever concrete class arrived: this
+     * field outlives the constructor's knowledge of it, and `withTransaction()` hands the closure
+     * the repository, never the connection.
+     *
+     * @var Transaction<Connection>
+     */
     private readonly Transaction $transaction;
 
     public function __construct(
-        protected readonly DatabaseConnection $connection,
+        protected readonly Connection $connection,
         protected readonly ?RowNormalizer $normalizer = null,
     ) {
         $this->transaction = new Transaction($connection);
@@ -177,7 +184,7 @@ abstract class Repository
      * The first row of `$statement`, or `null` when it returns none.
      *
      * `null` rather than `false`, and never an empty DTO: "no row" is a distinct outcome and
-     * belongs in the type, which is the same choice {@see DatabaseConnection::selectOne()}
+     * belongs in the type, which is the same choice {@see Connection::selectOne()}
      * makes one layer down.
      *
      * @template T of DataTransferObject
