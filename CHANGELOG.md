@@ -17,6 +17,19 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **The BC checker now also runs report-only on every PR, against the frozen `v1.0.0` surface** —
+  issue #112, **ADR-0031** annotated. The gate is unchanged: it still runs on release PRs only and
+  still asks *"are these breaks allowed in this bump?"*. The new run asks a different question —
+  *"is the frozen public surface still intact?"* — and ADR-0059 is why it is worth asking on every
+  PR: the API is frozen at 1.0.0, so a 1.x break is no longer legal noise but signal, and finding
+  it at the next release PR puts the discovery far from the change that caused it.
+  The baseline is the **oldest tag of the current MAJOR line**, computed rather than written down,
+  so it follows the project into a future `v2` without an edit. Findings land in the job summary
+  and as a warning annotation; they never fail the build. What *does* fail the build is a report
+  that could not be read — `bc_gate.py --report-only` exits 1 on an unreadable or unparseable
+  report, because a permanently green report-only tick over an unanswered question is exactly the
+  vacuous green this repository keeps having to go back and fix.
+
 - **The `Database` and `Persistence` suites now run against MySQL and PostgreSQL, not only SQLite**
   — issue #110, **ADR-0071**. Every behavioural proof these two groups carry had run on one engine,
   which left three of the four arms of `Identifier::forDriver()` — a security control — never
@@ -45,6 +58,14 @@ the GitHub Release body. Editing "the release notes" almost always means that on
   hydration works on all three.
 
 ### Fixed
+
+- **`tools/tests/verify_bc_gate.py` was reporting three false failures on Windows**, and had been
+  since it was written (found while extending it for issue #112). It reads the gate's stdout back
+  and asserts on it, but the child process wrote in the console codepage while the parent decoded
+  UTF-8, so the first em dash raised `UnicodeDecodeError` inside `subprocess`'s reader thread. The
+  exit codes still arrived, so every `code == N` case passed and only the "…and says so" cases
+  failed — for a reason that had nothing to do with the gate. Green on CI's UTF-8 Linux, which is
+  how it survived. The child's `PYTHONIOENCODING` is now pinned.
 
 - **An unsigned release tag can no longer be pushed by accident** — `tools/tag_guard.py` and
   `.githooks/pre-push` (issue #115, **ADR-0032** annotated). Enable once per clone with

@@ -571,12 +571,33 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
-  # Backward-compatibility gate (spec NFR-07, ADR-0031).
+  # Backward compatibility — one job, two runs, two different questions (spec NFR-07, ADR-0031,
+  # amended for issue #112).
   #
-  # Runs only on a **release PR**, which the imported spec §8 defines as the place this check
-  # belongs. A release PR is detected mechanically — the PR changes `Version.php`'s VERSION
+  # **The gate** runs only on a **release PR** and asks *"are these breaks allowed in this bump?"*
+  # That is where the imported spec §8 places it and where it is actionable, since the remedy is
+  # the bump. A release PR is detected mechanically — the PR changes `Version.php`'s VERSION
   # constant, which is step 1 of docs/workflow/release.md — rather than by a label, because a
-  # label the maintainer forgets is a gate that silently does not run.
+  # label the maintainer forgets is a gate that silently does not run. **Nothing about it changed
+  # here.**
+  #
+  # **The report** runs on every PR and asks *"is the frozen public surface still intact?"*
+  # ADR-0059 froze the API at 1.0.0, so every 1.x release is additive by promise; the baseline is
+  # therefore the **oldest tag of the current MAJOR line**, not the newest tag. ADR-0031 rejected
+  # a per-PR run on pre-1.0 grounds — breaks were legal on most PRs then, and a check that is
+  # routinely and correctly ignored stops being read. The freeze inverted that: now every reported
+  # break is signal, and finding one only when the next release PR is cut puts the discovery far
+  # from the change that caused it.
+  #
+  # The baseline is **computed, not written down** (`v${MAJOR}.*.*`, oldest first). Issue #112 says
+  # "the v1.0.0 tag"; hard-coding that string would be correct today and wrong the day a `v2.0.0`
+  # exists — the failure #161 named, a claim that has to be edited every release being wrong
+  # between them.
+  #
+  # The report never fails the build for a finding. It **does** fail if it could not read one:
+  # `bc_gate.py --report-only` exits 1 on an unreadable or unparseable report, and the step exits 1
+  # if no `findings=` line comes back. A permanently green report-only tick over an unanswered
+  # question is the exact shape of vacuous green this repository has been bitten by repeatedly.
   #
   # Two things this job must not do:
   #
@@ -603,7 +624,7 @@ jobs:
           # Tags and the base commit are both needed; the default shallow fetch has neither.
           fetch-depth: 0
 
-      - name: Is this a release PR, and is there anything to compare against?
+      - name: Is this a release PR, and what are the two baselines?
         id: scope
         shell: bash
         run: |
@@ -612,6 +633,21 @@ jobs:
 
           PREVIOUS="$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1)"
           echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
+
+          # The frozen baseline: the OLDEST tag of the MAJOR line currently in Version.php, which
+          # is the release the freeze (ADR-0059) is measured from. Computed rather than written as
+          # `v1.0.0` so it follows the project into a v2 without an edit — and so that a MAJOR
+          # release PR, where no tag of the new line exists yet, resolves to empty and says so
+          # instead of silently comparing against the wrong line.
+          MAJOR="${CURRENT%%.*}"
+          FROZEN="$(git tag -l "v${MAJOR}.*.*" --sort=v:refname | head -n1)"
+          echo "frozen=$FROZEN" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$FROZEN" ]; then
+            echo "::notice title=BC report will run::Report-only comparison against $FROZEN, the frozen ${MAJOR}.x surface."
+          else
+            echo "::notice title=No frozen baseline yet::Version.php reads $CURRENT and no v${MAJOR}.*.* tag exists, so there is no frozen surface of this MAJOR line to report against. The release gate below is unaffected."
+          fi
 
           BASE="${{ github.event.pull_request.base.sha }}"
           RELEASE_PR=false
@@ -629,7 +665,8 @@ jobs:
           fi
 
       - name: Set up PHP
-        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        # Both runs need this, so it is gated on there being ANY tag rather than on the mode.
+        if: steps.scope.outputs.previous != ''
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           # The tool's own floor, not this library's. See the header comment.
@@ -637,7 +674,8 @@ jobs:
           coverage: none
 
       - name: Install the BC checker outside this package's dependency graph
-        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        # Both runs need this, so it is gated on there being ANY tag rather than on the mode.
+        if: steps.scope.outputs.previous != ''
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/bc-tool"
@@ -647,9 +685,63 @@ jobs:
             "roave/backward-compatibility-check:^8.16"
 
       - name: Install this package's own dependencies
-        if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
+        # Both runs need this, so it is gated on there being ANY tag rather than on the mode.
+        if: steps.scope.outputs.previous != ''
         run: composer install --no-interaction --prefer-dist
 
+      # ---- the report, on every PR (issue #112) ------------------------------------------------
+      #
+      # Runs before the gate so that on a release PR — the one event where both run — the frozen
+      # surface is reported even if the gate then fails the job.
+      - name: Report-only — is anything broken since ${{ steps.scope.outputs.frozen }}?
+        if: steps.scope.outputs.frozen != ''
+        shell: bash
+        run: |
+          set +e
+          php "$RUNNER_TEMP/bc-tool/vendor/bin/roave-backward-compatibility-check" \
+            --from="${{ steps.scope.outputs.frozen }}" --format=markdown | tee bc-report-frozen.md
+          CODE=${PIPESTATUS[0]}
+          set -e
+          echo "The checker exited $CODE (0 means no backward-incompatible change)."
+
+          # pipefail, so that bc_gate.py exiting 1 — which it does when it cannot READ a report —
+          # fails this step instead of being masked by tee's own 0. `--report` is passed
+          # unconditionally: report-only ignores it when the checker found nothing.
+          set -o pipefail
+          python3 tools/bc_gate.py --report-only \
+            --previous "${{ steps.scope.outputs.frozen }}" \
+            --bc-exit "$CODE" \
+            --report bc-report-frozen.md | tee bc-report-only.txt
+          set +o pipefail
+
+          {
+            echo "### Backward compatibility vs \`${{ steps.scope.outputs.frozen }}\` — report only"
+            echo
+            echo '```'
+            cat bc-report-only.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          N="$(sed -n 's/^findings=//p' bc-report-only.txt)"
+          if [ -z "$N" ]; then
+            echo "::error title=BC report unreadable::bc_gate.py --report-only printed no findings= line, so this step cannot say whether the frozen surface is intact. Failing rather than passing."
+            exit 1
+          fi
+          if [ "$N" != "0" ]; then
+            echo "::warning title=$N break(s) since ${{ steps.scope.outputs.frozen }}::The public surface is frozen at that tag (ADR-0059), so a 1.x change must be additive. This is a REPORT, not a gate — see the job summary for the findings."
+          fi
+
+      - name: Keep the report-only comparison
+        if: always() && steps.scope.outputs.frozen != ''
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: backward-compatibility-report-frozen
+          path: |
+            bc-report-frozen.md
+            bc-report-only.txt
+          if-no-files-found: warn
+
+      # ---- the gate, on release PRs only — unchanged by #112 -----------------------------------
       - name: Detect backward-incompatible changes since ${{ steps.scope.outputs.previous }}
         id: bc
         if: steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''

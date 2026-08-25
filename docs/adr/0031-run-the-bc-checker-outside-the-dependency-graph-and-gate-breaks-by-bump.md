@@ -1,6 +1,24 @@
 # ADR-0031: Run the BC checker outside this package's dependency graph, and gate breaks by the bump they arrive in
 
-- **Status:** Accepted — **one narrow discount added** (2026-08-21, the `v1.1.0` release PR): the
+- **Status:** Accepted — **a second, non-gating run added on every PR** (2026-08-25, issue #112).
+  *Alternatives Considered* below rejects "running the checker on every PR", and the reasoning it
+  gives is explicitly pre-1.0: *"it would report breaks that are legal by §4 on most PRs, and a
+  gate that is routinely and correctly ignored stops being read at all."* **ADR-0059's freeze
+  inverted that premise.** Post-1.0 a 1.x break is not legal noise, it is signal — and the gate,
+  running only on release PRs, surfaces it at the moment furthest from the change that caused it.
+  So a **report** now runs on every PR alongside the unchanged gate. It answers a different
+  question — *"is the frozen public surface still intact?"* rather than *"are these breaks allowed
+  in this bump?"* — which is why its baseline is the **oldest** tag of the current MAJOR line
+  (`v1.0.0` today, computed rather than written down) while the gate keeps comparing against the
+  newest. It never fails the build for a finding, and it *does* fail when it could not read one:
+  `bc_gate.py --report-only`, pinned by fourteen new cases in `tools/tests/verify_bc_gate.py`.
+  One consequence worth naming: the version-constant discount above is now **load-bearing for the
+  report**, not just for releases — `master` runs ahead of the frozen tag by design, so
+  `Version::VERSION` differs on every single PR and without the discount the report would cry wolf
+  forever. **Nothing about the gate changed** — same trigger, same steps, same rules.
+  Annotated rather than edited, per ADR-0041's precedent.
+
+  **Earlier annotation — one narrow discount added** (2026-08-21, the `v1.1.0` release PR): the
   gate discounts a single finding, `Value of constant D4np\Utils\Version::VERSION changed`, and
   nothing else. **The decision below is unchanged** — breaks are still gated by the bump they
   arrive in, and any other `[BC]` line still fails on the same rules.
