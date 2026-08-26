@@ -46,8 +46,12 @@ import os
 import re
 import sys
 
-TAG = re.compile(r"^utils-psr7-bridge-v(\d+)\.(\d+)\.(\d+)$")
-PACKAGE = os.path.join("packages", "utils-psr7-bridge")
+# The tag names its own package (issue #93). Before the second bridge existed this was a
+# literal, and generalising it is what lets one pipeline publish both: `utils-psr7-bridge-v1.2.3`
+# and `utils-psr18-bridge-v1.2.3` differ only in the part captured here. The shape stays strict —
+# `utils-<name>-bridge-vX.Y.Z` and nothing else — so a core tag still cannot match, which is the
+# separation this gate refuses by name rather than trusting a workflow glob to have kept.
+TAG = re.compile(r"^(utils-[a-z0-9]+-bridge)-v(\d+)\.(\d+)\.(\d+)$")
 
 
 class GateError(Exception):
@@ -68,30 +72,41 @@ def check(root, tag):
     if match is None:
         raise GateError(
             f'"{tag}" is not a bridge release tag. The grammar is '
-            "utils-psr7-bridge-vMAJOR.MINOR.PATCH (ADR-0033 §3); a core release is vMAJOR.MINOR.PATCH "
+            "utils-<name>-bridge-vMAJOR.MINOR.PATCH (ADR-0033 §3); a core release is vMAJOR.MINOR.PATCH "
             "and belongs to release.yml. Refusing by name rather than trusting a workflow glob to "
             "have kept the two apart."
         )
 
-    version = ".".join(match.groups())
+    package_name = match.group(1)
+    package = os.path.join("packages", package_name)
+    version = ".".join(match.group(2, 3, 4))
     problems = []
 
+    # Absence is failure, as everywhere else in tools/: a tag naming a package that is not here
+    # must not publish an empty split. read() below would raise anyway, but saying so by name
+    # beats a confusing "CHANGELOG.md does not exist".
+    if not os.path.isdir(os.path.join(root, package)):
+        raise GateError(
+            f'"{tag}" names the package {package}, which does not exist in this repository. '
+            "A tag cannot publish a package that is not here."
+        )
+
     # The changelog is what anchors the tag: a Composer library carries no version of its own.
-    changelog = read(root, PACKAGE, "CHANGELOG.md")
+    changelog = read(root, package, "CHANGELOG.md")
     if f"## [{version}]" not in changelog:
         problems.append(
-            f"{PACKAGE}/CHANGELOG.md has no `## [{version}]` heading. That heading is the only "
+            f"{package}/CHANGELOG.md has no `## [{version}]` heading. That heading is the only "
             "place this package's version is written down, so without it the tag is anchored to "
             "nothing and a reader cannot tell what the release contains."
         )
 
     try:
-        manifest = json.loads(read(root, PACKAGE, "composer.json"))
+        manifest = json.loads(read(root, package, "composer.json"))
     except json.JSONDecodeError as exc:
-        raise GateError(f"{PACKAGE}/composer.json is not valid JSON: {exc}") from exc
+        raise GateError(f"{package}/composer.json is not valid JSON: {exc}") from exc
 
     if not isinstance(manifest, dict):
-        raise GateError(f"{PACKAGE}/composer.json is not a JSON object")
+        raise GateError(f"{package}/composer.json is not a JSON object")
 
     if "repositories" in manifest:
         problems.append(
@@ -113,7 +128,7 @@ def check(root, tag):
                 "target gives consumers a version that means nothing (spec 02 §2)."
             )
 
-    return version, problems
+    return package_name, version, problems
 
 
 def main(argv=None):
@@ -127,6 +142,12 @@ def main(argv=None):
         help="repository root to inspect (defaults to this file's repository)",
     )
     ap.add_argument(
+        "--print-package",
+        action="store_true",
+        help="on success, print only the package directory name the tag names — what the split "
+             "step needs in order to publish the right one of several bridges",
+    )
+    ap.add_argument(
         "--print-version",
         action="store_true",
         help="on success, print only the bare X.Y.Z — the tag the split repository receives",
@@ -134,7 +155,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     try:
-        version, problems = check(args.root, args.tag)
+        package_name, version, problems = check(args.root, args.tag)
     except GateError as exc:
         print(f"bridge-release gate: FAIL\n\n  {exc}", file=sys.stderr)
         return 1
@@ -150,7 +171,9 @@ def main(argv=None):
         )
         return 1
 
-    if args.print_version:
+    if args.print_package:
+        print(package_name)
+    elif args.print_version:
         print(version)
     else:
         print(

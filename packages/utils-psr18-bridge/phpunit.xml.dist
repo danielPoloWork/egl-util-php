@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnDeprecation="true"
+         cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <testsuite name="contract">
+            <directory>src/test/php/d4np/utils/bridge/psr18</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>src/main/php/d4np/utils/bridge/psr18</directory>
+        </include>
+    </source>
+</phpunit>

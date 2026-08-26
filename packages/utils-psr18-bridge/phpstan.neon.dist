@@ -1,0 +1,10 @@
+parameters:
+    level: max
+    paths:
+        - src/main/php/d4np/utils/bridge/psr18
+        - src/test/php/d4np/utils/bridge/psr18
+    tmpDir: .phpstan.cache
+    treatPhpDocTypesAsCertain: false
+    # Analysed against this package's own vendor/, which contains the core (from the monorepo path
+    # repository in PR mode, or the released tag in release mode — spec 02 §7). Both modes therefore
+    # type-check the bridge against the exact core it will run with, rather than against a copy.

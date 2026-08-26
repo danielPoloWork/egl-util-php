@@ -17,6 +17,26 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`egl/utils-psr18-bridge` — a PSR-18 HTTP client over `HttpClient`** (issue #93, **ADR-0075**,
+  spec **03**). Ecosystem middleware and SDKs consume `Psr\Http\Client\ClientInterface`; until now
+  a consumer wanting to hand them this library's client wrote the adapter themselves, and the
+  adapter is not trivial because PSR-18 mandates an exception taxonomy the core does not have.
+  **The core's dependency surface is unchanged** — `psr/http-client` lives in the new package only,
+  and `BridgePackageBoundaryTest` (now data-driven over both packages) asserts it never reaches the
+  core's manifest.
+  **It does not depend on `egl/utils-psr7-bridge`.** That package converts the *server* vocabulary
+  (`Request`/`Response`); this one wraps the *client* (`HttpClient`/`HttpResponse`). Different
+  types, no shared code, independently installable.
+  PSR-18's split between a malformed request and a network failure — the one that decides whether a
+  retry is worth attempting — is made **structurally**: every request-shaped check runs before the
+  send, so anything thrown afterwards is the network's, with no message matching. Both exceptions
+  extend the core's `HttpException` *and* implement PSR-18's interfaces, so a consumer's
+  `catch (UtilsThrowable)` and a PSR-18 retry middleware both work.
+  **One publication pipeline now serves every bridge**: the tag names its package
+  (`utils-<name>-bridge-vX.Y.Z`), `bridge_release_gate.py` derives the directory from it, and that
+  tool gained a **15-case self-test it previously had none of** — including proof that a tag cannot
+  be satisfied by another package's version, which is the mistake no published release can undo.
+
 - **A nightly advisory full-tree mutation run, and every namespace's score with it** — issue #108,
   **ADR-0074**, spec **r23**. `infection.json5` gates three namespaces at NFR-07's 70% floor;
   #108 asked whether `Persistence` (data-mapping, injection-adjacent) and `Http` should join. The

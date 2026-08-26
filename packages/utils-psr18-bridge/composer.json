@@ -1,0 +1,59 @@
+{
+    "name": "egl/utils-psr18-bridge",
+    "description": "A PSR-18 HTTP client over egl/utils HttpClient, producing PSR-7 responses through any PSR-17 factory",
+    "license": "MIT",
+    "type": "library",
+    "keywords": [
+        "psr-18",
+        "psr-17",
+        "psr-7",
+        "bridge",
+        "http-client",
+        "interop"
+    ],
+    "authors": [
+        {
+            "name": "Daniel Polo"
+        }
+    ],
+    "homepage": "https://github.com/danielPoloWork/egl-util-php/tree/master/packages/utils-psr18-bridge",
+    "support": {
+        "issues": "https://github.com/danielPoloWork/egl-util-php/issues",
+        "source": "https://github.com/danielPoloWork/egl-util-php/tree/master/packages/utils-psr18-bridge"
+    },
+    "require": {
+        "php": ">=8.1",
+        "egl/utils": "^1.0",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^2.0"
+    },
+    "require-dev": {
+        "guzzlehttp/psr7": "^2.6",
+        "nyholm/psr7": "^1.8",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^10.5"
+    },
+    "provide": {
+        "psr/http-client-implementation": "1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "D4np\\Utils\\Bridge\\Psr18\\": "src/main/php/d4np/utils/bridge/psr18/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "D4np\\Utils\\Bridge\\Psr18\\Tests\\": "src/test/php/d4np/utils/bridge/psr18/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.1.34"
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

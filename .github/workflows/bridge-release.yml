@@ -1,10 +1,13 @@
 name: bridge-release
 
-# Publication pipeline for `egl/utils-psr7-bridge` (spec 02 §6, ADR-0033, ADR-0035).
+# Publication pipeline for **every** bridge package (spec 02/03 §6, ADR-0033, ADR-0035).
 #
-# The bridge versions independently of the core: tags here are
-# `utils-psr7-bridge-vMAJOR.MINOR.PATCH`, and the split repository receives a plain
-# `vMAJOR.MINOR.PATCH`, which is what Packagist reads.
+# One pipeline, not one per package (issue #93, ADR-0075). The tag names the package it
+# publishes: `utils-<name>-bridge-vMAJOR.MINOR.PATCH`, and the split repository receives a
+# plain `vMAJOR.MINOR.PATCH`, which is what Packagist reads. `bridge_release_gate.py` derives
+# the directory from the tag and prints it back, so adding a third bridge needs no edit here.
+#
+# Each bridge versions independently of the core and of the other bridges.
 #
 # Nothing is pushed anywhere until three things hold:
 #
@@ -14,14 +17,19 @@ name: bridge-release
 #      claim about *released* core versions and PR-mode evidence (working tree) cannot support it;
 #   3. the split repository and its token are configured.
 #
-# **This pipeline cannot succeed until the core has a release.** `egl/utils: ^0.7` resolves to
-# nothing today, so release mode fails — correctly, and by design rather than by oversight. It is
-# not skipped: skipping would publish a package whose central claim is unverified. The prerequisite
-# check below says so before any work is done.
+# **Release mode is the gate that cannot be faked.** Each package requires `egl/utils: ^1.0`, and
+# the core has published `v1.0.0` and `v1.1.0` — so the constraint resolves and release mode is
+# expected to pass. It is never skipped: skipping would publish a package whose central claim is
+# unverified.
+#
+# *(This paragraph previously asserted `egl/utils: ^0.7` "resolves to nothing today", which was
+# already false on both counts — the packages require `^1.0`, and the core is released. Corrected
+# here rather than left in a file being rewritten around it; it is also issue #120's second
+# acceptance criterion.)*
 
 on:
   push:
-    tags: ['utils-psr7-bridge-v*']
+    tags: ['utils-*-bridge-v*']
   # Available manually so the maintainer can dry-run the gates against an existing tag without
   # cutting a new one.
   workflow_dispatch:
@@ -66,8 +74,14 @@ jobs:
           # matcher staying what it is today (ADR-0035).
           python3 tools/bridge_release_gate.py --tag "${{ steps.tag.outputs.name }}"
           VERSION="$(python3 tools/bridge_release_gate.py --tag "${{ steps.tag.outputs.name }}" --print-version)"
+          PACKAGE="$(python3 tools/bridge_release_gate.py --tag "${{ steps.tag.outputs.name }}" --print-package)"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "The split repository will receive v$VERSION."
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+
+          # The per-package repository variable, derived rather than listed: a third bridge
+          # needs a new variable in repository settings and no edit to this workflow.
+          echo "repo_var=BRIDGE_SPLIT_REPO_$(echo "$PACKAGE" | tr "a-z-" "A-Z_")" >> "$GITHUB_OUTPUT"
+          echo "packages/$PACKAGE will publish as v$VERSION."
 
       - name: The tag must be annotated and signed
         shell: bash
@@ -104,7 +118,7 @@ jobs:
           # Copied out of the monorepo so no path repository can possibly be in scope: this install
           # resolves egl/utils from Packagist, which is the claim the committed constraint makes and
           # the one PR mode cannot test.
-          cp -r packages/utils-psr7-bridge "$RUNNER_TEMP/release-mode"
+          cp -r "packages/${{ steps.gate.outputs.package }}" "$RUNNER_TEMP/release-mode"
           cd "$RUNNER_TEMP/release-mode"
           rm -rf vendor composer.lock
 
@@ -123,11 +137,16 @@ jobs:
         id: split
         shell: bash
         run: |
-          if [ -z "${{ vars.BRIDGE_SPLIT_REPO }}" ] || [ -z "${{ secrets.BRIDGE_SPLIT_TOKEN }}" ]; then
-            echo "::error title=Split repository not configured::Publishing needs the variable BRIDGE_SPLIT_REPO (e.g. danielPoloWork/egl-utils-psr7-bridge) and the secret BRIDGE_SPLIT_TOKEN (a token with write access to it). Both are one-time maintainer actions — see docs/workflow/release.md. The gates above all passed; only the push is missing."
+          # Per package, because one variable cannot name two repositories. The name is
+          # derived from the package (utils-psr18-bridge -> BRIDGE_SPLIT_REPO_UTILS_PSR18_BRIDGE),
+          # so the error below can tell the maintainer exactly which one to create.
+          TARGET="${{ vars[steps.gate.outputs.repo_var] }}"
+
+          if [ -z "$TARGET" ] || [ -z "${{ secrets.BRIDGE_SPLIT_TOKEN }}" ]; then
+            echo "::error title=Split repository not configured::Publishing packages/${{ steps.gate.outputs.package }} needs the repository variable ${{ steps.gate.outputs.repo_var }} (e.g. danielPoloWork/egl-${{ steps.gate.outputs.package }}) and the secret BRIDGE_SPLIT_TOKEN (a token with write access to it — one token may cover every bridge). Both are one-time maintainer actions; see docs/workflow/release.md. The gates above all passed, so only the push is missing."
             exit 1
           fi
-          echo "repo=${{ vars.BRIDGE_SPLIT_REPO }}" >> "$GITHUB_OUTPUT"
+          echo "repo=$TARGET" >> "$GITHUB_OUTPUT"
 
       - name: Split the package and push it with the translated tag
         if: steps.tag.outputs.publishes == 'true'
@@ -140,7 +159,7 @@ jobs:
 
           # `subtree split` rewrites the package's history with the package root at the top, which is
           # what Packagist needs: a repository whose composer.json is at its root.
-          BRANCH="$(git subtree split --prefix=packages/utils-psr7-bridge)"
+          BRANCH="$(git subtree split --prefix="packages/${{ steps.gate.outputs.package }}")"
           echo "split commit: $BRANCH"
 
           git config user.name  "github-actions[bot]"
@@ -148,12 +167,12 @@ jobs:
 
           # The split tag is a build artifact of a verified signed source, not an assertion of its
           # own — the authenticity lives at the monorepo tag checked above (ADR-0033 §5).
-          git tag -a "v$VERSION" "$BRANCH" -m "egl/utils-psr7-bridge v$VERSION (generated from ${{ steps.tag.outputs.name }})"
+          git tag -a "v$VERSION" "$BRANCH" -m "egl/${{ steps.gate.outputs.package }} v$VERSION (generated from ${{ steps.tag.outputs.name }})"
 
           git push "https://x-access-token:${TOKEN}@github.com/${TARGET}.git" "$BRANCH:refs/heads/main"
           git push "https://x-access-token:${TOKEN}@github.com/${TARGET}.git" "refs/tags/v$VERSION"
 
-          echo "::notice title=Published::${TARGET} now carries v$VERSION. Packagist updates itself from that repository's own integration; confirm at https://packagist.org/packages/egl/utils-psr7-bridge."
+          echo "::notice title=Published::${TARGET} now carries v$VERSION. Packagist updates itself from that repository's own integration; confirm at https://packagist.org/packages/egl/${{ steps.gate.outputs.package }}."
 
       - name: Dry run — validated, nothing pushed
         if: steps.tag.outputs.publishes != 'true'
