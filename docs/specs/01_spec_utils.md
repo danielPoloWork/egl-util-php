@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r25** — 2026-08-26. See [Revision history](#revision-history).
+**Revision r26** — 2026-08-26. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -160,7 +160,11 @@ Five suites (spec s7): T-01 DTO hydration matrix (nested, collections, nullables
 **r3 (RFC-0002)** adds nine suites: T-07 HttpClient against a live `php -S` origin (T-03's
 process discipline); T-08 Csv property/round-trip + formula-guard corpus, both flag states;
 T-09 Crypto vectors — tamper, wrong key, truncation, nonce uniqueness across 10^5 tokens,
-version-prefix handling; T-10 mail header-injection corpus; T-11 router matrix
+version-prefix handling; T-10 mail header-injection corpus, plus a **wire-capture leg** against a
+real MTA — msmtp relaying into a Mailpit sink — asserting envelope-recipient delivery for `bcc`,
+RFC 2047 subject round-trips across 2-, 3- and 4-byte and folded widths, and the envelope sender's
+arrival (issue #101, ADR-0078; configured by `EGL_TEST_MAILPIT_URL`, skipped when unset and red when
+configured and unreachable); T-11 router matrix
 (404/405/Allow/params); T-12 logger routing matrix; T-13 gateway/statement injection —
 ADR-0017's 29-payload corpus re-run through Repository/TableGateway with the
 placeholder-only PDO-boundary assertion; T-14 FileSequence under concurrent processes (no
@@ -189,6 +193,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 
 | Rev | Date | Change |
 |-----|------|--------|
+| r26 | 2026-08-26 | §7/T-10: a **wire-capture leg** joins the mail suite (issue **#101**, **ADR-0078**). T-10's three existing legs all stopped at the `MailApi` seam, which is where the array-header mechanism must be asserted (ADR-0027) and where nothing about SMTP can be. Three of ADR-0056's load-bearing claims had been settled by hand-probing a transport and recording the result in prose: D3's `Bcc` `RCPT TO` behaviour, alternative 3's rejection of the string header block, and D5's `CRLF` folding of long encoded subjects — which nothing had ever sent through a real `mail()`, the existing test using a six-character subject that never folds. The leg runs msmtp into a Mailpit sink and asserts on the captured messages. **Two findings shaped it.** Mailpit *rewrites the message it stores*, prepending a synthetic `Bcc:` header naming any envelope recipient the headers omit — so the obvious assertion ("no `Bcc:` header survived") fails against a correct pipeline, and the correct test is its inverse, which is strictly more discriminating. And `--fail-on-skipped` **does not see a suite skipped from `setUpBeforeClass()`** (measured: exit 0, as does `--fail-on-empty-test-suite`), so the guard ADR-0071 relies on would have been inert here and a job with no `EGL_TEST_MAILPIT_URL` would have gone green having sent no mail; the skip is raised per test from `setUp()` instead. Additive: no existing suite, gate or floor changed. |
 | r25 | 2026-08-26 | §3/NFR-07: one `ci.yml` `build` matrix cell (`php-8.3 / random-order`) now runs the full suite with `--order-by=random`, alongside the three declaration-order cells that are unchanged (issue **#100**). PHPUnit 10 prints `Random Seed: <N>` in its own output header with no extra flag, satisfying the issue's reproducibility criterion directly — `--random-order-seed=<N>` replays the exact order. The second acceptance criterion is a documentation rule, not code: `docs/development/local-build.md` states that a failure confined to this cell is **coupling, not flake**, and names what to do about it instead of re-running. Additive; no existing cell, gate or floor changed. First local run (3 199 tests, seed 1787749415): all green, 9 skipped, 0 failed — no coupling found yet, which is the expected outcome of adding a probe, not evidence the probe is unnecessary. |
 | r24 | 2026-08-26 | §3/NFR-07 and NFR-08: supply-chain hygiene batch from the 2026-08-09 Release Review Board (issue **#98**, **ADR-0076**). `composer audit` now also runs **nightly** rather than only on a push or PR diff, so a CVE published against an already-vendored dependency during a quiet week is caught inside a day. A **CycloneDX SBOM** (production dependencies only) is generated from the tagged tree and attached to every draft GitHub Release, which is also what makes `docs/workflow/release.md`'s boundary-table row "Build & attach artifacts — CI" literally true for the first time. **ComposerRequireChecker** joins the PR-time gate — and its first real run found four undeclared hard dependencies, not zero: `ext-filter` (`Http\Request`, `Mail\EmailAddress`, `Support\Env`) and `ext-session` (the `Http` session classes) had no runtime guard anywhere in the source, so NFR-08 now names both explicitly alongside `ext-pdo`/`ext-fileinfo`. `ext-openssl` (`Security\Crypto`) and `ext-intl` (`Str::slug()`'s ICU tier) *are* guarded — `Crypto` already refused at construction, and `Str` already fell through to `ext-iconv` — so both join `ext-iconv` and `symfony/html-sanitizer` in `suggest` instead, with `composer-require-checker.json` whitelisting exactly the symbols each guard covers. The batch's fourth checklist item — a deliberate `composer.lock` refresh cadence — was found already satisfied by the existing weekly, grouped `dependabot.yml` composer config and needed no change. |
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |

@@ -210,6 +210,141 @@ jobs:
         run: vendor/bin/phpunit --group database-engine --fail-on-skipped
 
   # ---------------------------------------------------------------------------
+  # Wire-level mail capture — T-10's fourth leg (issue #101, ADR-0078).
+  #
+  # The rest of T-10 stops at the `MailApi` seam, which is the right place to assert the
+  # array-header mechanism and the wrong place to assert anything about SMTP. This job puts a real
+  # MTA behind `mail()` — msmtp relaying to a Mailpit sink — so the claims ADR-0056 settled by
+  # hand-probing a transport become claims something re-checks on every PR.
+  #
+  # The pipeline is three hops and each one has to be configured, which is why the preflight below
+  # is not ceremony: PHP -> `sendmail_path` (msmtp) -> Mailpit SMTP :1025, then the suite reads
+  # Mailpit's HTTP API on :8025.
+  # ---------------------------------------------------------------------------
+  mail-wire:
+    name: mail / wire capture (Mailpit)
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      mailpit:
+        image: axllent/mailpit:v1.21
+        ports:
+          - 1025:1025
+          - 8025:8025
+        env:
+          # No retention cap. The default (500) would silently start discarding, and a capture leg
+          # that drops evidence is worse than one that fills a disk in a 15-minute job. The suite
+          # purges between tests anyway, so the mailbox never holds more than one message.
+          MP_MAX_MESSAGES: 0
+        # Deliberately no `--health-cmd`. Mailpit's own `readyz` subcommand would serve, but it
+        # depends on the binary's path inside the image — an assumption this repository cannot check
+        # without pushing a commit. The readiness poll below is equivalent, fails with our words
+        # rather than a bare "unhealthy", and is verifiable by reading it.
+    env:
+      EGL_TEST_MAILPIT_URL: http://127.0.0.1:8025
+    steps:
+      - name: Check out the source tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install msmtp and relay it to Mailpit
+        shell: bash
+        run: |
+          sudo apt-get update
+          # `msmtp`, not `msmtp-mta`: the latter installs a /usr/sbin/sendmail symlink this job does
+          # not need, because sendmail_path names the binary explicitly below.
+          sudo apt-get install -y --no-install-recommends msmtp
+
+          # `auth off` and `tls off` are msmtp's defaults; stated anyway, because a mail relay that
+          # works by default rather than by declaration is one nobody can review.
+          # `from` is the FALLBACK envelope sender, used only when mail() passes no `-f` — which is
+          # exactly the NativeMailer(null, …) case. It is deliberately a different address from the
+          # one the envelope-sender test configures, so that test cannot pass by coincidence.
+          cat > /tmp/msmtprc <<'EOF'
+          account default
+          host 127.0.0.1
+          port 1025
+          auth off
+          tls off
+          from unconfigured-sender@example.com
+          EOF
+          chmod 600 /tmp/msmtprc
+          msmtp --version | head -1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # Appended to the loaded php.ini rather than passed through setup-php's `ini-values`, because
+      # the value contains spaces and quotes and this way the result is inspectable — the next step
+      # reads it back. `sendmail_path` is PHP_INI_SYSTEM: the suite cannot set it, so if this step
+      # is wrong the leg must say so rather than mail into the void.
+      - name: Point mail() at msmtp
+        shell: bash
+        run: |
+          INI="$(php -r 'echo php_ini_loaded_file();')"
+          echo "loaded php.ini: $INI"
+          printf 'sendmail_path = "%s"\n' '/usr/bin/msmtp -C /tmp/msmtprc -t -i' | sudo tee -a "$INI"
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Mailpit must be reachable and mail() must be wired, in our words
+        shell: bash
+        run: |
+          # Guard 1 — the relay. An empty sendmail_path means mail() would invoke the absent
+          # default /usr/sbin/sendmail and the suite would fail as "the transport declined the
+          # message", which blames the wrong hop.
+          CONFIGURED="$(php -r 'echo (string) ini_get("sendmail_path");')"
+          echo "sendmail_path: $CONFIGURED"
+          if [ -z "$CONFIGURED" ]; then
+            echo "::error title=sendmail_path is unset::The previous step did not take effect, so mail() cannot reach Mailpit."
+            exit 1
+          fi
+
+          # Guard 2 — the receiver, polled rather than assumed ready. A service container is started,
+          # not awaited, and an assertion against a container still binding its port is the classic
+          # intermittent wire test.
+          for attempt in $(seq 1 60); do
+            if curl -fsS "$EGL_TEST_MAILPIT_URL/api/v1/messages" >/dev/null 2>&1; then
+              echo "Mailpit answered after ${attempt} attempt(s)."
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ -z "${READY:-}" ]; then
+            echo "::error title=Mailpit unreachable::$EGL_TEST_MAILPIT_URL did not answer within 60s, so the wire leg would prove nothing."
+            exit 1
+          fi
+
+          # Guard 3 — the whole pipeline, end to end, before PHPUnit gets a turn. This is the check
+          # that distinguishes "the library is wrong" from "this job is misconfigured": if a bare
+          # mail() cannot reach the sink, every assertion in the suite is about the plumbing.
+          php -r '
+            if (!@mail("preflight@example.com", "preflight", "body", ["From" => "ci@example.com"])) {
+                fwrite(STDERR, "::error title=mail() refused::PHP could not hand the message to msmtp." . PHP_EOL);
+                exit(1);
+            }'
+          sleep 2
+          TOTAL="$(curl -fsS "$EGL_TEST_MAILPIT_URL/api/v1/messages" | php -r 'echo (int) (json_decode(stream_get_contents(STDIN), true)["total"] ?? 0);')"
+          echo "Mailpit captured $TOTAL preflight message(s)."
+          if [ "$TOTAL" -lt 1 ]; then
+            echo "::error title=Pipeline broken::mail() succeeded but nothing reached Mailpit, so the suite's negative assertions would all pass vacuously."
+            exit 1
+          fi
+          curl -fsS -X DELETE "$EGL_TEST_MAILPIT_URL/api/v1/messages" >/dev/null
+
+      # --fail-on-skipped for the reason ADR-0071 gives, and with a correction ADR-0078 records: the
+      # flag only sees a skipped *test*, so the suite raises its skip from setUp() rather than
+      # setUpBeforeClass(), where a skipped suite exits 0 and this flag would be inert.
+      - name: T-10's wire leg, against a real MTA
+        run: vendor/bin/phpunit --group mail-wire --fail-on-skipped
+
+  # ---------------------------------------------------------------------------
   # Cross-artifact congruence — the agent-runnable consistency lint.
   # ---------------------------------------------------------------------------
   consistency:

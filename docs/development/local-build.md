@@ -56,6 +56,33 @@ vendor/bin/phpbench run --report=aggregate
 python tools/consistency_lint.py
 ```
 
+## The wire-capture mail leg (issue #101)
+
+T-10's fourth leg asserts what mail actually puts on the wire, and needs a receiver a checkout
+cannot provision. With no `EGL_TEST_MAILPIT_URL` set it **skips**, so `vendor/bin/phpunit` behaves
+exactly as it did. To run it:
+
+```bash
+docker run -d -p 1025:1025 -p 8025:8025 axllent/mailpit
+```
+
+Then start PHP with `mail()` pointed at a relay into that sink — `sendmail_path` is `PHP_INI_SYSTEM`,
+so it cannot be set from the suite — and run the group:
+
+```bash
+EGL_TEST_MAILPIT_URL=http://127.0.0.1:8025 vendor/bin/phpunit --group mail-wire
+```
+
+CI adds `--fail-on-skipped`, which is what makes a missing variable red rather than green. **The skip
+is raised per test, from `setUp()`, and must stay there:** a skip raised from `setUpBeforeClass()`
+becomes a skipped *suite* with zero executed tests, and `--fail-on-skipped` exits 0 on it (so does
+`--fail-on-empty-test-suite`) — see [ADR-0078](../adr/0078-a-wire-witness-for-t10-and-the-receiver-that-rewrites-the-evidence.md) §2.
+
+**Before adding an assertion, read that ADR's §1.** Mailpit rewrites the message it stores: it
+prepends a synthetic `Bcc:` header naming any envelope recipient the headers omit. So "no `Bcc:`
+header survived" fails against a pipeline that is working perfectly, and the correct assertion is its
+inverse.
+
 ## The randomized-order CI cell (issue #100)
 
 `ci.yml`'s `build` job runs one extra matrix cell — `php-8.3 / random-order` — with
@@ -67,12 +94,35 @@ header whenever `--order-by=random` is used; reproduce a specific run locally wi
 vendor/bin/phpunit --order-by=random --random-order-seed=<N>
 ```
 
-**A failure in that cell alone is coupling, not flake.** The three default-order cells already
-prove the suite passes; if only `random-order` goes red, a test's outcome changed with the order
-it ran in — shared static state, a filesystem leftover from an earlier test, or an assumption
-about what ran before it. **Do not re-run it into silence.** Reproduce with the printed seed,
-find the shared state, and fix the coupling (or, if the two tests are asserting the same global
-resource by design, make that assumption explicit rather than order-dependent).
+**A failure in that cell alone is not a flake to re-run.** The three default-order cells already
+prove the suite passes; if only `random-order` goes red, a test's outcome changed with the order it
+ran in. **Do not re-run it into silence.** Reproduce with the printed seed, and expect one of two
+diagnoses — they are not the same problem and do not have the same fix:
+
+1. **Coupling.** Shared static state, a filesystem leftover from an earlier test, an assumption about
+   what ran before — or a **shared external process** one test leaves busy. Fix the shared state.
+2. **Timing fragility.** A test whose wall-clock margin is thin enough that its neighbours' load
+   decides the outcome. It would flake in declaration order too, given a busy enough runner. Widen
+   the margin.
+
+**The two look identical in the failure output and are told apart by the seed.** Re-run the printed
+seed: a failure that reproduces every time is coupling, because the order is fixed; one that comes
+and goes on the same seed is timing.
+
+The cell's first real failure is the worked example, and it was the first kind. Seed `1787753886`
+failed **deterministically** — three times out of three, and on unmodified code, which is what
+established it as pre-existing rather than introduced. `HttpClientLiveTest`'s tests share one
+`php -S` origin, and **`php -S` is single-threaded.** The silent-origin test's client gives up after
+0.4 s while the origin sleeps on for 1.6 s, so ~1.2 s of server-side sleep outlived the request that
+started it — longer than a neighbouring test's entire budget. Any order that scheduled the drip test
+straight after the silent one therefore failed, with the drip test's `fopen()` timing out against a
+server that was still asleep on someone else's request. It reported `produced no response` instead of
+`total time budget`, which reads like a bug in the client and was neither.
+
+The fix was to stop the origin over-sleeping (0.8 s, still twice the timeout it exists to exceed),
+not to widen the drip test's margin — the margin was a symptom. Worth internalising as the general
+shape: **a fixture that keeps working after the test abandoned it is shared state**, even though it
+looks like nothing more than a slow response.
 
 ## Before you open a PR
 

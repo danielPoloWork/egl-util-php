@@ -104,7 +104,21 @@ final class HttpClientLiveTest extends TestCase
      */
     public function testTheTotalBudgetEndsAnOriginThatDripsForever(): void
     {
-        $client = new HttpClient(timeoutSeconds: 0.5, totalTimeoutSeconds: 1.0);
+        // Both at 1.0s, up from 0.5/1.0. The per-phase value is the one that matters here: it bounds
+        // `fopen()` — connect plus waiting for the response headers — while the total budget is
+        // enforced by StreamTransport's *non-blocking* read loop and so cannot be overrun by a slow
+        // read. If the per-phase timeout fires first, this test fails with "produced no response"
+        // and never exercises the total budget, which is its only claim.
+        //
+        // The order-dependent cause is fixed in `setUpBeforeClass()`, which now warms the origin so
+        // no test pays `php -S`'s first-request cost. This widening is the separate, remaining
+        // margin: the origin drips every 150 ms, so at 0.5s a single stalled drip only had to run
+        // 3.3x long to beat the budget. 1.0s makes that 6.7x.
+        //
+        // It cannot go higher. HttpClient refuses a per-phase timeout above the total budget, and
+        // the total must stay well under the origin's ~1.8s drip or the response completes and there
+        // is nothing left to bound — 1.0s keeps 0.8s of margin on that side.
+        $client = new HttpClient(timeoutSeconds: 1.0, totalTimeoutSeconds: 1.0);
 
         $startedAt = \microtime(true);
 
