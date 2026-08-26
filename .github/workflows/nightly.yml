@@ -185,3 +185,106 @@ jobs:
           path: build/logs/taint.json
           if-no-files-found: warn
           retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # Full-tree mutation score, ADVISORY (issue #108, ADR-0074).
+  #
+  # `ci.yml`'s `mutation` job gates three namespaces — `Security`, `Database`, `Dto` — at NFR-07's
+  # >= 70% floor, and those three are the spec's own scope, not a convenience. Issue #108 asks
+  # whether `Persistence` (data-mapping, injection-adjacent per its own gateway injection suite)
+  # and `Http` (CSRF comparison, router) should join them.
+  #
+  # ADR-0040 already settled who answers that: *"the spec owns the number ... a change to it is a
+  # spec amendment with its own reasoning, not a side effect of the run that first measured it."*
+  # So this job measures and does not gate. `--min-msi=0` is the honest spelling of that: the score
+  # can be anything and this job will not fail for it.
+  #
+  # What it DOES fail on is being unable to produce a number. `tools/mutation_scope_report.py`
+  # exits non-zero on a missing, unparseable or empty log, and — the check that matters — when its
+  # own re-implementation of Infection's MSI formula disagrees with the `stats.msi` Infection
+  # wrote. A table of plausible, wrong per-namespace numbers is exactly what a maintainer would
+  # then set a spec floor from, so the run refuses rather than prints it.
+  #
+  # Nightly rather than per-PR because it mutates the whole tree: strictly more work than the
+  # gating run, for information nobody needs at merge time.
+  # ---------------------------------------------------------------------------
+  mutation-scope:
+    name: nightly / full-tree mutation score (advisory)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check for the full-tree config (job self-enables when it lands)
+        id: cfg
+        shell: bash
+        run: |
+          if [ -f infection-fulltree.json5 ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Full-tree mutation pending::No infection-fulltree.json5 yet, so the advisory mutation job is skipped."
+          fi
+
+      - name: Set up PHP
+        if: steps.cfg.outputs.present == 'true'
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: pcov   # Infection needs a coverage driver; this is the measurement, not a budget
+
+      - name: Install dependencies
+        if: steps.cfg.outputs.present == 'true'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Infection outside this package's dependency graph
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/mutation-tool"
+          # ADR-0040's arrangement and ADR-0031's constraint, both unchanged: Infection's PHP floor
+          # is above this library's 8.1, and a tool that changes its own findings between runs
+          # makes a measurement unreviewable. `--no-plugins` because infection/extension-installer
+          # would otherwise want an allow-plugins prompt.
+          composer require --working-dir="$RUNNER_TEMP/mutation-tool" \
+            --no-interaction --no-plugins "infection/infection:^0.34"
+
+      - name: Measure the full tree (advisory — the score never fails this job)
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          # --min-msi=0 states the advisory posture in the command rather than leaving it to a
+          # comment: there is no floor here to fail against, deliberately.
+          php "$RUNNER_TEMP/mutation-tool/vendor/bin/infection" \
+            --configuration=infection-fulltree.json5 \
+            --min-msi=0 \
+            --no-progress \
+            --no-interaction \
+            -j2
+
+      - name: Split the result per namespace
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          # This is the step that can fail, and the only one that should: it refuses a log it
+          # cannot read, and refuses its own arithmetic when that disagrees with Infection's.
+          python3 tools/mutation_scope_report.py build/logs/infection-fulltree.json \
+            | tee build/logs/mutation-scope.txt
+
+          {
+            echo "### Full-tree mutation score, per namespace (advisory)"
+            echo
+            echo '```'
+            cat build/logs/mutation-scope.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the full-tree reports
+        if: steps.cfg.outputs.present == 'true' && always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: mutation-fulltree-${{ github.run_number }}
+          path: build/logs/infection-fulltree*
+          if-no-files-found: warn
+          retention-days: 90

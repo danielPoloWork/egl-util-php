@@ -44,6 +44,7 @@
 /composer.lock export-ignore
 /deptrac.yaml export-ignore
 /infection.json5 export-ignore
+/infection-fulltree.json5 export-ignore
 /phpbench.json.dist export-ignore
 /phpstan.neon export-ignore
 /phpunit.xml.dist export-ignore
