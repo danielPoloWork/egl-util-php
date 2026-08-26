@@ -62,7 +62,7 @@ final class MutationBuilder
      *
      * @throws DatabaseException if the table or a column fails the allowlist, or `$values` is empty
      */
-    public static function insert(DatabaseConnection $connection, string $table, array $values): self
+    public static function insert(Connection $connection, string $table, array $values): self
     {
         $identifiers = Identifier::forDriver($connection->driver());
         $quotedTable = $identifiers->quote($table);
@@ -114,7 +114,7 @@ final class MutationBuilder
      * @throws DatabaseException if an identifier fails the allowlist, or either array is empty
      */
     public static function update(
-        DatabaseConnection $connection,
+        Connection $connection,
         string $table,
         array $values,
         array $criteria,
@@ -158,7 +158,7 @@ final class MutationBuilder
      *
      * @throws DatabaseException if an identifier fails the allowlist, or `$criteria` is empty
      */
-    public static function delete(DatabaseConnection $connection, string $table, array $criteria): self
+    public static function delete(Connection $connection, string $table, array $criteria): self
     {
         $identifiers = Identifier::forDriver($connection->driver());
         $quotedTable = $identifiers->quote($table);

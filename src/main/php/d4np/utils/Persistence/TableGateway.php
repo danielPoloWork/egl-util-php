@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace D4np\Utils\Persistence;
 
-use D4np\Utils\Database\DatabaseConnection;
+use D4np\Utils\Database\Connection;
 use D4np\Utils\Database\Identifier;
 use D4np\Utils\Database\MutationBuilder;
 use D4np\Utils\Database\Operator;
@@ -113,7 +113,7 @@ class TableGateway extends Repository
      * @throws DatabaseException if the table name fails the allowlist
      */
     public function __construct(
-        DatabaseConnection $connection,
+        Connection $connection,
         private readonly string $table,
         private readonly string $dtoClass,
         private readonly string $key = 'id',
@@ -258,7 +258,7 @@ class TableGateway extends Repository
      * things per driver — an empty string on some, a sequence name argument on PostgreSQL, and
      * nothing useful after a multi-row insert — so a gateway that returned it would be promising
      * portability it cannot keep. A caller that needs it reaches the real PDO through
-     * {@see DatabaseConnection::pdo()}, which is the escape hatch that exists for this.
+     * {@see Connection::pdo()}, which is the escape hatch that exists for this.
      *
      * @param array<array-key, mixed> $values column name => value
      *

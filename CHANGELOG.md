@@ -17,6 +17,33 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **The database boundary is now a seam: `D4np\Utils\Database\Connection`** — issue #113,
+  **ADR-0072**. `DatabaseConnection` implements it, and `Repository`, `TableGateway`,
+  `QueryBuilder`, `MutationBuilder` and `Transaction` all accept the interface, so a consumer can
+  unit-test their own repository without running a database. Every other I/O boundary in the
+  library already had a seam (`Transport`, `SessionApi`, `MailApi`, `RateLimitStore`); the one
+  consumers write the most code against did not.
+  **Additive in every direction.** No signature refuses anything it used to take,
+  `DatabaseConnection` stays `final` with the same constructor and the same four pinned defaults
+  (ADR-0014), and the per-PR BC report checks it against the frozen `v1.0.0` surface.
+  Two decisions worth knowing about: `pdo()` **is** on the interface, because `Repository` builds a
+  `Transaction` and a connection a repository cannot transact on would not fit the class the
+  interface was extracted from — a read-oriented fake may simply throw from it, since nothing on a
+  read or write path calls it. And `Transaction` is now generic over its connection, so an existing
+  closure typed `function (DatabaseConnection $db)` keeps type-checking; without that the change
+  would have broken consumers' static analysis while Roave, which cannot see docblocks, reported
+  green.
+  **What a fake does not inherit:** real prepares, `ERRMODE_EXCEPTION`, `utf8mb4`. Those are
+  properties of `DatabaseConnection` pinning them on a PDO, not of the interface — which is why
+  this library's own injection suites keep running against a real engine.
+  **One narrow incompatibility, stated rather than buried:** `Repository::$connection` is
+  `protected` and its declared type widened. No subclass can assign to it (`readonly`), and reading
+  it to call any of the five methods is unaffected — but a subclass that *re-exposes* it, say
+  `function connection(): DatabaseConnection`, must widen that return type. Everything else the BC
+  report flags is Roave being literal: it compares against v1.0.0, where `DatabaseConnection`
+  implemented nothing, so it cannot see that the supertype each parameter widened to is one the
+  same release gives the class. ADR-0072 works through all eleven findings.
+
 - **The BC checker now also runs report-only on every PR, against the frozen `v1.0.0` surface** —
   issue #112, **ADR-0031** annotated. The gate is unchanged: it still runs on release PRs only and
   still asks *"are these breaks allowed in this bump?"*. The new run asks a different question —
