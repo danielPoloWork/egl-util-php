@@ -94,12 +94,35 @@ header whenever `--order-by=random` is used; reproduce a specific run locally wi
 vendor/bin/phpunit --order-by=random --random-order-seed=<N>
 ```
 
-**A failure in that cell alone is coupling, not flake.** The three default-order cells already
-prove the suite passes; if only `random-order` goes red, a test's outcome changed with the order
-it ran in — shared static state, a filesystem leftover from an earlier test, or an assumption
-about what ran before it. **Do not re-run it into silence.** Reproduce with the printed seed,
-find the shared state, and fix the coupling (or, if the two tests are asserting the same global
-resource by design, make that assumption explicit rather than order-dependent).
+**A failure in that cell alone is not a flake to re-run.** The three default-order cells already
+prove the suite passes; if only `random-order` goes red, a test's outcome changed with the order it
+ran in. **Do not re-run it into silence.** Reproduce with the printed seed, and expect one of two
+diagnoses — they are not the same problem and do not have the same fix:
+
+1. **Coupling.** Shared static state, a filesystem leftover from an earlier test, an assumption about
+   what ran before — or a **shared external process** one test leaves busy. Fix the shared state.
+2. **Timing fragility.** A test whose wall-clock margin is thin enough that its neighbours' load
+   decides the outcome. It would flake in declaration order too, given a busy enough runner. Widen
+   the margin.
+
+**The two look identical in the failure output and are told apart by the seed.** Re-run the printed
+seed: a failure that reproduces every time is coupling, because the order is fixed; one that comes
+and goes on the same seed is timing.
+
+The cell's first real failure is the worked example, and it was the first kind. Seed `1787753886`
+failed **deterministically** — three times out of three, and on unmodified code, which is what
+established it as pre-existing rather than introduced. `HttpClientLiveTest`'s tests share one
+`php -S` origin, and **`php -S` is single-threaded.** The silent-origin test's client gives up after
+0.4 s while the origin sleeps on for 1.6 s, so ~1.2 s of server-side sleep outlived the request that
+started it — longer than a neighbouring test's entire budget. Any order that scheduled the drip test
+straight after the silent one therefore failed, with the drip test's `fopen()` timing out against a
+server that was still asleep on someone else's request. It reported `produced no response` instead of
+`total time budget`, which reads like a bug in the client and was neither.
+
+The fix was to stop the origin over-sleeping (0.8 s, still twice the timeout it exists to exceed),
+not to widen the drip test's margin — the margin was a symptom. Worth internalising as the general
+shape: **a fixture that keeps working after the test abandoned it is shared state**, even though it
+looks like nothing more than a slow response.
 
 ## Before you open a PR
 

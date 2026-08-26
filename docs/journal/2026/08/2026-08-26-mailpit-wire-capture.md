@@ -102,3 +102,35 @@ run.
 So this leg confirms the prose it replaced, rather than correcting it — the opposite of the database
 leg, which found `PDO_PGSQL` truncating a bound parameter at its first NUL byte. Both outcomes are
 worth the job; only one of them is worth a bug fix, and knowing which is the point.
+
+## The other job on this PR went red, and that one found something
+
+`build / php-8.3 / random-order` — yesterday's cell, from issue #100 — failed on this PR. Its own
+documentation says a failure there is not a flake to re-run, so I did not.
+
+The first guess was wrong and worth recording as such. The failing test asserts that a *total* time
+budget stops a dripping origin; it reported `produced no response`, which is the **per-phase** timeout
+firing instead, and the obvious reading is a thin wall-clock margin on a loaded runner — especially
+since this test had already flaked twice. I widened the margin, and the reproduction stayed red.
+
+It stayed red because the failure was **deterministic for its seed**: three of three, and — the
+control that mattered — three of three on *unmodified* code too, which is what established it as
+pre-existing rather than something this PR introduced. A failure that reproduces on a fixed seed is
+not a timing accident; the order is doing it.
+
+`php -S` is **single-threaded**, and `HttpClientLiveTest`'s fourteen tests share one. The
+silent-origin test's client gives up after 0.4 s while the origin sleeps on for 1.6 s, so **1.2 s of
+server-side sleep outlives the request that started it** — longer than a neighbouring test's entire
+budget. Every order that put the drip test straight after the silent one failed, its `fopen()`
+timing out against a server still asleep on someone else's request. Declaration order happens to put
+the drip test first, which is why five months of green said nothing about it.
+
+The fix is to stop the origin over-sleeping (0.8 s, still twice the timeout it exists to exceed), not
+to widen the drip test's margin — the margin was the symptom. Seed `1787753886` now passes three of
+three, and ten fresh random orders pass.
+
+**Two corrections came out of it.** The #100 documentation offered one diagnosis for a red cell —
+coupling — and this failure looked like the other one, timing; it now names both and, more usefully,
+says how to tell them apart: re-run the seed, because coupling reproduces and timing does not. And
+the generalisable lesson is worth more than the fix: **a fixture that keeps working after the test
+abandoned it is shared state**, even when it presents as nothing but a slow response.

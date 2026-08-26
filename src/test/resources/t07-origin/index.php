@@ -41,8 +41,23 @@ switch ($mode) {
         break;
 
     // Accepts the connection and says nothing at all until well past a short per-phase timeout.
+    //
+    // 0.8s, not the 1.6s this used to sleep, and the reason is that `php -S` is SINGLE-THREADED.
+    // Its caller gives up after 0.4s, but the sleep keeps running here — so every millisecond of
+    // sleep left over after the client has left is time the server cannot serve anyone, and the
+    // next test's request queues behind it.
+    //
+    // At 1.6s that leftover was ~1.2s, which is longer than a neighbouring test's whole time
+    // budget. The #100 random-order cell found it: any order that scheduled the drip test straight
+    // after this one failed **deterministically** for that seed, with the drip test's `fopen()`
+    // blowing its per-phase timeout while waiting for a server still asleep here. Reproduce with
+    // `--order-by=random --random-order-seed=1787753886`, which was red on this file's previous
+    // contents and is green on these.
+    //
+    // 0.8s is still 2x the 0.4s timeout it exists to exceed, so its own test is unchanged in
+    // meaning, and the leftover drops to ~0.4s.
     case 'silent':
-        \usleep(1_600_000);
+        \usleep(800_000);
         echo 'eventually';
 
         break;
