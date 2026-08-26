@@ -542,26 +542,71 @@ jobs:
           else
             echo "sha=$BASE" >> "$GITHUB_OUTPUT"
           fi
-      - name: Measure the base commit on this same runner
+      - name: Measure the base commit, then gate — retrying once on a control-subject breach (ADR-0057, issue #99)
         if: steps.cfg.outputs.present == 'true' && steps.base.outputs.sha != ''
         shell: bash
         run: |
+          set -e
           git worktree add ../baseline "${{ steps.base.outputs.sha }}"
-          cd ../baseline
-          composer install --no-interaction --prefer-dist --quiet
+          (cd ../baseline && composer install --no-interaction --prefer-dist --quiet)
           # Written back into the HEAD workspace so both reports sit side by side.
-          vendor/bin/phpbench run --progress=none --dump-file="$GITHUB_WORKSPACE/build/logs/base.xml"
-      - name: Regression gate — NFR-06's 10% budget
-        if: steps.cfg.outputs.present == 'true' && steps.base.outputs.sha != ''
-        shell: bash
-        run: |
-          python3 tools/bench_regression_gate.py build/logs/base.xml build/logs/head.xml \
-            --max-regression 10 \
-            --exclude "FileSequenceBench::benchSequenceNext" \
-            --exclude "HashBench::benchMakeArgon2id" \
-            --exclude "HashBench::benchVerifyArgon2id" \
-            --control "RowNormalizerBench::benchInlineTrimHundredRows" \
-            --control "LoggingBench::benchSinkDirectly"
+          (cd ../baseline && vendor/bin/phpbench run --progress=none --dump-file="$GITHUB_WORKSPACE/build/logs/base.xml")
+
+          # One function so both attempts run the IDENTICAL command. Item 12.4, the incident
+          # ADR-0057 was written from, was the same commit failing two different gates on two
+          # different runs -- the gate call itself is the one thing that must not vary between
+          # attempts, or a difference in the command would confound a difference in the runner.
+          gate() {
+            python3 tools/bench_regression_gate.py build/logs/base.xml build/logs/head.xml \
+              --max-regression 10 \
+              --exclude "FileSequenceBench::benchSequenceNext" \
+              --exclude "HashBench::benchMakeArgon2id" \
+              --exclude "HashBench::benchVerifyArgon2id" \
+              --control "RowNormalizerBench::benchInlineTrimHundredRows" \
+              --control "LoggingBench::benchSinkDirectly"
+          }
+
+          set +e
+          gate
+          CODE=$?
+          set -e
+
+          # Exit 2 -- ADR-0057's "INVALID": a control subject moved past the threshold, so
+          # nothing else this run measured can be trusted either. This is the ONE code this step
+          # retries, and it retries it exactly once (issue #99's own acceptance criterion).
+          if [ "$CODE" -eq 2 ]; then
+            echo "::warning title=Control breach — retrying once (ADR-0057, issue #99)::A control subject (a benchmark calling no code this project owns) moved past the regression threshold, so this run's A/B is not trustworthy. Re-measuring HEAD and the base commit once, together, before treating anything else this run reported as real."
+
+            # Re-measured TOGETHER, in this order, on the retry too -- not just the base commit.
+            # ADR-0030's noise argument depends on base and HEAD being measured SEQUENTIALLY on
+            # one runner; gating a freshly re-measured base against the FIRST attempt's (now
+            # stale) head.xml would not be that comparison, only a different, equally invalid one.
+            vendor/bin/phpbench run --report=aggregate --dump-file=build/logs/head.xml
+            (cd ../baseline && vendor/bin/phpbench run --progress=none --dump-file="$GITHUB_WORKSPACE/build/logs/base.xml")
+
+            set +e
+            gate
+            CODE=$?
+            set -e
+
+            if [ "$CODE" -eq 2 ]; then
+              echo "::error title=Control breached twice in a row::ADR-0057's retry budget is exactly one attempt (issue #99). Two consecutive invalidated runs on the same control subject(s) is unlikely to be one-off runner noise -- investigate the runner or the control subjects themselves rather than re-running again."
+              exit 1
+            fi
+          fi
+
+          # Exit 1 -- a real regression (or a config error the gate itself already explained in
+          # its own FAIL message above) -- is NEVER retried, on either attempt: ADR-0057's whole
+          # point is that this code means something different from exit 2, and retrying it would
+          # erase the distinction the gate exists to draw.
+          case "$CODE" in
+            0) exit 0 ;;
+            1) exit 1 ;;
+            *)
+              echo "::error title=Unexpected exit code from bench_regression_gate.py::Got $CODE, which is neither 0 (pass), 1 (real failure) nor 2 (invalid run) — bench_regression_gate.py's own contract, so this is a bug in the gate or in this step, not a benchmark result."
+              exit 1
+              ;;
+          esac
       - name: Keep the reports
         if: steps.cfg.outputs.present == 'true' && always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
