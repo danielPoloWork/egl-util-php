@@ -17,6 +17,26 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A nightly taint-analysis job (Psalm `--taint-analysis`)** — issue #103, **ADR-0073**. PHPStan
+  runs at max level and carries real security weight here (`SqlStatement::literal()` takes a
+  `literal-string`, which *proves* no runtime value is in that SQL text), but PHPStan does no taint
+  tracking: it can say "this string is a literal", not "this string came from `$_GET` and reached
+  `PDO::prepare()` eleven calls later." A scheduled job now asks the second question across
+  Database, Http and Mail, with Psalm installed outside the 8.1 dependency graph the way the BC
+  checker and Infection already are (ADR-0031/ADR-0040).
+  **`SqlStatement::composed()` gained a `@psalm-taint-sink sql $sql` annotation, and it is the part
+  that made the job worth running.** Out of the box Psalm did *not* see a `$_GET` value concatenated
+  into SQL and passed through `composed()` — the taint is lost at that value object's boundary, and
+  a planted flow came back clean. `composed()` is the one documented door where `literal-string` is
+  given up on purpose (ADR-0041), and its docblock asks the caller to assert that nothing from
+  outside the program is in the text; the annotation turns that assertion into something a machine
+  refuses. PHPStan ignores the tag, so it costs nothing at max level. No production behaviour
+  changes.
+  The two baselined findings are both `ExceptionHandler`'s debug branch — real flows, correctly
+  traced, gated by a `$debug` boolean that defaults to false (ADR-0029) and that taint analysis
+  cannot model as a sanitiser. Their triage, and what would invalidate it, is in
+  [`docs/security/taint-analysis.md`](docs/security/taint-analysis.md).
+
 - **A control-subject breach in the benchmark gate now retries once, automatically** — issue #99,
   **ADR-0057** annotated. `bench_regression_gate.py` already distinguished an invalid run (exit
   `2`, a control subject moved past threshold so the whole A/B is untrustworthy) from a real

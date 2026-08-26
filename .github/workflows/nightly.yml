@@ -96,3 +96,92 @@ jobs:
           path: build/logs/nightly.xml
           if-no-files-found: error
           retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # Taint analysis (issue #103, ADR-0073).
+  #
+  # PHPStan at max level carries real security weight in this library -- `SqlStatement::literal()`
+  # takes a `literal-string`, which is a *proof* that no runtime value is in that SQL text -- but
+  # PHPStan does not do taint tracking. It can say "this string is a literal"; it cannot say "this
+  # string came from `$_GET` and reached `PDO::prepare()` eleven calls later." Psalm can, and this
+  # job asks it, across Database, Http and Mail.
+  #
+  # Nightly rather than per-PR, per the issue's "advisory at first". Nothing here blocks a merge --
+  # which is what "advisory" means -- but the job itself goes RED on any flow not in the triaged
+  # baseline, because a scheduled job that reports findings without failing is one nobody reads.
+  # Promoting it to a PR gate is a later decision the mechanism already supports: it exits non-zero
+  # today.
+  #
+  # Psalm is pinned to ^5.26, not 6.x, and the reason is reproducibility rather than caution:
+  # Psalm 6 requires PHP >= 8.3.16, which the maintainer's machine does not have, so a 6.x baseline
+  # could be generated in CI and never re-triaged by hand. A baseline nobody can regenerate where
+  # they can read the code is a baseline that rots. Revisit when the local floor moves.
+  # ---------------------------------------------------------------------------
+  taint:
+    name: nightly / taint analysis (Psalm)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Self-enables on the config, the same L-0010 guard `layering`, `mutation` and `benchmark`
+      # use: the job is inert until the config lands and needs no edit here when it does.
+      - name: Check for the taint config (job self-enables when it lands)
+        id: cfg
+        shell: bash
+        run: |
+          if [ -f psalm-taint.xml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Taint analysis pending::No psalm-taint.xml yet, so the taint job is skipped."
+          fi
+
+      - name: Set up PHP
+        if: steps.cfg.outputs.present == 'true'
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # The project's own dependencies, because psalm-taint.xml points `autoloader` at
+      # vendor/autoload.php -- Psalm resolves this library's classes through it.
+      - name: Install this package's own dependencies
+        if: steps.cfg.outputs.present == 'true'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Psalm outside this package's dependency graph
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/taint-tool"
+          # ADR-0031/ADR-0040's pattern and ADR-0031's reason: constrained rather than floating,
+          # because a tool that changes its own findings between runs makes a baseline
+          # unreviewable -- and this project's floor is PHP 8.1, which Psalm's own floor exceeds.
+          composer require --working-dir="$RUNNER_TEMP/taint-tool" \
+            --no-interaction "vimeo/psalm:^5.26"
+
+      - name: Source-to-sink taint analysis against the triaged baseline
+        if: steps.cfg.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          # --no-cache is deliberate: a cache carried between nights is one more way a run could
+          # go green having re-analysed nothing, and a fresh runner has nothing to reuse anyway.
+          # The baseline and its unused-entry check both come from psalm-taint.xml, so this
+          # command and the one in docs/security/taint-analysis.md are the same command.
+          php "$RUNNER_TEMP/taint-tool/vendor/bin/psalm" \
+            --config=psalm-taint.xml \
+            --taint-analysis \
+            --no-cache \
+            --no-progress \
+            --report=build/logs/taint.json
+
+      - name: Keep the taint report
+        if: steps.cfg.outputs.present == 'true' && always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: taint-report-${{ github.run_number }}
+          path: build/logs/taint.json
+          if-no-files-found: warn
+          retention-days: 90

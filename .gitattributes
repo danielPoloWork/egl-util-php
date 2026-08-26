@@ -47,4 +47,6 @@
 /phpbench.json.dist export-ignore
 /phpstan.neon export-ignore
 /phpunit.xml.dist export-ignore
+/psalm-taint.xml export-ignore
+/psalm-taint-baseline.xml export-ignore
 /docs export-ignore

@@ -291,7 +291,9 @@ vendor/bin/phpunit
 ```
 
 - **Toolchain:** Composer (PSR-4 autoload), PHPUnit, PHP-CS-Fixer (PSR-12), PHPStan (max level),
-  deptrac, Infection, phpbench.
+  deptrac, Infection, phpbench, and Psalm for **taint analysis only** — a nightly source-to-sink
+  check that PHPStan structurally cannot do, not a second type checker. See
+  [`docs/security/taint-analysis.md`](docs/security/taint-analysis.md).
 - **Supported platforms:** Linux (PHP 8.1, 8.2, 8.3).
 - **Engines:** SQLite, MySQL and PostgreSQL. The `Database` and `Persistence` suites run against
   SQLite by default and against a real server when you point them at one.
