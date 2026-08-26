@@ -152,6 +152,26 @@ jobs:
             > "$RUNNER_TEMP/release-body.md"
           echo "::notice title=Release body::Rendered $(wc -l < "$RUNNER_TEMP/release-body.md") lines from docs/releases/${{ github.ref_name }}.md with relative links rebased to this tag."
 
+      # SBOM (issue #98, ADR-0076). `cyclonedx/cyclonedx-php-composer` is a Composer plugin, not a
+      # standalone analyser — it reads *this* project's own `vendor/composer/installed.json`, so
+      # unlike Psalm/Infection it cannot be installed outside the dependency graph. Its `php ^8.1`
+      # floor matches this library's own floor exactly, so it carries no lowest-deps conflict and
+      # sits in `require-dev` like any other dev tool.
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      # --omit=dev: the SBOM describes what a consumer installs, not this repository's own
+      # tool-chain — dev-only packages (PHPStan, PHP-CS-Fixer, the SBOM generator itself, ...)
+      # never reach a consumer's vendor/ and have no place asserting supply-chain provenance here.
+      - name: Generate the CycloneDX SBOM
+        run: composer CycloneDX:make-sbom --output-format=XML --output-file="$RUNNER_TEMP/bom.xml" --omit=dev
+
       - name: Draft the release (a human publishes it)
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
@@ -161,6 +181,7 @@ jobs:
           # release_gate.py has already asserted the source file exists, so a missing one fails
           # earlier and with a better message than this action would give.
           body_path: ${{ runner.temp }}/release-body.md
+          files: ${{ runner.temp }}/bom.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

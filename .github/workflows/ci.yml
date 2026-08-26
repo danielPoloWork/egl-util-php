@@ -273,7 +273,7 @@ jobs:
       - run: vendor/bin/php-cs-fixer fix --dry-run --diff
       - run: vendor/bin/phpstan analyse
   hygiene:
-    name: quality / composer normalize + audit
+    name: quality / composer normalize + audit + require-checker
     runs-on: ubuntu-24.04
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
@@ -284,6 +284,22 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
       - run: composer normalize --dry-run
       - run: composer audit
+
+      # ComposerRequireChecker >=4.16 needs PHP >=8.2 — above this library's 8.1 floor (the
+      # `lowest-deps` job installs dev deps too), so it is installed outside the package's own
+      # dependency graph, the same throwaway-install pattern `nightly.yml` uses for Psalm and
+      # Infection (ADR-0031/ADR-0040). Issue #98's ask (#98): prove `require` matches the symbols
+      # actually reached — e.g. that `ext-fileinfo` is genuinely used, not a stale declaration.
+      - name: Install ComposerRequireChecker outside this package's dependency graph
+        run: |
+          mkdir -p "$RUNNER_TEMP/require-checker-tool"
+          composer require --working-dir="$RUNNER_TEMP/require-checker-tool" \
+            --no-interaction "maglnet/composer-require-checker:^4.16"
+
+      - name: Every used symbol is a declared requirement
+        run: |
+          "$RUNNER_TEMP/require-checker-tool/vendor/bin/composer-require-checker" check \
+            --config-file=composer-require-checker.json composer.json
   lowest-deps:
     name: quality / prefer-lowest install + test
     runs-on: ubuntu-24.04

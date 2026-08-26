@@ -42,6 +42,7 @@
 /SECURITY.md export-ignore
 /CHANGELOG.md export-ignore
 /composer.lock export-ignore
+/composer-require-checker.json export-ignore
 /deptrac.yaml export-ignore
 /infection.json5 export-ignore
 /infection-fulltree.json5 export-ignore

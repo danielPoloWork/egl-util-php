@@ -288,3 +288,32 @@ jobs:
           path: build/logs/infection-fulltree*
           if-no-files-found: warn
           retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # Scheduled composer audit (issue #98, ADR-0076).
+  #
+  # `ci.yml`'s `hygiene` job already runs `composer audit`, but only on a push or a PR diff — a CVE
+  # published against an already-vendored dependency during a quiet week (no commits, no PRs) goes
+  # unnoticed until the next one lands, whenever that is. This job asks the same question on a fixed
+  # clock instead of on a diff, so the answer no longer depends on there being a reason to ask it.
+  # ---------------------------------------------------------------------------
+  audit:
+    name: nightly / composer audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      # The committed `composer.lock` is what a consumer would actually get, so this audits it
+      # rather than a freshly re-resolved tree — the same lock `ci.yml`'s per-push audit reads.
+      - name: composer audit
+        run: composer audit

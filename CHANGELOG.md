@@ -17,6 +17,27 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A supply-chain hygiene batch: nightly `composer audit`, a require-checker gate, and an SBOM on
+  every release** — issue #98, **ADR-0076**, spec **r24**. Three additive changes from the
+  2026-08-09 Release Review Board. `composer audit` now also runs **nightly** (`nightly.yml`), not
+  only on a push or PR diff, so a CVE published against an already-vendored dependency during a
+  quiet week is caught inside a day. **ComposerRequireChecker** joins `ci.yml`'s `hygiene` job,
+  installed outside this package's own dependency graph (its `php >=8.2` floor exceeds this
+  library's `>=8.1`, the same throwaway-install pattern ADR-0031/ADR-0040 use for Roave/Psalm/
+  Infection) — it proves every symbol the source actually reaches is a declared `require`, the
+  `ext-fileinfo` example the issue names included. **Its first real run found two undeclared hard
+  dependencies**: `ext-filter` and `ext-session` had no runtime guard anywhere in the source, so
+  both now join `require` (spec **NFR-08**). `ext-openssl` and `ext-intl` were already
+  guarded — `Security\Crypto` already refuses construction without `ext-openssl`, `Str::slug()`
+  already falls back without `ext-intl` — so both join `ext-iconv` and `symfony/html-sanitizer` in
+  `suggest` instead, with a new `composer-require-checker.json` whitelisting exactly the symbols
+  each guard covers. `release.yml`'s `draft-release` job now
+  generates a **CycloneDX SBOM** (production dependencies only) from the tagged tree and attaches
+  it to the draft GitHub Release, which also makes `docs/workflow/release.md`'s boundary-table row
+  "Build & attach artifacts — CI" literally true. The issue's fourth item — a deliberate
+  `composer.lock` refresh cadence — was already met by the existing weekly, grouped
+  `dependabot.yml` composer config and needed no change. No production code changes.
+
 - **`egl/utils-psr18-bridge` — a PSR-18 HTTP client over `HttpClient`** (issue #93, **ADR-0075**,
   spec **03**). Ecosystem middleware and SDKs consume `Psr\Http\Client\ClientInterface`; until now
   a consumer wanting to hand them this library's client wrote the adapter themselves, and the
