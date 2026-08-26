@@ -17,6 +17,16 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A randomized-order CI cell to surface hidden inter-test coupling** — issue #100, **ADR-0077**,
+  spec **r25**. `ci.yml`'s `build` job gains a fourth matrix cell (`php-8.3 / random-order`)
+  running the full suite with `vendor/bin/phpunit --order-by=random`, alongside the three
+  unchanged declaration-order cells. PHPUnit 10 prints `Random Seed: <N>` in its own output header
+  with no extra flag, so the job's log already carries what's needed to reproduce a specific run
+  exactly (`--random-order-seed=<N>`). `docs/development/local-build.md` states the rule the
+  issue's second criterion asked for: a failure confined to this cell is **coupling, not flake**,
+  and the fix is to find the shared state, not to re-run. First local run (3,199 tests, seed
+  1787749415): all green, 9 skipped, 0 failed — no coupling found yet. No production code changes.
+
 - **A supply-chain hygiene batch: nightly `composer audit`, a require-checker gate, and an SBOM on
   every release** — issue #98, **ADR-0076**, spec **r24**. Three additive changes from the
   2026-08-09 Release Review Board. `composer audit` now also runs **nightly** (`nightly.yml`), not
