@@ -29,6 +29,7 @@
         "psr/log": "^3.0"
     },
     "require-dev": {
+        "cyclonedx/cyclonedx-php-composer": "^6.2",
         "deptrac/deptrac": "^4.4",
         "ergebnis/composer-normalize": "^2.44",
         "friendsofphp/php-cs-fixer": "^3.75",
@@ -57,6 +58,7 @@
     },
     "config": {
         "allow-plugins": {
+            "cyclonedx/cyclonedx-php-composer": true,
             "ergebnis/composer-normalize": true
         },
         "audit": {

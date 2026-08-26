@@ -3,7 +3,7 @@
 > Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
 > updates this spec in the same PR or adds an ADR superseding the relevant section.
 
-**Revision r23** — 2026-08-26. See [Revision history](#revision-history).
+**Revision r24** — 2026-08-26. See [Revision history](#revision-history).
 
 ## 1. Objective & Business Context
 
@@ -85,7 +85,7 @@ MailException).
 - NFR-04 Memory: hydrating 10 000 DTOs <= 16 MB peak delta
 - NFR-05 Hash::make (Argon2id defaults): 50-200 ms on the reference machine (deliberately slow; documented for capacity planning)
 - NFR-06 Benchmark methodology: phpbench, 10 iterations x 100 revs, 5% retry threshold, PHP 8.3 CLI with OPcache+JIT off, reference machine Ryzen 7 5800X, harness in bench/, nightly CI; regression > 10% fails
-- NFR-07 Quality gates: PHPUnit line coverage >= 90%; Infection mutation score >= 70% on Security/Database/Dto namespaces; PHPStan max level; deptrac layer rules; composer-normalize; composer audit; roave/backward-compatibility-check on release PRs; a nightly **advisory** full-tree mutation measurement reports every namespace's own score and gates none of them (issue #108, ADR-0074) — the gated scope remains the three namespaces named above until a revision of this requirement says otherwise
+- NFR-07 Quality gates: PHPUnit line coverage >= 90%; Infection mutation score >= 70% on Security/Database/Dto namespaces; PHPStan max level; deptrac layer rules; composer-normalize; composer audit; ComposerRequireChecker (every symbol used in source is a declared `require`); roave/backward-compatibility-check on release PRs; a nightly **advisory** full-tree mutation measurement reports every namespace's own score and gates none of them (issue #108, ADR-0074) — the gated scope remains the three namespaces named above until a revision of this requirement says otherwise; `composer audit` also runs **nightly**, independent of any push or PR, so a CVE published against an already-vendored dependency is caught inside a day rather than at the next commit (issue #98, ADR-0076); a CycloneDX SBOM (production dependencies only) is generated and attached to every draft GitHub Release (issue #98, ADR-0076)
 - NFR-08 Dependency policy: no third-party implementation dependencies in the core (php>=8.1 + ext-pdo + ext-fileinfo; interface-only psr/container and psr/log excepted — RFC-0001 R-3 correction); symfony/html-sanitizer and the PSR-7 bridge are optional
 
 **r3 addendum (RFC-0002)** — advisory until first measured under the NFR-06/ADR-0030 harness:
@@ -189,6 +189,7 @@ non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.y
 
 | Rev | Date | Change |
 |-----|------|--------|
+| r24 | 2026-08-26 | §3/NFR-07: supply-chain hygiene batch from the 2026-08-09 Release Review Board (issue **#98**, **ADR-0076**). Three additive clauses: `composer audit` now also runs **nightly** rather than only on a push or PR diff, so a CVE published against an already-vendored dependency during a quiet week is caught inside a day; **ComposerRequireChecker** joins the PR-time gate, proving every symbol the source actually reaches is a declared `require` rather than an implicit transitive dependency; and a **CycloneDX SBOM** (production dependencies only) is generated from the tagged tree and attached to every draft GitHub Release, which is also what makes `docs/workflow/release.md`'s boundary-table row "Build & attach artifacts — CI" literally true for the first time. The batch's fourth checklist item — a deliberate `composer.lock` refresh cadence — was found already satisfied by the existing weekly, grouped `dependabot.yml` composer config and needed no change. |
 | r1 | 2026-08-03 | Frozen from the imported `.specs/d4np-php.md` v2.0 via RFC-0001 (naming mapping A-7). |
 | r2 | 2026-08-05 | §6/T-03: the `hash_equals` **timing test** is replaced by a **mechanism assertion**. Rationale below; see [ADR-0027](../adr/0027-constant-time-comparison-is-asserted-by-mechanism-not-by-timing.md). |
 | r14 | 2026-08-07 | §2/FR-37: the transport requirement restated to what PHP's stream wrapper can deliver (item 11.1, **ADR-0049**). "Explicit connect/read timeouts" was not implementable — measured, the wrapper's single `timeout` covers connect *and* each read, re-arming every time bytes arrive, so it bounds no request on its own; FR-37 now asks for a per-phase timeout **and** a wall-clock ceiling. The same revision writes down what was implicit: TLS options stated rather than inherited (a fresh context carries none, and `stream_context_set_default()` decides them), redirects off by default, http/https only, and a response returned for every status the origin produced. |

@@ -62,8 +62,10 @@ pre-1.0 milestone-driven.
     would not resolve. The tool **refuses (exit 2)** on a relative link whose target is missing,
     rather than shipping a 404 to every consumer, so a dangling link fails the release instead of
     reaching it. `tools/tests/verify_release_body.py` proves both behaviours and runs on every PR.
-    No build artifacts are attached: the release IS the tagged source (`composer require` resolves
-    it via the Packagist integration, item 2 above), not a downloadable binary.
+    The release is still the tagged source (`composer require` resolves it via the Packagist
+    integration, item 2 above), not a downloadable binary — but `draft-release` also attaches a
+    **CycloneDX SBOM** (`bom.xml`, production dependencies only) as a release asset (issue #98,
+    ADR-0076), generated from the tagged tree's own `composer.lock` in the same job.
 
     **Do not hand-edit a published Release body.** It is generated from the notes file, so an edit
     made on GitHub is overwritten by the next render and lost from the record. Correct
