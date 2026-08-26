@@ -25,7 +25,13 @@ the GitHub Release body. Editing "the release notes" almost always means that on
   installed outside this package's own dependency graph (its `php >=8.2` floor exceeds this
   library's `>=8.1`, the same throwaway-install pattern ADR-0031/ADR-0040 use for Roave/Psalm/
   Infection) — it proves every symbol the source actually reaches is a declared `require`, the
-  `ext-fileinfo` example the issue names included. `release.yml`'s `draft-release` job now
+  `ext-fileinfo` example the issue names included. **Its first real run found two undeclared hard
+  dependencies**: `ext-filter` and `ext-session` had no runtime guard anywhere in the source, so
+  both now join `require` (spec **NFR-08**). `ext-openssl` and `ext-intl` were already
+  guarded — `Security\Crypto` already refuses construction without `ext-openssl`, `Str::slug()`
+  already falls back without `ext-intl` — so both join `ext-iconv` and `symfony/html-sanitizer` in
+  `suggest` instead, with a new `composer-require-checker.json` whitelisting exactly the symbols
+  each guard covers. `release.yml`'s `draft-release` job now
   generates a **CycloneDX SBOM** (production dependencies only) from the tagged tree and attaches
   it to the draft GitHub Release, which also makes `docs/workflow/release.md`'s boundary-table row
   "Build & attach artifacts — CI" literally true. The issue's fourth item — a deliberate

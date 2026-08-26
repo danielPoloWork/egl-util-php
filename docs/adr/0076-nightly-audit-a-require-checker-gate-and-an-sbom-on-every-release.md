@@ -65,6 +65,26 @@ The check itself (`composer-require-checker check composer.json`) is a **missing
 scanner: every symbol the source actually reaches must be a declared `require`. It is what proves
 `ext-fileinfo` is genuinely used rather than a stale declaration — the issue's own example.
 
+**The first real run found four undeclared symbols, not zero.** `ext-filter` (`filter_var` and its
+`FILTER_*` constants, reached from `Http\Request`, `Mail\EmailAddress` and `Support\Env`) and
+`ext-session` (every `session_*` function, reached from the `Http` session classes) had **no
+runtime guard anywhere in the source** — a missing extension there is a fatal `Error`, not a
+handled failure, so both join `ext-pdo`/`ext-fileinfo` in `require` (NFR-08 amended alongside
+NFR-07). `ext-openssl` (`Security\Crypto`) and `ext-intl` (`Str::slug()`'s ICU tier,
+`transliterator_transliterate`) are different: both were **already guarded** —
+`Crypto::__construct()` already calls `extension_loaded('openssl')` and throws `CryptoException`
+before either `openssl_encrypt()` or `openssl_decrypt()` is reachable, and `Str::slug()` already
+falls through `viaIntl()` → `viaIconv()` → `viaAsciiFilter()`, `viaIntl()` returning `null` via
+`function_exists('transliterator_transliterate')` when the extension is absent. Declaring either as
+a hard `require` would misstate a dependency the code already treats as optional, so both join
+`ext-iconv` and `symfony/html-sanitizer` in `suggest` instead, and `composer-require-checker.json`
+whitelists exactly the symbols each guard covers (`openssl_encrypt`, `openssl_decrypt`,
+`OPENSSL_RAW_DATA`, `iconv`, `transliterator_transliterate`, and the two
+`Symfony\Component\HtmlSanitizer` classes `Sanitizer::richText()` already suggests). The config
+file copies the tool's own default `php-core-extensions` list rather than omitting it — the tool's
+own documentation warns that a partial config silently drops the defaults, which would reopen
+false positives on `true`/`false`/`self` and the like.
+
 ### 3. CycloneDX SBOM, *inside* the dependency graph (`release.yml`, `composer.json`)
 
 `cyclonedx/cyclonedx-php-composer` is not a standalone analyser like Psalm or Infection — it is a
@@ -124,10 +144,14 @@ supply-chain provenance for it.
 - **`composer.lock` grows by seven packages** (`cyclonedx/cyclonedx-php-composer` and its own
   dependency tree) in `require-dev` only — no change to the runtime-resolved tree a consumer
   installs.
-- **Known limit:** the require-checker's default configuration ships with this PR unmodified; if
-  the first real CI run surfaces a false positive specific to this codebase (a symbol resolvable
-  only through a suggested-but-optional extension, for instance), that is a follow-up config
-  addition, not a defect in the approach.
+- **`require` gains two platform packages** (`ext-filter`, `ext-session`) and `suggest` gains two
+  more (`ext-intl`, `ext-openssl`) — a stricter, more honest statement of this library's actual
+  platform surface than existed before this PR, not a new runtime dependency: every consumer
+  already had these extensions loaded, because the code already called into them unconditionally.
+- **Known limit:** the check runs against this codebase's current source only. A future symbol
+  reached from a new extension will fail the gate the same way `ext-filter`/`ext-session` would
+  have failed it had this PR existed sooner — which is the point of adding it now rather than
+  after the next undeclared dependency ships.
 
 ## References
 

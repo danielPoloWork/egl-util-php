@@ -297,7 +297,9 @@ jobs:
             --no-interaction "maglnet/composer-require-checker:^4.16"
 
       - name: Every used symbol is a declared requirement
-        run: "\"$RUNNER_TEMP/require-checker-tool/vendor/bin/composer-require-checker\" check composer.json"
+        run: |
+          "$RUNNER_TEMP/require-checker-tool/vendor/bin/composer-require-checker" check \
+            --config-file=composer-require-checker.json composer.json
   lowest-deps:
     name: quality / prefer-lowest install + test
     runs-on: ubuntu-24.04

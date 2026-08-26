@@ -23,7 +23,9 @@
     "require": {
         "php": ">=8.1",
         "ext-fileinfo": "*",
+        "ext-filter": "*",
         "ext-pdo": "*",
+        "ext-session": "*",
         "psr/clock": "^1.0",
         "psr/container": "^2.0",
         "psr/log": "^3.0"
@@ -41,6 +43,8 @@
     },
     "suggest": {
         "ext-iconv": "Required by Str::transcode() (spec r3 FR-31); also improves Str::slug() transliteration when ext-intl is absent. transcode() raises a clear UtilsException if called without it, rather than degrading silently.",
+        "ext-intl": "Improves Str::slug() transliteration over the ext-iconv fallback above; not required by any other symbol. Str::slug() degrades to the ext-iconv path rather than failing if this is absent.",
+        "ext-openssl": "Required by Security\\Crypto for AES-256-GCM. Crypto refuses at construction with a clear CryptoException if this is absent, rather than degrading to a weaker cipher (see Crypto's own docblock).",
         "symfony/html-sanitizer": "Required by Sanitizer::richText() to sanitize user-authored HTML (spec FR-09b). Not needed unless you render untrusted markup; richText() raises a clear UtilsException if it is called without this installed, rather than returning the input unsanitized."
     },
     "minimum-stability": "stable",
