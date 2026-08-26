@@ -17,6 +17,22 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A nightly advisory full-tree mutation run, and every namespace's score with it** — issue #108,
+  **ADR-0074**, spec **r23**. `infection.json5` gates three namespaces at NFR-07's 70% floor;
+  #108 asked whether `Persistence` (data-mapping, injection-adjacent) and `Http` should join. The
+  answer was not available — nobody knew what `Persistence` scored — and ADR-0040 had already ruled
+  that the spec owns that number, so this measures rather than legislates.
+  One full-tree run now feeds `tools/mutation_scope_report.py`, which splits it per namespace by
+  grouping Infection's own JSON log; a matrix leg per namespace would have re-run the suite once per
+  leg for information the first run already contained. The reporter **re-checks its own arithmetic
+  against Infection's `stats.msi`** and prints no table when the two disagree, because a plausible
+  wrong number is exactly what a spec floor would then be set from.
+  **What it found:** overall **81.29%**; `Persistence` **75.84%** and `Http` **88.89%** would both
+  clear a 70% floor today (the five namespaces together score 81.09%), while a **full-tree gate
+  would fail immediately** — `Mail` is the one namespace under the floor at **68.18%**. The gated
+  scope is deliberately unchanged; widening it is a spec amendment and the maintainer's decision.
+  No production code changes.
+
 - **A nightly taint-analysis job (Psalm `--taint-analysis`)** — issue #103, **ADR-0073**. PHPStan
   runs at max level and carries real security weight here (`SqlStatement::literal()` takes a
   `literal-string`, which *proves* no runtime value is in that SQL text), but PHPStan does no taint

@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-26 — The number nobody had, and the one namespace under the floor](2026/08/2026-08-26-mutation-scope.md)
 - [2026-08-26 — The analyser that found nothing, until it was told where to look](2026/08/2026-08-26-psalm-taint-analysis.md)
 - [2026-08-25 — The exit code ADR-0057 wrote, finally read by something other than a human](2026/08/2026-08-25-bench-control-breach-retry.md)
 - [2026-08-25 — The consumer ADR-0006 was waiting for](2026/08/2026-08-25-connection-seam.md)

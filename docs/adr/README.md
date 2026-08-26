@@ -89,3 +89,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0071](0071-one-dsn-points-the-behavioural-suites-at-an-engine-and-an-unreachable-one-is-red.md) | One DSN points the behavioural suites at an engine, and an unreachable one is red | Accepted |
 | [0072](0072-the-database-boundary-becomes-a-seam-and-the-escape-hatch-comes-with-it.md) | The database boundary becomes a seam, and the escape hatch comes with it | Accepted |
 | [0073](0073-a-nightly-taint-job-and-the-one-annotation-that-made-it-see-anything.md) | A nightly taint job, and the one annotation that made it see anything | Accepted |
+| [0074](0074-measure-every-namespace-nightly-and-leave-the-floor-to-the-spec.md) | Measure every namespace nightly, and leave the floor to the spec | Accepted |

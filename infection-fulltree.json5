@@ -1,0 +1,51 @@
+// Full-tree mutation configuration — the ADVISORY nightly run (issue #108).
+//
+// This is the second Infection config in the repository and the difference between the two is the
+// whole point, so it is stated here rather than left to a diff:
+//
+//   infection.json5           GATES three namespaces at NFR-07's >= 70% floor, on every PR.
+//   infection-fulltree.json5  MEASURES every namespace, nightly, and gates nothing.
+//
+// Issue #108 asks whether `Persistence` — data-mapping and injection-adjacent, per its own gateway
+// injection suite — and `Http` should join the floor. ADR-0040 already answered who decides that:
+// *"the spec owns the number ... a change to it is a spec amendment with its own reasoning, not a
+// side effect of the run that first measured it."* So this config deliberately sets no threshold.
+// It produces the figures the amendment needs; the amendment stays the maintainer's.
+//
+// No `$schema` key, for infection.json5's reason unchanged: the usual value points into
+// `vendor/infection/infection/`, and Infection is deliberately NOT a dependency of this package
+// (ADR-0040) — the binary comes from a throwaway project, so a vendor-relative reference dangles.
+{
+    // The whole library, which is exactly what `infection.json5` must never become. Widening THAT
+    // file would silently change what NFR-07's 70% means; widening this one changes nothing,
+    // because this one decides nothing.
+    source: {
+        directories: [
+            "src/main/php/d4np/utils"
+        ]
+    },
+    logs: {
+        // `json` is the one this run exists for: it records every mutant with its
+        // `originalFilePath`, which is what lets tools/mutation_scope_report.py split the result
+        // per namespace without running Infection once per namespace.
+        json: "build/logs/infection-fulltree.json",
+        text: "build/logs/infection-fulltree.txt",
+        perMutator: "build/logs/infection-fulltree-per-mutator.md"
+    },
+    // Stated rather than discovered, for the reason infection.json5 records at length: Infection's
+    // own finder bridges two vendor directories by heuristic and failed to on Windows.
+    phpUnit: {
+        customPath: "vendor/bin/phpunit"
+    },
+    // A separate cache directory from the gating run's. Sharing one would let a nightly full-tree
+    // run and a per-PR three-namespace run reuse each other's state, which is a class of
+    // cross-contamination nobody would think to look for when a number moved.
+    tmpDir: ".infection-fulltree.cache",
+    mutators: {
+        "@default": true
+    },
+    // Matches the gating config. `Hash`'s Argon2id path budgets 50-200 ms per call under NFR-05,
+    // and a mutant landing there needs headroom before it is reported as a timeout rather than as
+    // escaped or killed — and the full tree contains strictly more such paths, not fewer.
+    timeout: 30
+}
