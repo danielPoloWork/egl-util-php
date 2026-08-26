@@ -1,6 +1,19 @@
 # ADR-0057: Invalidate the run when a control subject moves past threshold
 
-- **Status:** Accepted
+- **Status:** Accepted — **the retry this ADR's own exit code was designed for is now automatic**
+  (2026-08-25, issue #99). This ADR gave exit `2` a distinct meaning specifically so *"re-run the
+  job"* could be an instruction a reader (or eventually tooling) could act on rather than a plain
+  failure indistinguishable from exit `1`. Until now that instruction was still followed by hand.
+  `ci.yml`'s benchmark job now consumes it directly: on exit `2` it re-measures HEAD and the base
+  commit **together** — not just one half, since ADR-0030's same-runner argument needs the two
+  halves adjacent in wall-clock time, and refreshing only one would trade one invalid comparison
+  for a different one — and re-runs the identical gate call exactly once. A second `2` in a row
+  fails loudly (`::error`, non-zero exit) rather than retrying again, on the reasoning that two
+  consecutive invalidated runs on the same control(s) is unlikely to be one-off noise. **Exit `1`
+  is still never retried, on either attempt** — the distinction between the two codes is the whole
+  point of this ADR, and automating a retry that blurred it would undo the decision while
+  technically satisfying "consume the exit code." Nothing about the gate script or the `--control`
+  mechanism itself changed.
 - **Date:** 2026-08-08
 - **Deciders:** tech-lead (agent-drafted), maintainer (merge)
 - **Related:** ROADMAP item **12.6**, filed from item 12.4 · spec NFR-06 ·

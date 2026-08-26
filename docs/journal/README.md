@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-25 — The exit code ADR-0057 wrote, finally read by something other than a human](2026/08/2026-08-25-bench-control-breach-retry.md)
 - [2026-08-25 — The consumer ADR-0006 was waiting for](2026/08/2026-08-25-connection-seam.md)
 - [2026-08-25 — The rejection that expired](2026/08/2026-08-25-bc-report-on-every-pr.md)
 - [2026-08-24 — One arm of the `match` had ever run](2026/08/2026-08-24-real-engine-database-leg.md)

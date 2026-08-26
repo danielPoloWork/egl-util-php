@@ -17,6 +17,18 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A control-subject breach in the benchmark gate now retries once, automatically** — issue #99,
+  **ADR-0057** annotated. `bench_regression_gate.py` already distinguished an invalid run (exit
+  `2`, a control subject moved past threshold so the whole A/B is untrustworthy) from a real
+  regression (exit `1`); CI treated both as a plain failure and left the documented remedy — a
+  re-run — a manual click. The benchmark job now consumes the distinction directly: on exit `2` it
+  re-measures HEAD **and** the base commit together, not just one half, because ADR-0030's
+  same-runner argument depends on the two halves being adjacent in wall-clock time — refreshing
+  only the base would trade one invalid comparison for a different one, not a valid one — then
+  re-runs the identical gate call exactly once. A second invalid run in a row fails loudly rather
+  than retrying again. **Exit `1` is never retried, on either attempt** — collapsing the two codes
+  back together would undo the reason ADR-0057 gave them different numbers.
+
 - **The database boundary is now a seam: `D4np\Utils\Database\Connection`** — issue #113,
   **ADR-0072**. `DatabaseConnection` implements it, and `Repository`, `TableGateway`,
   `QueryBuilder`, `MutationBuilder` and `Transaction` all accept the interface, so a consumer can
