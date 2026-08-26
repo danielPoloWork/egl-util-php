@@ -841,7 +841,7 @@ jobs:
   # green tick.
   # ---------------------------------------------------------------------------
   bridge-contract:
-    name: quality / PSR-7 bridge contract
+    name: quality / ${{ matrix.package }} contract (${{ matrix.psr7 }})
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     runs-on: ubuntu-24.04
@@ -849,9 +849,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Both PSR-17 implementations spec 02 §7 requires: one alone would let the contract
+        # Both PSR-17 implementations spec 02/03 §7 require: one alone would let the contract
         # silently encode that vendor's leniencies.
         psr7: [nyholm, guzzle]
+        # Every bridge package, since issue #93 added the second. A new package is one entry
+        # here and inherits the whole job rather than getting a copy of it.
+        package: [utils-psr7-bridge, utils-psr18-bridge]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -859,14 +862,14 @@ jobs:
         id: pkg
         shell: bash
         run: |
-          if [ ! -f packages/utils-psr7-bridge/composer.json ]; then
+          if [ ! -f packages/${{ matrix.package }}/composer.json ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Bridge package absent::packages/utils-psr7-bridge/composer.json does not exist, so there is nothing to test. This job enables itself when the package lands."
+            echo "::notice title=Bridge package absent::packages/${{ matrix.package }}/composer.json does not exist, so there is nothing to test. This job enables itself when the package lands."
             exit 0
           fi
-          if [ -z "$(find packages/utils-psr7-bridge/src/test -name '*Test.php' -print -quit 2>/dev/null)" ]; then
+          if [ -z "$(find packages/${{ matrix.package }}/src/test -name '*Test.php' -print -quit 2>/dev/null)" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Bridge contract suite pending::The package scaffold exists but carries no tests yet. The T-B conversion suite lands with roadmap item 8.2; this job runs it from then on."
+            echo "::notice title=Bridge contract suite pending::The package scaffold exists but carries no tests yet. Its contract suite runs from the moment one lands."
             exit 0
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -881,7 +884,7 @@ jobs:
 
       - name: Resolve the core from the working tree (workspace only — never committed)
         if: steps.pkg.outputs.ready == 'true'
-        working-directory: packages/utils-psr7-bridge
+        working-directory: packages/${{ matrix.package }}
         run: |
           composer config repositories.monorepo path ../../
           composer require "egl/utils:@dev" --no-update --no-interaction
@@ -889,7 +892,7 @@ jobs:
 
       - name: Prove the core really came from this checkout
         if: steps.pkg.outputs.ready == 'true'
-        working-directory: packages/utils-psr7-bridge
+        working-directory: packages/${{ matrix.package }}
         shell: bash
         run: |
           # Without this, a resolution that quietly fell back to a published egl/utils would make
@@ -903,7 +906,7 @@ jobs:
 
       - name: Pin the PSR-17 implementation under test
         if: steps.pkg.outputs.ready == 'true'
-        working-directory: packages/utils-psr7-bridge
+        working-directory: packages/${{ matrix.package }}
         run: |
           composer remove --dev --no-interaction --no-update \
             ${{ matrix.psr7 == 'nyholm' && 'guzzlehttp/psr7' || 'nyholm/psr7' }}
@@ -911,10 +914,10 @@ jobs:
 
       - name: Contract suite (${{ matrix.psr7 }})
         if: steps.pkg.outputs.ready == 'true'
-        working-directory: packages/utils-psr7-bridge
+        working-directory: packages/${{ matrix.package }}
         run: vendor/bin/phpunit
 
       - name: PHPStan (max) over the package
         if: steps.pkg.outputs.ready == 'true'
-        working-directory: packages/utils-psr7-bridge
+        working-directory: packages/${{ matrix.package }}
         run: vendor/bin/phpstan analyse --no-progress
