@@ -123,6 +123,35 @@ A passing test there is the evidence that D3 is load-bearing rather than superst
 starts failing, PHP's behaviour has changed and D3's justification needs re-reading — a finding, not
 a regression, and the docblock says so.
 
+## What the first run found
+
+CI run 32977655189, `ubuntu-24.04`, PHP 8.3, msmtp 1.8.24, Mailpit `v1.21`: **`OK (15 tests, 31
+assertions)`**, with the preflight reporting `sendmail_path: /usr/bin/msmtp -C /tmp/msmtprc -t -i`,
+Mailpit answering on the first attempt, and one preflight message captured before PHPUnit was given a
+turn. The count matters as much as the colour: fifteen *executed* tests is what distinguishes this
+from the green-having-sent-nothing failure §2 describes.
+
+Four claims that had never been re-checked since August now have a run behind them:
+
+1. **The folded subject survives — D5 is sound on a real wire.** This was the genuinely open
+   question. All four folded variants round-tripped (2-byte × 40, 3-byte × 30, 4-byte × 20, and the
+   mixed-width one), as did the four single-word ones. Note precisely what is proven: the subject
+   **decodes to what was written**. Whether PHP flattened the `CRLF` fold to spaces on the way — as
+   ADR-0056's probe table says it does to `$subject` — is *not* observable here and does not need to
+   be, because RFC 2047 §6.2 has a decoder ignore whitespace between adjacent encoded-words either
+   way. The design was correct; it had simply never been exercised.
+2. **D3's delivery claim holds.** A `bcc` address arrives as an envelope recipient and is absent from
+   the disclosed `To`/`Cc` fields.
+3. **D3 is still load-bearing.** The rejected string header block delivered the injected `Bcc`, so
+   PHP behaves today as it was probed in August, and the array form is buying something real.
+4. **D4's envelope sender arrives.** `mail()`'s fifth argument reaches the wire on a `sendmail` host,
+   distinguishable from msmtp's configured fallback because the two addresses are deliberately
+   different.
+
+Nothing needed fixing. That is the honest outcome of a leg whose purpose was to check claims rather
+than to change behaviour — and unlike the database leg, which found `PDO_PGSQL` truncating at a NUL
+byte (ADR-0071), this one confirms the prose it replaced.
+
 ## Alternatives Considered
 
 - **Assert the absence of a `Bcc:` header on the wire.** The obvious test; rejected in §1 because

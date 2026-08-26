@@ -84,11 +84,21 @@ No production code changed. Two fixtures, one suite, one CI job, and documentati
 suite skips and `vendor/bin/phpunit` is unchanged at 3 214 tests, 24 skipped, 0 failed; PHPStan and
 CS-Fixer are clean.
 
-**There is no Docker on this machine, so nothing here has met a real Mailpit.** The pipeline is
-three hops — PHP, msmtp, Mailpit — each of which has to be configured, and the preflight is built
-accordingly: it reads `sendmail_path` back rather than trusting the step that set it, polls the
-receiver rather than assuming a started container is a ready one, and sends one message end to end
-that must arrive before PHPUnit gets a turn, so a broken pipeline cannot let the negative
-assertions pass vacuously. Whatever the first run says about the folded subject is the finding, and
-it gets pinned in the PR rather than assumed away — the same discipline the last four PRs here have
-each had to apply to their own first real execution.
+There is no Docker on this machine, so nothing here had met a real Mailpit before CI did. The
+pipeline is three hops — PHP, msmtp, Mailpit — each of which has to be configured, and the preflight
+was built accordingly: it reads `sendmail_path` back rather than trusting the step that set it, polls
+the receiver rather than assuming a started container is a ready one, and sends one message end to
+end that must arrive before PHPUnit gets a turn, so a broken pipeline cannot let the negative
+assertions pass vacuously.
+
+**It worked on the first run** — `OK (15 tests, 31 assertions)`, fifteen *executed*, which is the
+number that distinguishes this from the failure mode the whole ADR is about. And the open question
+resolved in the design's favour: **the folded subject survives.** All four folded widths round-trip.
+What is proven is that the subject decodes to what was written; whether PHP flattened the `CRLF` fold
+to spaces on the way is not observable here and does not matter, because RFC 2047 §6.2 has a decoder
+ignore whitespace between adjacent encoded-words either way. D5 was right and had simply never been
+run.
+
+So this leg confirms the prose it replaced, rather than correcting it — the opposite of the database
+leg, which found `PDO_PGSQL` truncating a bound parameter at its first NUL byte. Both outcomes are
+worth the job; only one of them is worth a bug fix, and knowing which is the point.
