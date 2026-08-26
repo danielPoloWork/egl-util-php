@@ -93,3 +93,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0075](0075-a-psr18-client-over-httpclient-and-one-pipeline-for-every-bridge.md) | A PSR-18 client over HttpClient, and one pipeline for every bridge | Accepted |
 | [0076](0076-nightly-audit-a-require-checker-gate-and-an-sbom-on-every-release.md) | A nightly `composer audit`, a require-checker gate, and an SBOM on every release | Accepted |
 | [0077](0077-one-randomized-order-ci-cell-with-a-coupling-not-flake-rule.md) | One randomized-order CI cell, with a "coupling, not flake" rule attached | Accepted |
+| [0078](0078-a-wire-witness-for-t10-and-the-receiver-that-rewrites-the-evidence.md) | A wire witness for T-10, and the receiver that rewrites the evidence | Accepted |

@@ -56,6 +56,33 @@ vendor/bin/phpbench run --report=aggregate
 python tools/consistency_lint.py
 ```
 
+## The wire-capture mail leg (issue #101)
+
+T-10's fourth leg asserts what mail actually puts on the wire, and needs a receiver a checkout
+cannot provision. With no `EGL_TEST_MAILPIT_URL` set it **skips**, so `vendor/bin/phpunit` behaves
+exactly as it did. To run it:
+
+```bash
+docker run -d -p 1025:1025 -p 8025:8025 axllent/mailpit
+```
+
+Then start PHP with `mail()` pointed at a relay into that sink — `sendmail_path` is `PHP_INI_SYSTEM`,
+so it cannot be set from the suite — and run the group:
+
+```bash
+EGL_TEST_MAILPIT_URL=http://127.0.0.1:8025 vendor/bin/phpunit --group mail-wire
+```
+
+CI adds `--fail-on-skipped`, which is what makes a missing variable red rather than green. **The skip
+is raised per test, from `setUp()`, and must stay there:** a skip raised from `setUpBeforeClass()`
+becomes a skipped *suite* with zero executed tests, and `--fail-on-skipped` exits 0 on it (so does
+`--fail-on-empty-test-suite`) — see [ADR-0078](../adr/0078-a-wire-witness-for-t10-and-the-receiver-that-rewrites-the-evidence.md) §2.
+
+**Before adding an assertion, read that ADR's §1.** Mailpit rewrites the message it stores: it
+prepends a synthetic `Bcc:` header naming any envelope recipient the headers omit. So "no `Bcc:`
+header survived" fails against a pipeline that is working perfectly, and the correct assertion is its
+inverse.
+
 ## The randomized-order CI cell (issue #100)
 
 `ci.yml`'s `build` job runs one extra matrix cell — `php-8.3 / random-order` — with

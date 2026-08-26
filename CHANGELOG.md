@@ -17,6 +17,26 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **A wire-capture leg for T-10 — mail asserted against a real MTA** — issue #101, **ADR-0078**,
+  spec **r26**. T-10's three existing legs all stopped at the `MailApi` seam, which is the right
+  place for the array-header mechanism (ADR-0027) and the wrong place for anything about SMTP. Three
+  of ADR-0056's load-bearing claims had been settled by hand-probing a transport and writing the
+  result into prose. A new `mail-wire` CI job runs msmtp into a Mailpit sink and `WireCaptureTest`
+  asserts on the captured messages: a `bcc` recipient really is delivered as an envelope recipient,
+  RFC 2047 subjects decode back to what was written across 2-, 3- and 4-byte **and folded** widths
+  (the folded path had never been sent through a real `mail()` — the existing test uses a
+  six-character subject that never folds), the envelope sender arrives, and the string header block
+  ADR-0056 rejected really does deliver an injected `Bcc` — a counterfactual no test inside this
+  library's API could express, and the evidence that the array form is load-bearing.
+  **Two findings shaped the suite.** Mailpit *rewrites the message it stores*, prepending a synthetic
+  `Bcc:` header naming any envelope recipient the headers omit — so the obvious assertion ("no `Bcc:`
+  header survived") fails against a pipeline that is working perfectly, and the correct test is its
+  inverse. And **`--fail-on-skipped` does not see a suite skipped from `setUpBeforeClass()`**
+  (measured: exit 0, and so does `--fail-on-empty-test-suite`), so the guard ADR-0071 relies on would
+  have been inert here and a job whose `EGL_TEST_MAILPIT_URL` never arrived would have reported green
+  having sent no mail at all; the skip is raised per test from `setUp()` instead. No production code
+  changes; unconfigured runs skip and the default `vendor/bin/phpunit` is unchanged.
+
 - **A randomized-order CI cell to surface hidden inter-test coupling** — issue #100, **ADR-0077**,
   spec **r25**. `ci.yml`'s `build` job gains a fourth matrix cell (`php-8.3 / random-order`)
   running the full suite with `vendor/bin/phpunit --order-by=random`, alongside the three
