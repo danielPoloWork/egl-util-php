@@ -17,6 +17,14 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`Hash::strict()` — the fail-closed password-hashing construction, as a named entry point** —
+  issue #102, **ADR-0079**, spec **r27**. Equivalent to `new Hash(bcryptFallback: false)`: Argon2id,
+  or refuse to construct. The behaviour already existed as a boolean argument a caller had to know
+  about; this makes the safe posture discoverable in the class's own API listing. **It does not
+  change `new Hash()`**, which stays permissive because the 1.0 surface is frozen (ADR-0059) — a
+  logger-less construction still degrades to bcrypt quietly on an Argon2-less build, which is now
+  named as a hazard in the docblock and recorded as a 2.0 candidate rather than papered over.
+
 - **A wire-capture leg for T-10 — mail asserted against a real MTA** — issue #101, **ADR-0078**,
   spec **r26**. T-10's three existing legs all stopped at the `MailApi` seam, which is the right
   place for the array-header mechanism (ADR-0027) and the wrong place for anything about SMTP. Three
@@ -202,6 +210,28 @@ the GitHub Release body. Editing "the release notes" almost always means that on
   test and documented instead. Everything else the leg measured came back confirming the code:
   both engines return native `int` for integer columns and for `COUNT(*)` on PHP 8.1, so strict DTO
   hydration works on all three.
+
+### Changed
+
+- **The `HttpClient` redirect trade-off is now stated on the class, and pinned by tests** — issue
+  #102, **ADR-0079**, spec **r27**. No behaviour change. #102 asked whether the http/https allowlist
+  is re-applied per hop when `followRedirects` is on, since the hops belong to PHP's stream wrapper.
+  Probed rather than reasoned about, with an origin emitting arbitrary `Location` headers: **PHP's
+  wrapper never leaves http/https.** `ftp://` and `gopher://` are refused outright, while `file://`,
+  `php://filter`, `data://` and a protocol-relative authority are each degraded to a *path on the
+  same host*. So a per-hop scheme check would be **unreachable code**, and ADR-0022's precedent is
+  that this project does not ship defences a probe proves inert. T-07 pins all six shapes instead,
+  with a companion test proving those payloads *are* readable so their absence means something.
+  **The real residual is cross-origin following** — bounded only by `maxRedirects`, mitigated by the
+  off-by-default flag — and it is now written where someone enabling redirects will read it.
+
+- **The CSV formula guard is documented where it can be seen** — issue #102, **ADR-0079**. No code
+  change: `guardFormulas: false` remains ADR-0037's deliberate call, since the guard alters exported
+  data and only the caller knows the file's destination. What changed is reach — the `Csv` docblock
+  now names the attack concretely (`=WEBSERVICE(...)` in a user-supplied field becomes a request from
+  the machine of whoever opens the export), and the README gains a worked example passing
+  `guardFormulas: true`, in a repository whose README had no CSV example at all. The framing is the
+  point: **the safe choice is the one you have to type.**
 
 ### Fixed
 

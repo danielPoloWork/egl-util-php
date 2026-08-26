@@ -94,3 +94,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0076](0076-nightly-audit-a-require-checker-gate-and-an-sbom-on-every-release.md) | A nightly `composer audit`, a require-checker gate, and an SBOM on every release | Accepted |
 | [0077](0077-one-randomized-order-ci-cell-with-a-coupling-not-flake-rule.md) | One randomized-order CI cell, with a "coupling, not flake" rule attached | Accepted |
 | [0078](0078-a-wire-witness-for-t10-and-the-receiver-that-rewrites-the-evidence.md) | A wire witness for T-10, and the receiver that rewrites the evidence | Accepted |
+| [0079](0079-three-minor-edges-one-probe-and-a-defence-that-would-have-been-unreachable.md) | Three minor edges, one probe, and a defence that would have been unreachable | Accepted |

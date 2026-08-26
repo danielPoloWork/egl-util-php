@@ -117,6 +117,20 @@ switch ($mode) {
 
         break;
 
+    // Emits whatever `Location` it is handed, verbatim — including a scheme this client does not
+    // speak. Issue #102's first item asks whether the http/https allowlist is re-applied per hop
+    // when `followRedirects` is on, and the honest answer needs a hostile `Location` to observe
+    // rather than a reading of the manual (ADR-0079).
+    //
+    // `header()` refuses a CR or LF of its own accord, so this cannot be turned into a response
+    // splitter against the fixture itself.
+    case 'redirect-raw':
+        $location = \is_string($_GET['location'] ?? null) ? $_GET['location'] : '/';
+        \header('Location: ' . $location, true, 302);
+        echo 'moved';
+
+        break;
+
     // Records that it was reached. The file is the proof that a refused redirect refused to
     // travel — an assertion about the response alone could not tell the difference.
     case 'target':

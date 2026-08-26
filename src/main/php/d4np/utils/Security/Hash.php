@@ -36,15 +36,26 @@ use Psr\Log\LoggerInterface;
  * With the default `true` it logs one WARNING at construction rather than one per hash, which
  * would bury the signal in the noise it generates.
  *
+ * **Three ways to build one, and only one of them is silent.** Reach for the first two.
+ *
  * ```php
- * $hash = new Hash(logger: $psrLogger);          // Argon2id, bcrypt fallback, warned about
- * $hash = new Hash(bcryptFallback: false);       // Argon2id or nothing
+ * $hash = Hash::strict();                        // Argon2id or refuse to construct
+ * $hash = new Hash(logger: $psrLogger);          // Argon2id, bcrypt fallback, WARNING logged
+ * $hash = new Hash();                            // Argon2id, bcrypt fallback, NOTHING SAID
  *
  * $stored = $hash->make($password);
  * if ($hash->verify($password, $stored) && $hash->needsRehash($stored)) {
  *     $stored = $hash->make($password);          // upgrade on login (FR-11)
  * }
  * ```
+ *
+ * **The third line is a real hazard and is named as one** (issue #102, ADR-0079). On a build
+ * without Argon2id it hashes with bcrypt and says so nowhere: no logger to warn through, and
+ * {@see self::algorithm()} only tells a caller who thought to ask. The 1.0 surface is frozen
+ * (ADR-0059), so the permissive default cannot be inverted before a MAJOR — what this class can do
+ * is make the safe form a named constructor rather than a boolean nobody discovers, which is what
+ * {@see self::strict()} is for. **A deployment that cares should either call `strict()` or assert
+ * `algorithm()` in a health check**; one that does neither has chosen bcrypt without deciding to.
  */
 final class Hash
 {
@@ -77,6 +88,28 @@ final class Hash
             $this->bcryptFallback,
             $this->logger,
         );
+    }
+
+    /**
+     * Argon2id or nothing: a `Hash` that **refuses to construct** rather than degrade to bcrypt.
+     *
+     * Equivalent to `new self(bcryptFallback: false)`, and added because that is not the same thing
+     * as being reachable (issue #102, ADR-0079). The fail-closed choice was a boolean argument a
+     * caller had to know existed, while the permissive behaviour was what `new Hash()` gave you;
+     * this makes the safe form a named, discoverable entry point that shows up in the class's own
+     * API listing next to `make()` and `verify()`.
+     *
+     * **It does not change what `new Hash()` does.** The 1.0 surface is frozen (ADR-0059), so the
+     * constructor's `bcryptFallback: true` default stays — and a `Hash` built with no logger still
+     * degrades quietly, with {@see self::algorithm()} as the only signal. That residual is real,
+     * recorded in ADR-0079, and a candidate for the next MAJOR rather than something this method
+     * pretends to fix.
+     *
+     * @throws UtilsException when Argon2id is unavailable in this build
+     */
+    public static function strict(): self
+    {
+        return new self(bcryptFallback: false);
     }
 
     /**

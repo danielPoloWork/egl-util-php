@@ -150,6 +150,24 @@ final class HttpClient
      *   replayed against an origin the caller never named;
      * - `http.protocol_version` — `1.1`, since the wrapper still defaults to `1.0`.
      *
+     * ## What `followRedirects: true` costs, stated rather than implied
+     *
+     * {@see self::guardScheme()} runs on the URL the caller passed, **once**. Once redirects are
+     * enabled the hops belong to PHP's stream wrapper, which offers no per-hop callback — so the
+     * question issue #102 raised is what the allowlist still guarantees mid-chain. Measured rather
+     * than reasoned about (ADR-0079, and pinned by T-07's `testAnOffAllowlistRedirectNeverLeavesHttp`):
+     *
+     * - **A hop cannot leave http/https.** A `Location` naming another scheme is either refused by
+     *   the wrapper (`ftp://`, `gopher://`) or treated as a *path on the same host*
+     *   (`file://`, `php://filter`, `data://`). There is no scheme escape to defend against, which
+     *   is why this class does not carry a per-hop check: it would be unreachable code, and
+     *   ADR-0022 is this project's precedent for not shipping defences a probe proves inert.
+     * - **A hop can change origin, and that is the real residual.** An absolute `http(s)://` URL to
+     *   any other host or port is followed, bounded only by `maxRedirects`. The allowlist is about
+     *   schemes and never claimed otherwise, so a caller enabling redirects towards anything it does
+     *   not control is accepting an SSRF-shaped pivot. **The mitigation is the default**: leave
+     *   redirects off, or follow them only towards origins you own.
+     *
      * @param array<string, string> $headers
      *
      * @return array{http: array<string, mixed>, ssl: array<string, mixed>}
