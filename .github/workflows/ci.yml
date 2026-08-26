@@ -62,6 +62,13 @@ jobs:
           - { os: ubuntu-24.04, toolchain: php-8.1, preset: default }
           - { os: ubuntu-24.04, toolchain: php-8.2, preset: default }
           - { os: ubuntu-24.04, toolchain: php-8.3, preset: default }
+          # Randomized test order (issue #100). Exactly one cell, per the issue's own acceptance
+          # criterion — this is a coupling probe, not a second axis of PHP-version coverage, so it
+          # rides the newest toolchain rather than multiplying the matrix. A failure here means
+          # test order changed the outcome (shared static state, filesystem leftovers, declaration-
+          # order coupling) — see docs/development/local-build.md's "coupling, not flake" note
+          # before anyone reaches for re-run.
+          - { os: ubuntu-24.04, toolchain: php-8.3, preset: random-order }
     steps:
       - name: Check out the source tree
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,9 +89,18 @@ jobs:
         shell: bash
         run: composer install --optimize-autoloader
 
+      # PHPUnit 10 prints "Random Seed: <N>" in its own output header whenever --order-by=random
+      # is used, with no extra flag needed — that line in this job's log is the reproducibility
+      # criterion (issue #100): re-run locally with --random-order-seed=<N> to reproduce a failure
+      # exactly, rather than re-running randomized and hoping it recurs.
       - name: Test
         shell: bash
-        run: vendor/bin/phpunit
+        run: |
+          if [ "${{ matrix.preset }}" = "random-order" ]; then
+            vendor/bin/phpunit --order-by=random
+          else
+            vendor/bin/phpunit
+          fi
 
   # ---------------------------------------------------------------------------
   # Real-engine database leg (issue #110, ADR-0071).

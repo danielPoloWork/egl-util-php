@@ -56,6 +56,24 @@ vendor/bin/phpbench run --report=aggregate
 python tools/consistency_lint.py
 ```
 
+## The randomized-order CI cell (issue #100)
+
+`ci.yml`'s `build` job runs one extra matrix cell — `php-8.3 / random-order` — with
+`vendor/bin/phpunit --order-by=random`, alongside the three default-order cells (PHP 8.1, 8.2,
+8.3) that always run in declaration order. PHPUnit prints `Random Seed: <N>` in its own output
+header whenever `--order-by=random` is used; reproduce a specific run locally with:
+
+```bash
+vendor/bin/phpunit --order-by=random --random-order-seed=<N>
+```
+
+**A failure in that cell alone is coupling, not flake.** The three default-order cells already
+prove the suite passes; if only `random-order` goes red, a test's outcome changed with the order
+it ran in — shared static state, a filesystem leftover from an earlier test, or an assumption
+about what ran before it. **Do not re-run it into silence.** Reproduce with the printed seed,
+find the shared state, and fix the coupling (or, if the two tests are asserting the same global
+resource by design, make that assumption explicit rather than order-dependent).
+
 ## Before you open a PR
 
 1. `vendor/bin/php-cs-fixer fix --dry-run --diff` and `vendor/bin/phpstan analyse` are clean.

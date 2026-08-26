@@ -92,3 +92,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0074](0074-measure-every-namespace-nightly-and-leave-the-floor-to-the-spec.md) | Measure every namespace nightly, and leave the floor to the spec | Accepted |
 | [0075](0075-a-psr18-client-over-httpclient-and-one-pipeline-for-every-bridge.md) | A PSR-18 client over HttpClient, and one pipeline for every bridge | Accepted |
 | [0076](0076-nightly-audit-a-require-checker-gate-and-an-sbom-on-every-release.md) | A nightly `composer audit`, a require-checker gate, and an SBOM on every release | Accepted |
+| [0077](0077-one-randomized-order-ci-cell-with-a-coupling-not-flake-rule.md) | One randomized-order CI cell, with a "coupling, not flake" rule attached | Accepted |
