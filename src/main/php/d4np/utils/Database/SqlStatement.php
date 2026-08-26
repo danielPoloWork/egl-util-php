@@ -124,6 +124,16 @@ final class SqlStatement
      * that deserved attention.
      *
      * @param array<string|int, mixed> $parameters bound as parameters — never interpolated
+     *
+     * @psalm-taint-sink sql $sql
+     *
+     * The annotation makes the caller's assertion machine-checkable (issue #103, ADR-0073).
+     * Everything above is a promise a human makes by choosing this method over {@see literal()};
+     * `@psalm-taint-sink` turns "no value from outside the program is in this text" into something
+     * the nightly taint job can refuse. It is deliberately on **this** method and not on
+     * {@see literal()}, whose `literal-string` parameter PHPStan already proves at max level —
+     * `composed()` is the one door where that proof is given up on purpose, so it is the one door
+     * worth watching. PHPStan ignores the tag entirely; it costs this project nothing at max level.
      */
     public static function composed(string $sql, array $parameters = []): self
     {
