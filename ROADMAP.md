@@ -30,8 +30,9 @@ API-freeze review below settled the whole line into a single first release, **`v
   M13's close-out. Additive under ADR-0059, so `^1.0` still resolves; the milestone mapping
   is not resumed, and M15 will not imply `v1.2.0` by itself.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-26 — The adapter that could not reuse the bridge](docs/journal/2026/08/2026-08-26-psr18-bridge.md).
+  [2026-08-26 — The require-checker's first run found four undeclared symbols, not zero](docs/journal/2026/08/2026-08-26-supply-chain-hygiene.md).
   Previous:
+  [2026-08-26 — The adapter that could not reuse the bridge](docs/journal/2026/08/2026-08-26-psr18-bridge.md),
   [2026-08-26 — The issue that closed itself, mostly](docs/journal/2026/08/2026-08-26-review-sweep-already-done.md),
   [2026-08-26 — The number nobody had, and the one namespace under the floor](docs/journal/2026/08/2026-08-26-mutation-scope.md),
   [2026-08-26 — The analyser that found nothing, until it was told where to look](docs/journal/2026/08/2026-08-26-psalm-taint-analysis.md),
