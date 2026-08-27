@@ -213,6 +213,19 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Changed
 
+- **`SECURITY.md` names response-time targets, not a guarantee** — issue #104, **ADR-0080**. A
+  reporter previously had no way to distinguish "in triage" from "lost": the vulnerability-reporting
+  sequence named no timeframe, a deliberate 2026-08-09 decision recorded in ADR-0060 to avoid
+  overcommitting a solo-maintained project. #104, from the same review board, argued the silence has
+  a real cost the earlier decision did not weigh. `SECURITY.md` now states **5 business days to
+  acknowledge, 15 business days to a triage verdict** — sized to what this repository's own PR
+  turnaround can sustain even on a bad week, and explicitly labeled **targets, not a guarantee**, so
+  the phrase does the work ADR-0060 asked for rather than quietly reversing it. The escalation path
+  for missed targets depends on nothing the maintainer has to maintain: bump the same private
+  thread, and at 30 days of total silence the reporter is released to their own disclosure timeline.
+  `docs/workflow/maintenance.md`'s now-stale "no SLA" sentence is corrected in the same PR to point
+  at ADR-0080 rather than restate ADR-0060's original claim. No code changes.
+
 - **The `HttpClient` redirect trade-off is now stated on the class, and pinned by tests** — issue
   #102, **ADR-0079**, spec **r27**. No behaviour change. #102 asked whether the http/https allowlist
   is re-applied per hop when `followRedirects` is on, since the hops belong to PHP's stream wrapper.
