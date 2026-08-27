@@ -582,6 +582,17 @@ the core's minor-per-milestone rule (AGENTS.md §11) applies to milestones that 
 package, and the core-side work here (a CI job, docs) is chore-level. The post-M7 `1.0.0`
 API-freeze review for the **core** is unaffected by this milestone.
 
+> **Outcome, recorded 2026-08-27: the tag this milestone is named after was never cut, and now will
+> not be.** All three items below are genuinely complete — the scaffold, the converters and their
+> contract suite, and the publication *pipeline*. What never happened is the pipeline's first
+> **run**, which was issue
+> [#120](https://github.com/danielPoloWork/egl-util-php/issues/120) rather than a roadmap item, and
+> which is closed *as not planned*: publishing needs a credential able to push to a generated split
+> repository and the maintainer has decided not to hold one. The heading keeps its
+> `utils-psr7-bridge-v0.1.0` name because it is the record of what this milestone was scoped as; the
+> bridge, and the PSR-18 one added later, stay monorepo-only and contract-tested on every pull
+> request. See `docs/workflow/release.md` § *Releasing a bridge*.
+
 - [x] 8.1 Scaffold `packages/utils-psr7-bridge/` per spec 02 §2 (composer.json, PSR-4, quality
       bar, in-package changelog) + the self-enabling `bridge-contract` CI job (PR mode: path
       repository injected in the CI workspace only; guard on the package's composer.json existing,

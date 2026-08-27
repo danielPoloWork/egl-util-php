@@ -15,6 +15,33 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ## [Unreleased]
 
+### Changed
+
+- **The bridge packages will not be published, and the documentation now says so everywhere** —
+  issue #120, closed *as not planned* on 2026-08-27. Publishing a bridge means pushing to a
+  generated split repository, which needs a credential in this repository's secrets
+  (`GITHUB_TOKEN` structurally cannot write outside its own repository — ADR-0033's consequence,
+  not an implementation detail), and the maintainer has decided not to hold one.
+  **No behaviour changes and no code was removed.** `egl/utils-psr7-bridge` and
+  `egl/utils-psr18-bridge` stay specified, contract-tested against two PSR-17 vendors on every pull
+  request, and usable by anything consuming this repository directly. What changes is that nobody
+  can `composer require` them, and the docs stop implying that is about to change: the packages'
+  READMEs, their changelogs, and `docs/workflow/release.md`'s bridge section.
+  **The `## [0.1.0]` headings added in #183 to anchor a tag are folded back to `[Unreleased]`.**
+  Under Keep a Changelog a versioned heading means *released*, and nothing was — a heading naming a
+  version that exists nowhere is the kind of claim this repository fixes rather than keeps. The
+  release-mode evidence recorded under them is kept, because it is evidence and not an outcome: the
+  pipeline is proven up to the push, and `bridge-release.yml` keeps its zero runs.
+  The procedure in `release.md` is **kept rather than deleted** — it is correct, was verified up to
+  the push, and the decision is reversible: a deploy key scoped to a single split repository would
+  need one workflow change rather than a rebuild.
+  **Recorded in the same pass, because leaving it implicit was the same defect:** no release signing
+  key is being registered either (issue #115, still open on that one criterion). `verify-tag` will
+  therefore fail on every tag, so releases take step 0's documented deliberate path
+  (`EGL_UNSIGNED_TAG_REASON`) and **`tools/post_publish_gate.py` becomes load-bearing** rather than a
+  formality — it is the only remaining check that notices a tag which never became a release, which
+  is exactly what happened to `v1.1.0`.
+
 ### Added
 
 - **`Hmac` accepts a `SecretKeyRing` — key rotation for signed URLs and webhook signatures, and a

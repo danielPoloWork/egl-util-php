@@ -92,8 +92,18 @@ def check(root, tag):
         )
 
     # The changelog is what anchors the tag: a Composer library carries no version of its own.
+    #
+    # Matched as a **heading at the start of a line**, not as a substring anywhere in the file.
+    # A plain `in` test counts prose that merely mentions the heading — and that is not theoretical:
+    # issue #120's closing pass folded two `0.1.0` headings back to `[Unreleased]` and wrote a
+    # sentence explaining what had been removed, quoting the heading. The sentence satisfied the
+    # substring test, so the gate reported OK for a tag whose changelog entry no longer existed.
+    # Same failure `ConstantTimeComparisonTest` already guards against by stripping comments before
+    # searching: in a repository whose documents discuss their own mechanisms at length, a text
+    # search finds the discussion.
     changelog = read(root, package, "CHANGELOG.md")
-    if f"## [{version}]" not in changelog:
+    heading = re.compile(r"^## \[" + re.escape(version) + r"\]", re.MULTILINE)
+    if heading.search(changelog) is None:
         problems.append(
             f"{package}/CHANGELOG.md has no `## [{version}]` heading. That heading is the only "
             "place this package's version is written down, so without it the tag is anchored to "
