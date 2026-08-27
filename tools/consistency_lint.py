@@ -648,6 +648,7 @@ EXPECTED_INTERNAL = {
     "Security\\Base64Url",                   # ADR-0065/RFC-0003 — class-level, extracted shared codec
     "Security\\Uint64",                      # ADR-0067/RFC-0003 — class-level, extracted shared codec
     "Persistence\\Page::__construct()",      # ADR-0064/RFC-0003 — construct only via Repository::fetchPage()
+    "Security\\SecretKeyRing::keyIdOf()",    # ADR-0083/#114 — raw key id; currentKeyId() is the safe spelling
 }
 
 

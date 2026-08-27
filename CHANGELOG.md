@@ -17,6 +17,31 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`Security\SecretKeyRing` — key rotation for `Crypto` tokens, and a `v2.` format that
+  authenticates its key id** — issue #114, **ADR-0083**, spec **r28** (FR-40b). The release board's
+  one *major* security finding: `v1.` versions the *format* and carries no key identifier, so
+  rotating a key after a suspected compromise invalidated every outstanding token, or pushed the
+  consumer into hand-rolling a try-each-key loop. `SecretKeyRing::of($current, ...$previous)` is
+  the rotation window; `new Crypto($ring)` encrypts under the current key as
+  `v2.` = `base64url(keyId ‖ nonce ‖ ciphertext ‖ tag)`.
+  **The key id is GCM's AAD, not merely a prefix** — the decision this change turns on. Probed on
+  8.3.1 before committing: the same ciphertext and tag return `false` under a different AAD *or an
+  empty one*, so the tag covers the id and two attacks are refused — substituting the id to name
+  another key the ring genuinely holds (the lookup succeeds, so only the tag can object), and
+  stripping the id to replay the body as a `v1.` token. Both asserted with a live control, since a
+  passing tamper test proves nothing if the untampered token never worked.
+  Key ids are **HKDF-derived, not caller-assigned** (`hash_hkdf('sha256', bytes, 4,
+  'egl/utils:keyid:v1')`, ADR-0065's domain-separation pattern), so they cannot be inverted to key
+  material and need no registry; a ring **refuses two keys whose ids collide**, which in practice
+  catches the same key listed twice. An **unknown key id fails closed**, never retried against the
+  other keys — that would make retiring a key inoperative.
+  **A bare `SecretKey` still produces byte-identical `v1.` tokens**, which is what keeps this
+  additive under ADR-0059, and a ring also reads `v1.` tokens so adopting one is a migration rather
+  than a cutover. **Measured** (indicative, not NFR-06's reference machine): no cost on NFR-13's
+  budgeted path — 14.79 µs bare-key against a 60 µs budget, 14.18/14.25 µs for rings of one and
+  three, one number inside noise because the id is derived once at construction. The first draft
+  called the HKDF per message; that was found and fixed before measuring.
+
 - **`consistency_lint.py` pins the `@internal` inventory, so widening ADR-0059's carve-out is
   visible** — issue #111, **ADR-0082**. Removing an `@internal` symbol already trips
   `bc_gate.py`; adding `@internal` to an already-frozen public symbol tripped nothing at all,

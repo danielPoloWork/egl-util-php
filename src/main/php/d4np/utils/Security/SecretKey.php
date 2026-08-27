@@ -91,12 +91,15 @@ final class SecretKey
     }
 
     /**
-     * @internal {@see Crypto} and {@see Hmac} only. Exposing the raw bytes any wider would defeat
-     *           the point of wrapping them. `Hmac` joined 2026-08-20 (spec r20 FR-48, ADR-0065)
-     *           and does **not** use these bytes as its MAC key: it derives a domain-separated
-     *           subkey with HKDF first, so one `SecretKey` reused for encryption and signing —
-     *           the single-`APP_SECRET` deployment, which is the common one — never feeds the
-     *           same bytes to two primitives.
+     * @internal {@see Crypto}, {@see Hmac} and {@see SecretKeyRing} only. Exposing the raw bytes
+     *           any wider would defeat the point of wrapping them. `Hmac` joined 2026-08-20 (spec
+     *           r20 FR-48, ADR-0065) and does **not** use these bytes as its MAC key: it derives a
+     *           domain-separated subkey with HKDF first, so one `SecretKey` reused for encryption
+     *           and signing — the single-`APP_SECRET` deployment, which is the common one — never
+     *           feeds the same bytes to two primitives. `SecretKeyRing` joined 2026-08-27 (spec r28
+     *           FR-40b, ADR-0083) on the same terms: it reads them only to derive a key *id* under
+     *           its own HKDF label, and that id is a PRF output that cannot be inverted back to
+     *           these bytes.
      */
     public function bytes(): string
     {

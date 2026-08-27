@@ -30,7 +30,7 @@ deptrac rather than by convention:
 | [`D4np\Utils\Dto\`](src/main/php/d4np/utils/Dto/) | Typed `readonly` DTOs — strict hydration by default, `Collection<T>`, withers |
 | [`D4np\Utils\Database\`](src/main/php/d4np/utils/Database/) | PDO with safe defaults pinned, a fluent `QueryBuilder`, closure-scoped `Transaction`, and `SqlStatement` — the only shape the connection will execute |
 | [`D4np\Utils\Persistence\`](src/main/php/d4np/utils/Persistence/) | `Repository` and `TableGateway` over that: rows normalized, then hydrated, every failure typed |
-| [`D4np\Utils\Security\`](src/main/php/d4np/utils/Security/) | `Escaper` (four contexts), `Sanitizer`, `Hash` (Argon2id), `Crypto` (AES-256-GCM) |
+| [`D4np\Utils\Security\`](src/main/php/d4np/utils/Security/) | `Escaper` (four contexts), `Sanitizer`, `Hash` (Argon2id), `Crypto` (AES-256-GCM) + `SecretKeyRing` (key rotation), `Hmac` |
 | [`D4np\Utils\Http\`](src/main/php/d4np/utils/Http/) | `Request`/`Response` that refuse rather than coerce, hardened `Session`, `CsrfToken`, `HttpClient`, `Router`, `ApiEnvelope` |
 | [`D4np\Utils\Errors\`](src/main/php/d4np/utils/Errors/) | `Result`, a PSR-3 `Logger`, level-filtered and fan-out channels, `ExceptionHandler` |
 | [`D4np\Utils\Mail\`](src/main/php/d4np/utils/Mail/) | Validated `EmailAddress`, a `MailMessage` that cannot carry a header terminator, `Mailer`/`NativeMailer` |
