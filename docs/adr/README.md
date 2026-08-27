@@ -98,3 +98,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0080](0080-response-time-targets-sized-to-solo-capacity-not-a-guarantee.md) | Response-time targets sized to solo capacity, not a guarantee | Accepted |
 | [0081](0081-verify-what-happens-after-a-human-clicks-publish.md) | Verify what happens after a human clicks Publish | Accepted |
 | [0082](0082-pin-the-internal-inventory-so-widening-the-carve-out-is-visible.md) | Pin the `@internal` inventory, so widening the carve-out is visible | Accepted |
+| [0083](0083-a-derived-key-id-in-the-aad-and-v1-stays-byte-identical.md) | A derived key id in the AAD, and `v1.` stays byte-identical | Accepted |
