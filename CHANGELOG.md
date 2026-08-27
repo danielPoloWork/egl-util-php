@@ -322,6 +322,20 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Fixed
 
+- **The bridge publication runbook named a repository variable that no longer exists** — issue
+  #120. `docs/workflow/release.md`'s one-time prerequisites told the maintainer to set
+  `BRIDGE_SPLIT_REPO`; since issue #93 / **ADR-0075** generalised the pipeline to serve every
+  bridge, the workflow derives the name **per package**
+  (`BRIDGE_SPLIT_REPO_UTILS_PSR7_BRIDGE`). Following the runbook would have set a variable nothing
+  reads, and the failure would have arrived at the prerequisite step *after* every other gate
+  passed — the point at which "not configured" is hardest to distinguish from "the release is bad".
+  The step now carries both bridges' variable names in a table, and the section is written for a
+  bridge rather than for the PSR-7 one.
+
+  Recorded here rather than only in the packages' own changelogs because this is a defect in *this*
+  repository's release documentation. **Issue #120 stays open**: its remaining criterion is the
+  owner's one-time split-repository, token and Packagist steps, which no agent can perform.
+
 - **`tools/tests/verify_bc_gate.py` was reporting three false failures on Windows**, and had been
   since it was written (found while extending it for issue #112). It reads the gate's stdout back
   and asserts on it, but the child process wrote in the console codepage while the parent decoded
