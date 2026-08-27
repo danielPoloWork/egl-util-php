@@ -65,16 +65,39 @@ final class SecretKeyRing
      */
     private const KEY_ID_DOMAIN = 'egl/utils:keyid:v1';
 
-    /** @var non-empty-array<string, SecretKey> raw key id => key, current first */
+    /**
+     * The retired-but-still-accepted keys, in the order given.
+     *
+     * Held separately from {@see self::$byKeyId} so {@see self::all()} can be built as
+     * `[current, ...previous]` — provably non-empty to static analysis without an inline `@var`
+     * narrowing the type of something it cannot see the construction of.
+     *
+     * @var list<SecretKey>
+     */
+    private readonly array $previous;
+
+    /**
+     * Raw key id => key, for the `v2.` id-addressed lookup.
+     *
+     * Typed `array` rather than `non-empty-array`: phpDocumentor's parser does not recognise
+     * `non-empty-array<K, V>` as a collection and fails the api-docs gate on it (it accepts
+     * `non-empty-list<T>`, which is why that form appears elsewhere in this tree). The
+     * non-emptiness is structural anyway — `of()` always inserts `$current`.
+     *
+     * @var array<string, SecretKey>
+     */
     private readonly array $byKeyId;
 
     /**
-     * @param non-empty-array<string, SecretKey> $byKeyId
+     * @param list<SecretKey>           $previous
+     * @param array<string, SecretKey>  $byKeyId
      */
     private function __construct(
         private readonly SecretKey $current,
+        array $previous,
         array $byKeyId,
     ) {
+        $this->previous = $previous;
         $this->byKeyId = $byKeyId;
     }
 
@@ -111,8 +134,7 @@ final class SecretKeyRing
             $byKeyId[$keyId] = $key;
         }
 
-        /** @var non-empty-array<string, SecretKey> $byKeyId */
-        return new self($current, $byKeyId);
+        return new self($current, \array_values($previous), $byKeyId);
     }
 
     /**
@@ -147,10 +169,7 @@ final class SecretKeyRing
      */
     public function all(): array
     {
-        /** @var non-empty-list<SecretKey> $keys */
-        $keys = \array_values($this->byKeyId);
-
-        return $keys;
+        return [$this->current, ...$this->previous];
     }
 
     /**
