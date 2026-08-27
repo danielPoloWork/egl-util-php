@@ -317,3 +317,42 @@ jobs:
       # rather than a freshly re-resolved tree — the same lock `ci.yml`'s per-push audit reads.
       - name: composer audit
         run: composer audit
+
+  # ---------------------------------------------------------------------------
+  # Post-publish verification (issue #105, ADR-0081).
+  #
+  # release.yml verifies a tag before drafting a Release; nothing verified the world AFTER a human
+  # clicked Publish. The gap was not hypothetical — this repository's own v1.1.0 tag was pushed,
+  # failed verify-tag on an unsigned signature, and sat for three days with no GitHub Release and
+  # nothing on Packagist while ROADMAP.md read as though it had shipped, because nothing checked.
+  # A manual step in release.md only closes that gap when someone remembers to run it, which is the
+  # exact failure mode that just happened — so this asks the same question nightly instead, against
+  # whatever the latest published Release actually is.
+  # ---------------------------------------------------------------------------
+  post-publish:
+    name: nightly / post-publish verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Which tag is the latest published Release?
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          if [ -z "$TAG" ]; then
+            echo "::notice title=Nothing published yet::No non-draft GitHub Release exists, so there is nothing for this job to verify."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ${{ steps.latest.outputs.tag }} actually reached GitHub Releases and Packagist
+        if: steps.latest.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/post_publish_gate.py --tag "${{ steps.latest.outputs.tag }}"

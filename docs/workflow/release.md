@@ -72,6 +72,27 @@ pre-1.0 milestone-driven.
     `docs/releases/v<X.Y.Z>.md` instead. The `v1.0.0` body was hand-written only because
     `verify-tag` failed on an unsigned tag and skipped `draft-release` altogether — the mechanism
     was never the problem; the skipped gate was (issues #115, #122).
+11. **Verify the publish actually reached the world** (issue #105, ADR-0081) — run this immediately
+    after clicking Publish:
+
+    ```bash
+    python tools/post_publish_gate.py --tag v<X.Y.Z>
+    ```
+
+    Everything above this step verifies the tag and drafts the Release; nothing verified what
+    happened *after* a human clicked the button. That gap was not hypothetical — this repository's
+    own `v1.1.0` tag was pushed, failed `verify-tag` on an unsigned signature, and sat for three
+    days with no GitHub Release and nothing on Packagist while `ROADMAP.md` read as though it had
+    shipped, because nothing checked. The gate asks the four questions that answer "did this
+    actually ship": the tag is signed and verified, the GitHub Release exists and is not a draft,
+    its body matches the canonical rendering of the notes (catches a hand-edit, or the render
+    itself drifting), and the version resolves on Packagist. Exit **0** means all four hold; **1**
+    means a real problem was found; **2** means a check could not even complete — network down, the
+    release does not exist yet — which is never the same thing as "verified fine."
+
+    **This step also runs nightly** (`nightly.yml`'s `post-publish` job) against whatever the
+    latest published Release happens to be, so a release that slips through this manual step —
+    exactly what happened with `v1.1.0` — is caught within a day rather than found by accident.
 
 
 ## Release-time gates
@@ -168,6 +189,7 @@ Both are the maintainer's, not the agent's, and the first release cannot succeed
 | Create & push the annotated tag, then the **draft** release (CI drafts it on tag-push) | Agent |
 | Publish the GitHub Release (click **Publish**) | **Human** |
 | Build & attach artifacts | CI |
+| Verify the publish reached GitHub Releases and Packagist | Agent/human, manually — **and CI, nightly** (issue #105, ADR-0081) |
 
 
 Agents never publish releases, never amend or delete published tags, and only delete-and-
