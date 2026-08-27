@@ -27,6 +27,26 @@ use Generator;
  * **Memory is proportional to a row.** {@see self::write()} consumes an `iterable`, so a
  * generator streams; {@see self::read()} is itself a generator. Neither buffers the table
  * (spec NFR-12).
+ *
+ * ## CSV injection is opt-in to defend against, and off by default
+ *
+ * **`$guardFormulas` is `false` unless you pass `true`.** A field beginning `=`, `+`, `-`, `@`, a
+ * tab or a carriage return is executed as a formula by Excel, LibreOffice and Google Sheets when the
+ * file is opened — so `=WEBSERVICE(...)` in a user-supplied name becomes a request from the
+ * machine of whoever opens your export.
+ *
+ * The default is deliberate and is ADR-0037's recorded call: the guard *alters exported data* by
+ * prefixing an apostrophe, and a library that silently rewrote values would repeat the
+ * input-mutilation mistake spec §1 exists to reject. Whether the file is going to a spreadsheet or
+ * to another program is something only the caller knows.
+ *
+ * **The consequence is that the safe choice is the one you have to type** (issue #102, ADR-0079).
+ * If any field can contain text a user supplied, pass it:
+ *
+ * ```php
+ * Csv::write($path, $rows, guardFormulas: true);   // exports opened in a spreadsheet
+ * Csv::write($path, $rows);                        // machine-to-machine, values untouched
+ * ```
  */
 final class Csv
 {

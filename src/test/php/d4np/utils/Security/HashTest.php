@@ -184,6 +184,33 @@ final class HashTest extends TestCase
     }
 
     /**
+     * `strict()` is the fail-closed constructor added for issue #102 (ADR-0079), and it must be
+     * exactly `bcryptFallback: false` rather than a second policy that could drift from it.
+     *
+     * On a build with Argon2id the refusal cannot be triggered, so what is asserted is the
+     * equivalence — the two spellings agree on the algorithm, which is the whole claim the docblock
+     * makes. The refusal itself is covered where it is reachable, through `selectAlgorithm()` below.
+     */
+    public function testStrictIsTheFailClosedSpellingOfDisablingTheFallback(): void
+    {
+        self::assertSame((new Hash(bcryptFallback: false))->algorithm(), Hash::strict()->algorithm());
+        self::assertSame(PASSWORD_ARGON2ID, Hash::strict()->algorithm());
+    }
+
+    /**
+     * And it is a usable `Hash`, not just a constructor that returns — the named form has to hash
+     * and verify like any other or it is a trap rather than a convenience.
+     */
+    public function testStrictProducesAWorkingHash(): void
+    {
+        $hash = Hash::strict();
+        $stored = $hash->make('correct horse battery staple');
+
+        self::assertTrue($hash->verify('correct horse battery staple', $stored));
+        self::assertFalse($hash->verify('wrong', $stored));
+    }
+
+    /**
      * No WARNING is logged when nothing was degraded — a logger that cries wolf on a correctly
      * configured system is one whose warnings get filtered out.
      */

@@ -9,6 +9,7 @@ use D4np\Utils\Support\HttpClientException;
 use D4np\Utils\Support\Json;
 use D4np\Utils\Tests\Http\Fixture\DevServer;
 use D4np\Utils\Tests\Http\Fixture\TlsOrigin;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
@@ -275,6 +276,118 @@ final class HttpClientLiveTest extends TestCase
 
         self::assertFileExists(self::markerPath(), 'the target was never contacted');
         self::assertSame('target', $response->body);
+    }
+
+    /**
+     * **Issue #102's first item, pinned rather than guarded (ADR-0079).**
+     *
+     * `guardScheme()` checks the http/https allowlist on the URL the caller passed, once. With
+     * `followRedirects: true` the hops belong to PHP's stream wrapper, which offers no per-hop
+     * callback — so the review board asked whether a hostile `Location` could walk the request off
+     * the allowlist, and whether the check needs re-applying per hop.
+     *
+     * **It cannot, and it does not.** Measured (see ADR-0079's table): PHP's http wrapper never
+     * leaves http/https on a redirect. A `Location` carrying a scheme it does not speak is either
+     * refused outright or degraded to a *path on the same host*, which is why the assertions below
+     * are about a 404 rather than about a file's contents. A per-hop scheme check would therefore be
+     * unreachable code, and ADR-0022's precedent is that this project does not ship defensive code a
+     * probe proves inert.
+     *
+     * What it ships instead is this test. The claim is about PHP's behaviour rather than about
+     * ours, so the risk is not that our code regresses — it is that a future PHP changes underneath
+     * a decision made on today's behaviour, silently. That is exactly what a pinning test is for.
+     *
+     * @param string $location the hostile `Location` the origin will emit verbatim
+     */
+    #[DataProvider('offAllowlistRedirectTargets')]
+    public function testAnOffAllowlistRedirectNeverLeavesHttp(string $location): void
+    {
+        $client = new HttpClient(followRedirects: true);
+
+        try {
+            $response = $client->get(self::url('redirect-raw', 'location=' . \rawurlencode($location)));
+        } catch (HttpClientException $e) {
+            // One lawful outcome: the wrapper refused the hop and produced no response at all.
+            // `ftp://` and `gopher://` land here. Nothing was fetched, which is the property.
+            self::assertStringContainsString('produced no response', $e->getMessage());
+
+            return;
+        }
+
+        // The other lawful outcome: the wrapper treated the whole `Location` as a *path on the
+        // origin*, so the request stayed on http and this server answered it — with its own 404 for
+        // a path it cannot map, which is why the status is not asserted here (it is the fixture's
+        // business, and it differs between a routed path and an unmappable one).
+        //
+        // What is asserted is the security property itself: whatever came back is **not** the
+        // resource the off-allowlist scheme named. Each payload below is chosen to be
+        // unmistakable if it were ever fetched.
+        $body = (string) $response->body;
+
+        self::assertStringNotContainsString('<?php', $body, \sprintf(
+            'a Location of "%s" returned PHP source, so `file://` was honoured and the hop left http',
+            $location,
+        ));
+        self::assertStringNotContainsString('SECRET-should-never-be-read', $body, \sprintf(
+            'a Location of "%s" returned a data: URI payload, so the hop left http',
+            $location,
+        ));
+        // php://filter would hand back base64 rather than source, so the source check above cannot
+        // see it. `<?php` encodes to this prefix under convert.base64-encode.
+        self::assertStringNotContainsString(\base64_encode('<?php'), $body, \sprintf(
+            'a Location of "%s" returned base64 of a local file, so php:// was honoured',
+            $location,
+        ));
+
+        // Not vacuous, in both directions: `testARedirectIsFollowedWhenTheCallerAsksForIt` proves a
+        // legitimate hop *is* followed with this configuration, and the test below proves these
+        // payloads are readable by this process — so their absence is a property of the redirect
+        // path rather than of an unreadable resource.
+    }
+
+    /**
+     * The other half of the vacuity guard for the test above.
+     *
+     * `assertStringNotContainsString` passes for any body at all, including one that could never
+     * have contained the payload. So this asserts the payloads are genuinely reachable **by this
+     * PHP process, right now** — the file is readable and `data://` is enabled. Without it, the
+     * test above would keep passing on a build where `allow_url_fopen` was off or the fixture had
+     * moved, and would be asserting nothing.
+     */
+    public function testTheOffAllowlistPayloadsAreReadableSoTheirAbsenceMeansSomething(): void
+    {
+        $self = \str_replace(\DIRECTORY_SEPARATOR, '/', \dirname(__DIR__, 4) . '/resources/t07-origin/index.php');
+
+        self::assertStringContainsString(
+            '<?php',
+            (string) @\file_get_contents('file:///' . $self),
+            'the fixture this test points file:// at is not readable, so the redirect test proves nothing',
+        );
+        self::assertStringContainsString(
+            'SECRET-should-never-be-read',
+            (string) @\file_get_contents('data://text/plain,SECRET-should-never-be-read'),
+            'data:// is not usable in this build, so the redirect test proves nothing about it',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function offAllowlistRedirectTargets(): iterable
+    {
+        // A real, readable file, so the case is discriminating rather than merely absent: if PHP
+        // honoured `file://` the body would be this dispatcher's own source, which starts `<?php`
+        // and could not be mistaken for the `plain` the assertion demands.
+        $self = \str_replace(\DIRECTORY_SEPARATOR, '/', \dirname(__DIR__, 4) . '/resources/t07-origin/index.php');
+
+        yield 'file, absolute' => ['file:///' . $self];
+        yield 'php filter, base64 of a real file' => ['php://filter/read=convert.base64-encode/resource=' . $self];
+        yield 'data, inline payload' => ['data://text/plain,SECRET-should-never-be-read'];
+        yield 'ftp' => ['ftp://127.0.0.1/x'];
+        yield 'gopher' => ['gopher://127.0.0.1/x'];
+        // Not a scheme at all, but the shape that most often slips an allowlist written as a string
+        // prefix test: no scheme, an authority, and somebody else's host.
+        yield 'protocol-relative' => ['//127.0.0.1:1/x'];
     }
 
     /**
