@@ -160,10 +160,14 @@ final class SecretKeyRing
     /**
      * Every key in the ring, current first.
      *
-     * The one caller is {@see Crypto::decrypt()}'s `v1.` path: a `v1.` token carries no key id, so
-     * the only way to read one during a rotation is to try each key. Distinct from
-     * {@see findByKeyId()} on purpose — the id-addressed lookup is what `v2.` buys, and this is the
-     * fallback that keeps pre-rotation tokens readable while it is being adopted.
+     * Two callers, both for the same reason: {@see Crypto::decrypt()}'s and {@see Hmac::verify()}'s
+     * `v1.` paths. A `v1.` token carries no key id, so the only way to read one during a rotation
+     * is to try each key. Distinct from {@see findByKeyId()} on purpose — the id-addressed lookup
+     * is what `v2.` buys, and this is the fallback that keeps pre-rotation tokens readable while it
+     * is being adopted.
+     *
+     * {@see Hmac} also walks it at *construction*, to derive one MAC key per ring key up front
+     * rather than per message.
      *
      * @return non-empty-list<SecretKey>
      */
@@ -187,8 +191,9 @@ final class SecretKeyRing
     /**
      * The raw four-byte id a key derives to.
      *
-     * @internal {@see Crypto} and {@see SecretKeyRing} only — the encoded form belongs in a token,
-     *           and {@see self::currentKeyId()} is the safe hex spelling for anything else
+     * @internal {@see Crypto}, {@see Hmac} and {@see SecretKeyRing} only — the encoded form belongs
+     *           in a token, and {@see self::currentKeyId()} is the safe hex spelling for anything
+     *           else
      */
     public static function keyIdOf(SecretKey $key): string
     {

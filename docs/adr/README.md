@@ -100,3 +100,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0082](0082-pin-the-internal-inventory-so-widening-the-carve-out-is-visible.md) | Pin the `@internal` inventory, so widening the carve-out is visible | Accepted |
 | [0083](0083-a-derived-key-id-in-the-aad-and-v1-stays-byte-identical.md) | A derived key id in the AAD, and `v1.` stays byte-identical | Accepted |
 | [0084](0084-attest-the-one-artifact-this-pipeline-actually-builds.md) | Attest the one artifact this pipeline actually builds | Accepted |
+| [0085](0085-the-key-id-under-the-mac-because-hmac-has-no-aad.md) | The key id under the MAC, because HMAC has no AAD | Accepted |
