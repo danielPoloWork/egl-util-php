@@ -17,6 +17,39 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`Hmac` accepts a `SecretKeyRing` — key rotation for signed URLs and webhook signatures, and a
+  `v2.` format whose key id is authenticated by the MAC itself** — issue #179, **ADR-0085**, spec
+  **r29** (FR-48b). The deferred half of #114's finding: `Hmac` had the identical
+  no-key-identifier gap `Crypto` did and none of the fix, so rotating a signing key invalidated
+  every outstanding signed URL and webhook signature at the moment of the deploy — the two
+  artifacts that outlive a deploy by design, since a webhook signature is checked by someone
+  else's server on their schedule.
+  `new Hmac(SecretKeyRing::of($current, $previous))` signs as
+  `v2.` = `base64url(keyId ‖ expiry ‖ mac)` and verifies anything the ring holds. ADR-0083's
+  convention is reused rather than re-decided: the same derived key id, the id first at a fixed
+  offset, an unknown id refused rather than retried.
+  **One part is genuinely different, and it is the security property.** `Crypto` binds its key id
+  with GCM's AAD; **HMAC has no AAD**, so the id goes *under* the MAC —
+  `mac = hmac(keyId ‖ expiry ‖ message)`. An id that were merely a token prefix would let a
+  substituted id naming another key the ring genuinely holds still verify, and would let a `v2.`
+  body be replayed as `v1.` — stripping the four-byte id leaves a well-formed `v1.` payload, so
+  the length check cannot refuse it and the MAC has to.
+  **`v1.` stays byte-identical** for a bare `SecretKey`, with its conformance vector as the anchor,
+  and a ring verifies `v1.` tokens too — so adopting one is a migration, not a cutover. Additive
+  under ADR-0059.
+  Two findings are recorded rather than glossed. A planted defect exposed a **pre-existing gap in
+  the `v1.` suite**: the overlong-payload tests asserted only the exception class, so they could
+  not tell an explicit length check from `hash_equals()` refusing incidentally on a length mismatch
+  — the property `testACorrectMacPrefixIsRefused`'s own docblock already claimed. Closed by
+  asserting the message. And because the key id is signed, **fail-closed is policy and diagnosis
+  while the MAC is the security boundary**: a second plant removing the fail-closed refusal was
+  caught on the message, not on acceptance.
+  Measured, not assumed (ADR-0085 has the table): per message `v2.` and `v1.` are
+  indistinguishable, but a `v1.` token from the oldest of three ring keys costs ~2× a single check,
+  because a `v1.` token names no key and the ring must walk them. **`v2.` is what keeps
+  verification O(1) during a rotation.** Derived MAC keys are computed once at construction, one
+  per ring key, asserted as a mechanism. No NFR budget invented — ADR-0040 reserves spec numbers.
+
 - **The release SBOM is now attested** — issue #115 criterion 3, **ADR-0084**. `draft-release`
   produces a signed SLSA provenance attestation for `bom.xml` before the draft exists, verifiable
   with `gh attestation verify bom.xml --repo danielPoloWork/egl-util-php`. An unattested SBOM on a

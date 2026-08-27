@@ -7,6 +7,7 @@ namespace D4np\Utils\Tests\Security;
 use D4np\Utils\Security\Base64Url;
 use D4np\Utils\Security\Hmac;
 use D4np\Utils\Security\SecretKey;
+use D4np\Utils\Security\SecretKeyRing;
 use D4np\Utils\Support\CryptoException;
 use D4np\Utils\Support\FrozenClock;
 use DateInterval;
@@ -193,12 +194,26 @@ final class HmacTest extends TestCase
         $hmac->verify(self::MESSAGE, 'v1.' . Base64Url::encode(\substr($payload, 0, 8 + 16)));
     }
 
-    public function testAnOverlongPayloadIsRefused(): void
+    /**
+     * An overlong payload is refused **by the length check**, and the message is what pins that.
+     *
+     * Asserting only `CryptoException` here was not enough, and a planted defect proved it: with
+     * the length compared as `< $expectedBytes` instead of `!==`, an overlong payload sails past
+     * the check and is refused further down anyway, because `hash_equals()` compares lengths before
+     * bytes. Same outcome, different reason — and the reason is the point. The docblock on
+     * {@see testACorrectMacPrefixIsRefused()} already claimed the structural property ("rather than
+     * a consequence of which comparator happens to be in use") that nothing was enforcing.
+     *
+     * The truncated direction cannot distinguish the two, since a short payload fails either
+     * comparison. Only an overlong one can.
+     */
+    public function testAnOverlongPayloadIsRefusedByTheLengthCheck(): void
     {
         $hmac = self::hmac();
         $payload = (string) Base64Url::decode(\substr($hmac->sign(self::MESSAGE), 3));
 
         $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('malformed or truncated');
         $hmac->verify(self::MESSAGE, 'v1.' . Base64Url::encode($payload . 'x'));
     }
 
@@ -519,6 +534,336 @@ final class HmacTest extends TestCase
             'the expiry is attacker-supplied until the MAC has vouched for it; reading it first '
             . 'means acting on unauthenticated input',
         );
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Key rotation: the `v2.` format (spec r29 FR-48b, issue #179, ADR-0085)
+    //
+    // Every tamper test below carries a live control — the untampered token verifying in the same
+    // test. ADR-0054's version-prefix tests were once vacuous for exactly this reason: a token the
+    // test believed was valid was not, so the refusal it asserted proved nothing about the tamper.
+    // -----------------------------------------------------------------------------------------
+
+    /** A fixed key per label, so a ring's membership is reproducible across tests. */
+    private static function keyFor(string $label): SecretKey
+    {
+        return SecretKey::fromBytes(\str_pad($label, 32, '.'));
+    }
+
+    private static function ring(string $current, string ...$previous): SecretKeyRing
+    {
+        return SecretKeyRing::of(
+            self::keyFor($current),
+            ...\array_map(static fn (string $label): SecretKey => self::keyFor($label), $previous),
+        );
+    }
+
+    /**
+     * `[keyId, expiryBytes, mac]` — the three `v2.` fields, sliced the way the format defines.
+     *
+     * @return array{string, string, string}
+     */
+    private static function fieldsOf(string $token): array
+    {
+        $payload = Base64Url::decode(\substr($token, \strlen('v2.')));
+        self::assertIsString($payload);
+
+        return [
+            \substr($payload, 0, SecretKeyRing::KEY_ID_BYTES),
+            \substr($payload, SecretKeyRing::KEY_ID_BYTES, 8),
+            \substr($payload, SecretKeyRing::KEY_ID_BYTES + 8),
+        ];
+    }
+
+    public function testARingSignsUnderTheCurrentKeyAsV2(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+
+        self::assertStringStartsWith('v2.', $hmac->sign(self::MESSAGE));
+    }
+
+    public function testABareKeyStillSignsAsV1(): void
+    {
+        self::assertStringStartsWith('v1.', (new Hmac(self::keyFor('only')))->sign(self::MESSAGE));
+    }
+
+    public function testTheV2KeyIdIsTheCurrentKeysAndNotAPreviousOnes(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+        [$keyId] = self::fieldsOf($hmac->sign(self::MESSAGE));
+
+        self::assertSame(SecretKeyRing::keyIdOf(self::keyFor('current')), $keyId);
+        self::assertNotSame(SecretKeyRing::keyIdOf(self::keyFor('previous')), $keyId);
+    }
+
+    public function testARingVerifiesItsOwnV2Token(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+
+        $hmac->verify(self::MESSAGE, $hmac->sign(self::MESSAGE));
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
+     * The rotation window itself: a token signed before the rotation still verifies after it.
+     *
+     * This is the whole point of the issue. Without a ring, promoting a new signing key
+     * invalidates every outstanding signed URL and webhook signature at the moment of the deploy.
+     */
+    public function testATokenSignedByANowPreviousKeyStillVerifies(): void
+    {
+        $beforeRotation = new Hmac(self::ring('previous'));
+        $token = $beforeRotation->sign(self::MESSAGE);
+
+        $afterRotation = new Hmac(self::ring('current', 'previous'));
+        $afterRotation->verify(self::MESSAGE, $token);
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
+     * And the window closing: once the old key leaves the ring, its tokens stop verifying.
+     *
+     * The complement of the test above, and the one that proves retiring a key does something. A
+     * ring that kept accepting a dropped key's tokens would make rotation cosmetic.
+     */
+    public function testATokenSignedByAKeyNoLongerInTheRingIsRefused(): void
+    {
+        $beforeRotation = new Hmac(self::ring('previous'));
+        $token = $beforeRotation->sign(self::MESSAGE);
+
+        // Live control: the token IS valid — it verifies against a ring that still holds its key.
+        (new Hmac(self::ring('current', 'previous')))->verify(self::MESSAGE, $token);
+
+        $narrowed = new Hmac(self::ring('current'));
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('has left the rotation window');
+        $narrowed->verify(self::MESSAGE, $token);
+    }
+
+    public function testAnUnknownKeyIdFailsClosedRatherThanTryingTheOtherKeys(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+        $token = $hmac->sign(self::MESSAGE);
+        [, $expiryBytes, $mac] = self::fieldsOf($token);
+
+        // Live control: untampered, it verifies.
+        $hmac->verify(self::MESSAGE, $token);
+
+        $forged = 'v2.' . Base64Url::encode("\x00\x00\x00\x00" . $expiryBytes . $mac);
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('No key held here has id 00000000');
+        $hmac->verify(self::MESSAGE, $forged);
+    }
+
+    /**
+     * **The security property of this format.** A key id substituted for another id the ring
+     * genuinely holds is refused — and refused *by the MAC*, not by a failed lookup.
+     *
+     * {@see \D4np\Utils\Security\Crypto} binds its key id with GCM's AAD; HMAC has no AAD, so the
+     * id is covered by putting it inside the signed bytes. If it were merely a prefix on the
+     * token, this test would pass only by luck: the lookup would succeed, the MAC would be
+     * computed over bytes that never included the id, and it would still match.
+     *
+     * The distinction from {@see testAnUnknownKeyIdFailsClosedRatherThanTryingTheOtherKeys()} is
+     * the reason both exist. That one's id resolves to nothing, so a refusal proves only that the
+     * lookup failed. This one's id resolves to a real key, so the lookup *succeeds* and the
+     * refusal can only have come from the comparison.
+     */
+    public function testASubstitutedKeyIdNamingAnotherHeldKeyIsRefusedByTheMac(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+        $token = $hmac->sign(self::MESSAGE);
+        [$keyId, $expiryBytes, $mac] = self::fieldsOf($token);
+
+        // Live control: untampered, it verifies.
+        $hmac->verify(self::MESSAGE, $token);
+
+        $otherKeyId = SecretKeyRing::keyIdOf(self::keyFor('previous'));
+        self::assertNotSame($keyId, $otherKeyId, 'the substituted id must be a different one');
+        self::assertNotNull(
+            self::ring('current', 'previous')->findByKeyId($otherKeyId),
+            'the substituted id must name a key the ring genuinely holds — otherwise this test '
+            . 'would be satisfied by the fail-closed lookup and would say nothing about the MAC',
+        );
+
+        $substituted = 'v2.' . Base64Url::encode($otherKeyId . $expiryBytes . $mac);
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('Signature verification failed');
+        $hmac->verify(self::MESSAGE, $substituted);
+    }
+
+    /**
+     * A `v2.` body relabelled `v1.` does not verify, because the bytes signed are not the bytes
+     * checked: `v2.`'s MAC covers `keyId ‖ expiry ‖ message` and `v1.`'s covers `expiry ‖ message`.
+     *
+     * Note the lengths line up exactly — stripping the four-byte id leaves precisely the eight
+     * expiry bytes plus a 32-byte MAC, which is a well-formed `v1.` payload. So the length check
+     * passes and the refusal has to come from the MAC. A format that appended the id instead of
+     * signing it would accept this.
+     */
+    public function testAV2BodyReplayedAsV1IsRefused(): void
+    {
+        $ring = self::ring('current', 'previous');
+        $hmac = new Hmac($ring);
+        $token = $hmac->sign(self::MESSAGE);
+        [, $expiryBytes, $mac] = self::fieldsOf($token);
+
+        // Live control: untampered, it verifies.
+        $hmac->verify(self::MESSAGE, $token);
+
+        $downgraded = 'v1.' . Base64Url::encode($expiryBytes . $mac);
+        self::assertSame(8 + 32, \strlen($expiryBytes . $mac), 'the downgrade must be well-formed');
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('Signature verification failed');
+        $hmac->verify(self::MESSAGE, $downgraded);
+    }
+
+    /**
+     * A ring verifies `v1.` tokens as well, which is what makes adopting one a migration rather
+     * than a cutover — including tokens signed by a key that is no longer current.
+     */
+    public function testARingVerifiesV1TokensIncludingOnesFromAPreviousKey(): void
+    {
+        $current = (new Hmac(self::keyFor('current')))->sign(self::MESSAGE);
+        $previous = (new Hmac(self::keyFor('previous')))->sign(self::MESSAGE);
+
+        $ring = new Hmac(self::ring('current', 'previous'));
+        $ring->verify(self::MESSAGE, $current);
+        $ring->verify(self::MESSAGE, $previous);
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    public function testEditingTheExpiryBreaksAV2Signature(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'), self::clockAt());
+        $token = $hmac->sign(self::MESSAGE, new DateInterval('PT15M'));
+        [$keyId, , $mac] = self::fieldsOf($token);
+
+        // Live control: untampered, it verifies.
+        $hmac->verify(self::MESSAGE, $token);
+
+        $extended = 'v2.' . Base64Url::encode($keyId . \str_repeat("\x7f", 8) . $mac);
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('Signature verification failed');
+        $hmac->verify(self::MESSAGE, $extended);
+    }
+
+    /**
+     * The key id in a token is a PRF output over the key, not a window onto it.
+     *
+     * ADR-0083's property, re-asserted here because this format puts the id on the wire in a place
+     * ADR-0065's grammar never did. Four bytes of HKDF cannot be inverted, and — the failure that
+     * would actually be embarrassing — must not simply be a prefix of the key material.
+     */
+    public function testTheKeyIdOnTheWireIsNotKeyMaterial(): void
+    {
+        $key = self::keyFor('current');
+        [$keyId] = self::fieldsOf((new Hmac(self::ring('current')))->sign(self::MESSAGE));
+
+        self::assertSame(SecretKeyRing::KEY_ID_BYTES, \strlen($keyId));
+        self::assertStringNotContainsString($keyId, $key->bytes(), 'the id must not be a slice of the key');
+        self::assertNotSame(
+            \substr($key->bytes(), 0, SecretKeyRing::KEY_ID_BYTES),
+            $keyId,
+            'the id must not be the key\'s leading bytes',
+        );
+    }
+
+    /**
+     * A conformance vector for the `v2.` grammar, the counterpart of the `v1.` one above.
+     *
+     * Pins the field order (id first), the four-byte id width, the eight-byte big-endian expiry,
+     * the raw digest, unpadded base64url — and, invisibly to any round trip, that the MAC is taken
+     * over `keyId ‖ expiry ‖ message`. Recomputing this value from the primitives independently is
+     * what the assertion below its literal does.
+     */
+    public function testTheV2FormatMatchesItsConformanceVector(): void
+    {
+        $current = SecretKey::fromBase64('KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=');
+        $token = (new Hmac(SecretKeyRing::of($current)))->sign('/reports/42');
+
+        $keyId = \hash_hkdf('sha256', $current->bytes(), 4, 'egl/utils:keyid:v1');
+        $macKey = \hash_hkdf('sha256', $current->bytes(), 0, 'egl/utils:hmac:v1');
+        $expiry = \str_repeat("\0", 8);
+
+        self::assertSame(
+            'v2.' . Base64Url::encode(
+                $keyId . $expiry . \hash_hmac('sha256', $keyId . $expiry . '/reports/42', $macKey, true),
+            ),
+            $token,
+            'the v2. grammar is keyId ‖ expiry ‖ hmac(keyId ‖ expiry ‖ message), base64url-encoded',
+        );
+    }
+
+    /**
+     * The same length discipline on the `v2.` path, which has one more fixed-width field to get
+     * wrong — and the expected width must include the key id rather than only the `v1.` fields.
+     */
+    public function testAnOverlongV2PayloadIsRefusedByTheLengthCheck(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+        $token = $hmac->sign(self::MESSAGE);
+
+        // Live control: untampered, it verifies.
+        $hmac->verify(self::MESSAGE, $token);
+
+        $payload = (string) Base64Url::decode(\substr($token, 3));
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('malformed or truncated');
+        $hmac->verify(self::MESSAGE, 'v2.' . Base64Url::encode($payload . 'x'));
+    }
+
+    /**
+     * A `v2.` payload one field short — the key id present, the MAC truncated — is refused, and
+     * again by the length check rather than by whatever happens downstream.
+     */
+    public function testATruncatedV2PayloadIsRefusedByTheLengthCheck(): void
+    {
+        $hmac = new Hmac(self::ring('current', 'previous'));
+        $token = $hmac->sign(self::MESSAGE);
+
+        // Live control: untampered, it verifies.
+        $hmac->verify(self::MESSAGE, $token);
+
+        $payload = (string) Base64Url::decode(\substr($token, 3));
+
+        $this->expectException(CryptoException::class);
+        $this->expectExceptionMessage('malformed or truncated');
+        $hmac->verify(self::MESSAGE, 'v2.' . Base64Url::encode(\substr($payload, 0, -1)));
+    }
+
+    /**
+     * The per-key MAC keys are derived at construction, not per call.
+     *
+     * A mechanism assertion (ADR-0027): behaviour cannot see it. An implementation that ran
+     * `hash_hkdf()` inside `verify()` would produce identical tokens and identical refusals — it
+     * would just pay one HKDF per candidate key per message. ADR-0083's first draft made exactly
+     * that mistake with the key id, so this is a regression guard for a known error.
+     */
+    public function testTheMacKeysAreDerivedAtConstructionRatherThanPerCall(): void
+    {
+        self::assertStringContainsString(
+            'hash_hkdf(',
+            self::sourceOf('__construct'),
+            'the derivation belongs at construction, where the ring is already immutable',
+        );
+
+        foreach (['sign', 'verify', 'mac', 'candidateMacKeys'] as $method) {
+            self::assertStringNotContainsString(
+                'hash_hkdf(',
+                self::sourceOf($method),
+                \sprintf('%s() must not re-derive a key that cannot have changed', $method),
+            );
+        }
     }
 
     private static function sourceOf(string $method): string
