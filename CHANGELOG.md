@@ -17,6 +17,24 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **The release SBOM is now attested** — issue #115 criterion 3, **ADR-0084**. `draft-release`
+  produces a signed SLSA provenance attestation for `bom.xml` before the draft exists, verifiable
+  with `gh attestation verify bom.xml --repo danielPoloWork/egl-util-php`. An unattested SBOM on a
+  Release is a supply-chain claim anyone with write access can replace with no way for a consumer to
+  tell — which is worse than shipping none, because the file's presence invites trust it has not
+  earned.
+  **Worth recording why this changed rather than only that it did.** Criterion 3 had been declined,
+  on the reasoning that attesting needs an attached asset and attaching one would reverse
+  `release.md`'s "no build artifacts are attached" decision. **ADR-0076 (issue #98) reversed that
+  decision itself**, for its own reasons, and an SBOM has been attached ever since — so the
+  objection was describing a state of affairs that no longer existed.
+  **It attests the SBOM, not the source.** The zip Packagist builds from the tag is not produced by
+  this workflow and cannot be attested, so the original objection's first half still stands and the
+  assurance for the source remains the **signed tag** — issue #115's criterion 1, still open and the
+  maintainer's own action. Issue #115 therefore stays open; closing it here would be the
+  checkbox-satisfaction it was filed to prevent. Fail-closed placement: an SBOM whose provenance
+  cannot be signed produces no draft at all. No production code changes.
+
 - **`Security\SecretKeyRing` — key rotation for `Crypto` tokens, and a `v2.` format that
   authenticates its key id** — issue #114, **ADR-0083**, spec **r28** (FR-40b). The release board's
   one *major* security finding: `v1.` versions the *format* and carries no key identifier, so

@@ -67,6 +67,20 @@ pre-1.0 milestone-driven.
     **CycloneDX SBOM** (`bom.xml`, production dependencies only) as a release asset (issue #98,
     ADR-0076), generated from the tagged tree's own `composer.lock` in the same job.
 
+    **That SBOM is attested** (issue #115 criterion 3, ADR-0084). An unattested SBOM on a Release is
+    a supply-chain claim anyone with write access to the Release can replace, with no way for a
+    consumer to tell — so `draft-release` produces a signed SLSA provenance attestation for it,
+    before the draft exists, and no draft is created if that fails. A consumer verifies it with:
+
+    ```bash
+    gh attestation verify bom.xml --repo danielPoloWork/egl-util-php
+    ```
+
+    **It attests the SBOM, not the source.** The artifact `composer require` installs is the zip
+    Packagist builds from the tag, which this workflow does not produce and therefore cannot attest.
+    The assurance for that is the **signed tag** — issue #115's first criterion, still open, and the
+    maintainer's own action.
+
     **Do not hand-edit a published Release body.** It is generated from the notes file, so an edit
     made on GitHub is overwritten by the next render and lost from the record. Correct
     `docs/releases/v<X.Y.Z>.md` instead. The `v1.0.0` body was hand-written only because
@@ -108,6 +122,7 @@ publishes.
 | `tools/release_gate.py` | a tag that disagrees with `Version.php`, or missing/unindexed release notes and changelog split |
 | `tools/consistency_lint.py` | the repository's invariants failing *at the tag*, not merely on the branch |
 | test matrix | the tagged tree failing on PHP 8.1, 8.2 or 8.3 — a tag can point at a commit CI never ran |
+| SBOM attestation | an SBOM whose provenance could not be signed — no draft is created rather than an unverifiable asset published (ADR-0084) |
 
 `release_gate.py` exists because the consistency lint structurally cannot do this job: it runs on a
 working copy and has no tag to compare against. `git tag -a v0.2.0` on a tree whose constant still
