@@ -11,24 +11,28 @@ release does not imply a bridge release, or the reverse.
 
 ## [Unreleased]
 
-## [0.1.0] — 2026-08-27
+**This package has no released version, and that is now a decision rather than a pending step**
+— issue **#120**, closed *as not planned* on 2026-08-27. Publishing a bridge means pushing to a
+generated split repository, which needs a credential in this repository's secrets
+(`GITHUB_TOKEN` structurally cannot write outside its own repository — ADR-0033's consequence,
+not an implementation detail), and the maintainer has decided not to hold one. So the package
+stays monorepo-only: specified, contract-tested on every pull request, and usable by anything
+consuming this repository directly, but not installable with `composer require`.
 
-The first published version of this package (issue #120). **`0.1.0`, not `1.0.0`, and the
-minor is the claim being made**: the surface below is specified and contract-tested against two
-PSR-17 vendors, but the publication pipeline that ships it had never executed end to end when this
-version was cut, so a `1.0.0` would have promised stability for machinery with no run behind it. A
-`0.x` lets the first publication be corrected without spending a major. `docs/workflow/release.md`
-had used `utils-psr7-bridge-v0.1.0` as its worked example since the pipeline was written.
+A `0.1.0` version heading was briefly added here to anchor a tag that is now not being cut. It has
+been folded back: under Keep a Changelog a versioned heading means *released*, and nothing was.
 
-**Release mode was exercised before the tag, not after** — the gate ADR-0035 §2 calls the one that
-cannot be faked, and which had never run: the package copied out of the monorepo, installed
-resolving `egl/utils` from Packagist exactly as a consumer would, and its contract suite run
-against that install. **65 tests, 202 assertions, green against `egl/utils v1.0.0`.**
+**What was proved before the decision, kept because it is the evidence and not the outcome.**
+Release mode — the gate ADR-0035 §2 calls the one that cannot be faked, and which had never run —
+was exercised without a tag: the package copied out of the monorepo, installed resolving
+`egl/utils` from Packagist exactly as a consumer would, and its contract suite run against that
+install. **65 tests, 202 assertions, green against `egl/utils v1.0.0`.** So the pipeline is proven
+up to the push; what stays unproven is the split-and-push step alone.
 
-Note for a reader comparing against the core: Packagist serves **only `v1.0.0`** of `egl/utils`
-today. The core's `v1.1.0` tag exists but its publication never completed (issues #115, #105), so
-`^1.0` resolves to `v1.0.0` — which satisfies this package's constraint and is what the run above
-tested against.
+Note for a reader comparing against the core: Packagist serves **only `v1.0.0`** of `egl/utils`.
+The core's `v1.1.0` tag exists but its publication never completed (issues #115, #105), so `^1.0`
+resolves to `v1.0.0` — which satisfies this package's constraint and is what the run above tested
+against.
 
 ### Added
 

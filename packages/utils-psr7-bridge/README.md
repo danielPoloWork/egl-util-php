@@ -3,10 +3,12 @@
 Bidirectional conversion between [`egl/utils`](https://github.com/danielPoloWork/egl-util-php)'
 HTTP values (`D4np\Utils\Http\Request`, `Response`) and PSR-7 messages, using any PSR-17 factory.
 
-> **Status: implemented and contract-tested; not yet published.** The converters and their
-> **BFR-01…BFR-22** contract suite landed in item 8.2, and the publication pipeline in item 8.3.
-> What is missing is the one-time maintainer setup the first publication needs, so the package is
-> not yet installable standalone — see [Installing](#installing).
+> **Status: implemented, contract-tested, and deliberately not published.** The converters and
+> their **BFR-01…BFR-22** contract suite landed in item 8.2, and the publication pipeline in item
+> 8.3. Publication itself was **decided against** on 2026-08-27 (issue
+> [#120](https://github.com/danielPoloWork/egl-util-php/issues/120), closed as *not planned*), so
+> this package is not installable standalone and is not going to become so — see
+> [Installing](#installing) for what that does and does not mean.
 
 ## Why this package exists
 
@@ -21,17 +23,26 @@ crossing point, and the core never depends on it.
 
 ## Installing
 
+**This does not work, and will not:**
+
 ```bash
-composer require egl/utils-psr7-bridge
+composer require egl/utils-psr7-bridge   # not published — see below
 ```
 
-**Not yet possible — but for a narrower reason than before.** This package requires
-`egl/utils: ^1.0`, and the core's `v1.0.0` **is** its first release, so the dependency now names a
-version that exists. What is still missing is *this* package's own publication: item 8.3's pipeline
-needs the split repository and its token configured (`docs/workflow/release.md` § *One-time
-maintainer prerequisites*), and no `utils-psr7-bridge-v*` tag has been cut. Until then the bridge is
-developed and tested inside the monorepo, where CI resolves the core from the working tree
-(spec 02 §7).
+**Not a pending step — a decision.** Publishing a bridge means pushing to a generated split
+repository, which requires a credential in the monorepo's secrets (`GITHUB_TOKEN` structurally
+cannot write outside its own repository — the consequence of ADR-0033's split-publication design).
+The maintainer has decided not to hold one, and issue #120 is closed *as not planned*.
+
+**Use it from the monorepo.** The bridge is developed, contract-tested against two PSR-17 vendors on
+every pull request, and fully usable by anything that consumes this repository directly — CI
+resolves the core from the working tree (spec 02 §7). What you cannot do is install it on its own.
+
+**Nothing else about it is unfinished.** The dependency constraint resolves (`egl/utils: ^1.0`
+against the core's released `v1.0.0`), and release mode — the publication gate ADR-0035 §2 calls
+the one that cannot be faked — was exercised by hand before the decision: this package installed
+from Packagist exactly as a consumer would, **65 tests / 202 assertions green**. The pipeline is
+proven up to the push; only the push is not happening.
 
 This constraint has been corrected twice, both times in a release PR and both times because a
 `0.x` caret is narrower than it looks. It was `^0.7` while the core was pre-release; when the

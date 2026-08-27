@@ -129,7 +129,23 @@ working copy and has no tag to compare against. `git tag -a v0.2.0` on a tree wh
 says `0.1.0` produces a release that installs as one version and reports itself as another, and
 nothing inside the tree disagrees with itself — so no lint notices.
 
-### Releasing a bridge
+### Releasing a bridge — decided against, 2026-08-27
+
+> **No bridge is published, and this is a decision rather than a pending step.** Issue
+> [#120](https://github.com/danielPoloWork/egl-util-php/issues/120) is closed *as not planned*:
+> publishing a bridge means pushing to a generated split repository, which needs a credential in
+> this repository's secrets (`GITHUB_TOKEN` structurally cannot write outside its own repository —
+> the consequence of ADR-0033's design, not an implementation detail), and the maintainer has
+> decided not to hold one.
+>
+> The procedure below is **kept, not deleted**, because it is correct and was verified up to the
+> push — see *Release mode has been exercised* — and because the decision is reversible: a deploy
+> key scoped to a single split repository would need one workflow change rather than a rebuild. It
+> documents a path nobody is currently walking. Nothing in it is stale.
+>
+> **What is unaffected:** both bridges stay contract-tested against two PSR-17 vendors on every
+> pull request and usable from the monorepo, and the `egl/` vendor namespace is squat-protected by
+> `egl/utils` regardless (step 2 below) — not publishing costs nothing in name protection.
 
 Each bridge versions **independently** of the core and of the other bridges (ADR-0033 §3). Since
 issue #93 / ADR-0075 **one pipeline serves every bridge**, and the tag names the package it
@@ -164,8 +180,13 @@ Three things to know before cutting one:
 - **Release mode has been exercised, ahead of any tag** (issue #120, 2026-08-27). Both packages were
   copied out of the monorepo, installed against Packagist and run: PSR-7 **65 tests / 202
   assertions**, PSR-18 **28 tests / 72 assertions**, both green. This was the first time the gate
-  ADR-0035 §2 calls unfakeable had ever run, so the remaining risk in a first publication is the
-  *push*, not the package.
+  ADR-0035 §2 calls unfakeable had ever run. It is also the last thing that ran: the decision above
+  landed before any tag, so **`bridge-release.yml` still has zero runs** and its "refuses to publish
+  what it cannot prove installable" property remains unproven live. What *is* proven is everything
+  up to the push.
+- **The changelog heading a tag would need is not present.** `## [X.Y.Z]` is what anchors a bridge
+  tag, and both packages are back at `## [Unreleased]` — a versioned heading would claim a release
+  that does not exist. Add one at the moment a tag is actually cut, not before.
 - **`workflow_dispatch` is a dry run.** Running the workflow manually against an existing tag
   validates everything and pushes nothing. It needs an existing tag, so it cannot pre-validate a
   release that has not been tagged — the gate command above is what covers that gap.
@@ -186,6 +207,21 @@ them.
    runner, so nothing needs configuring in CI; but an unsigned tag fails the release.
    Locally: `git config --global tag.gpgSign true` makes `-s` the default and removes the chance of
    forgetting it.
+
+   **Decided against, 2026-08-27.** No signing key is being registered. The consequence is exact
+   and worth stating rather than discovering: `release.yml`'s `verify-tag` job **fails on every
+   tag**, so `test-tagged-tree` and `draft-release` are skipped and the GitHub Release must be
+   written by hand — which is what happened to `v0.11.0`, `v1.0.0` and `v1.1.0`, and why `v1.1.0`
+   never reached Packagist at all (issue #105, ADR-0081).
+   So a release now takes the documented deliberate path in step 0 —
+   `EGL_UNSIGNED_TAG_REASON="why" git push origin v<X.Y.Z>` — and **`tools/post_publish_gate.py`
+   becomes the load-bearing check** rather than a formality, because it is the only thing left that
+   notices a tag which never became a release. Run it every time (step 11 above); it also runs
+   nightly.
+   Issue **#115** stays open on this criterion: its other two are done (the pre-push guard, #162;
+   the SBOM attestation, #181), and the decision is reversible — an **SSH** signing key needs no
+   email address and `ssh-keygen` is already present, so registering one later is a settings change
+   and not a rework.
 2. **The Packagist ↔ GitHub integration**, once, for `egl/utils`. Packagist then updates itself from
    each tag push, which is why no Packagist token lives in this repository. The workflow prints the
    package URL to confirm after publishing; it deliberately does not call the Packagist API, since

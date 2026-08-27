@@ -11,22 +11,25 @@ repository. A core release does not imply a bridge release, or the reverse.
 
 ## [Unreleased]
 
-## [0.1.0] — 2026-08-27
+**This package has no released version, and that is now a decision rather than a pending step**
+— issue **#120**, closed *as not planned* on 2026-08-27, for the reason its sibling records:
+publishing a bridge needs a credential able to push to a generated split repository, and the
+maintainer has decided not to hold one. The package stays monorepo-only — specified,
+contract-tested on every pull request, usable by anything consuming this repository directly, not
+installable with `composer require`.
 
-The first published version of this package (issue #120), cut alongside
-`egl/utils-psr7-bridge` `0.1.0` so the maintainer's one-time split-repository steps are done once
-for two packages rather than twice. **`0.1.0` for the same reason the sibling used it**: the
-surface is specified and contract-tested, but the pipeline shipping it had no run behind it when
-this version was cut, and a `0.x` lets the first publication be corrected without spending a major.
+A `0.1.0` version heading was briefly added here to anchor a tag that is now not being cut, and has
+been folded back: a versioned heading means *released*, and nothing was.
 
-**Release mode was exercised before the tag** — the package copied out of the monorepo, installed
-resolving `egl/utils` from Packagist as a consumer would, and its contract suite run against that
-install. **28 tests, 72 assertions, green against `egl/utils v1.0.0`** (the only core version
-Packagist serves; `v1.1.0`'s publication never completed — issues #115, #105).
+**What was proved before the decision.** Release mode was exercised without a tag — the package
+copied out of the monorepo, installed resolving `egl/utils` from Packagist as a consumer would, and
+its contract suite run against that install. **28 tests, 72 assertions, green against
+`egl/utils v1.0.0`** (the only core version Packagist serves; `v1.1.0`'s publication never
+completed — issues #115, #105).
 
-Independence is not just a claim here: this package **does not require the PSR-7 bridge**, so
-publishing the two in one round is a convenience of sequencing, not a dependency. Each versions
-independently from here on.
+Independence is not affected by any of this: this package **does not require the PSR-7 bridge**
+(ADR-0075), so the two were only ever going to be published in one round as a convenience of
+sequencing, never as a dependency.
 
 ### Added
 

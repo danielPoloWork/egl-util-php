@@ -3,9 +3,15 @@
 > A PSR-18 HTTP client over `egl/utils`' `HttpClient`, producing PSR-7 responses through any PSR-17
 > factory.
 
-**Not published yet.** The source lives in the [`egl-util-php`](https://github.com/danielPoloWork/egl-util-php)
-monorepo under `packages/utils-psr18-bridge/` and is published to a generated split repository
-(ADR-0033). Until that first publication happens, install the monorepo.
+**Not published, and deliberately so.** The source lives in the
+[`egl-util-php`](https://github.com/danielPoloWork/egl-util-php) monorepo under
+`packages/utils-psr18-bridge/`. Publication to a generated split repository (ADR-0033) would need a
+credential able to push outside the monorepo, and that was **decided against** on 2026-08-27 —
+issue [#120](https://github.com/danielPoloWork/egl-util-php/issues/120), closed as *not planned*.
+So install the monorepo and use it from there: the package is contract-tested against two PSR-17
+vendors on every pull request, and release mode was verified by hand (**28 tests / 72 assertions**
+against the core installed from Packagist) before the decision. What you cannot do is
+`composer require` it on its own.
 
 ## What it is for
 

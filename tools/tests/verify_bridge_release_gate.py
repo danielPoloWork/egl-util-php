@@ -92,6 +92,26 @@ try:
     check("...and says which package it looked in",
           "utils-psr18-bridge" in out and "1.2.3" in out, out[:300])
 
+    # 2b. ★ A heading must be a HEADING, not a mention of one in prose.
+    #
+    # Regression guard for a real miss: issue #120's closing pass folded two version headings back
+    # to `[Unreleased]` and wrote a sentence saying which heading had been removed — quoting it.
+    # Under the original substring test that sentence satisfied the gate, which reported OK for a
+    # tag whose changelog entry did not exist any more. Prose about a mechanism is not the
+    # mechanism.
+    prose = tree({"utils-psr7-bridge": ("9.9.9", {"name": "egl/utils-psr7-bridge", "require": dict(GOOD)})})
+    with open(os.path.join(prose, "packages", "utils-psr7-bridge", "CHANGELOG.md"), "w", encoding="utf-8") as handle:
+        handle.write(
+            "# Changelog\n\n## [Unreleased]\n\n"
+            "A `## [0.1.0]` heading was briefly added here and has been folded back.\n"
+            "Indented, it is still not a heading:\n\n    ## [0.1.0]\n"
+        )
+
+    code, out = run(prose, "utils-psr7-bridge-v0.1.0")
+    check("a version named only in prose does not count as its heading", code == 1, f"exit {code}\n{out[:300]}")
+    check("...and the failure names the heading it wanted",
+          "0.1.0" in out and "CHANGELOG.md" in out, out[:300])
+
     # 3. The machine-readable outputs the workflow consumes.
     code, out = run(root, "utils-psr18-bridge-v0.4.0", "--print-package")
     check("--print-package prints the directory to split", code == 0 and out.strip() == "utils-psr18-bridge",

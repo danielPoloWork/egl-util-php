@@ -20,6 +20,7 @@ _(newest first)_
 #### August
 
 - [2026-08-27 — Running the gate that had never run, before asking for the keys](2026/08/2026-08-27-bridge-publication-prep.md)
+- [2026-08-27 — Closing an issue is a change to the repository, not to the tracker](2026/08/2026-08-27-bridges-stay-internal.md)
 - [2026-08-27 — No AAD to hide the key id in, so it went under the MAC](2026/08/2026-08-27-hmac-key-ring-rotation.md)
 - [2026-08-26 — The adapter that could not reuse the bridge](2026/08/2026-08-26-psr18-bridge.md)
 - [2026-08-26 — The issue that closed itself, mostly](2026/08/2026-08-26-review-sweep-already-done.md)
