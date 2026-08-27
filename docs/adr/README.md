@@ -95,3 +95,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0077](0077-one-randomized-order-ci-cell-with-a-coupling-not-flake-rule.md) | One randomized-order CI cell, with a "coupling, not flake" rule attached | Accepted |
 | [0078](0078-a-wire-witness-for-t10-and-the-receiver-that-rewrites-the-evidence.md) | A wire witness for T-10, and the receiver that rewrites the evidence | Accepted |
 | [0079](0079-three-minor-edges-one-probe-and-a-defence-that-would-have-been-unreachable.md) | Three minor edges, one probe, and a defence that would have been unreachable | Accepted |
+| [0080](0080-response-time-targets-sized-to-solo-capacity-not-a-guarantee.md) | Response-time targets sized to solo capacity, not a guarantee | Accepted |

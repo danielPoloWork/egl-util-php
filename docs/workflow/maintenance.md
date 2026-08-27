@@ -65,9 +65,10 @@ the same reason: a window nobody shipped through gave no consumer a chance to mo
 | older MAJOR lines | ❌ | ❌ |
 
 Two honest limits. This is a **solo-maintained** library: the table says which line a fix lands on,
-not how fast it arrives. [`SECURITY.md`](../../SECURITY.md) § *What to expect* sets out the
-sequence a report goes through and deliberately commits to no timeframe — there is no response-time
-SLA here, and none is implied. And the previous-MAJOR row has **never been exercised**: `1.x` is the
+not how fast it arrives. [`SECURITY.md`](../../SECURITY.md) § *Response-time targets* names numbers
+sized to solo capacity (issue #104, **ADR-0080**, which narrows but does not reverse ADR-0060's
+original stance) — but they are stated as **targets, not a guarantee**: a solo maintainer can commit
+to effort, not to an outcome. And the previous-MAJOR row has **never been exercised**: `1.x` is the
 only line that has ever existed, so that row is a commitment made in advance, not a described
 practice. Recorded in **ADR-0060**.
 

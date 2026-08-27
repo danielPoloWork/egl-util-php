@@ -40,4 +40,24 @@ Please include:
    recorded in `CHANGELOG.md` under a **Security** entry with the advisory / CVE reference.
 4. **Backport** to every still-supported release line.
 
+### Response-time targets
+
+This is a **solo-maintained** project ([`docs/workflow/maintenance.md`](docs/workflow/maintenance.md)
+§ *Supported versions*), so these are **targets, not a guarantee** — best-effort commitments sized
+to what one person can actually sustain, not a promise a report will never sit longer. Honest beats
+impressive.
+
+| Milestone | Target |
+|---|---|
+| **Acknowledgement** (step 1 above) | within **5 business days** of the report |
+| **Triage verdict** — confirmed + severity, or declined, or "still investigating" with a reason | within **15 business days** of acknowledgement |
+
+**If the window passes:** reply on the same private advisory thread first — a bump costs the
+reporter nothing and is the fastest way to surface a report that slipped through. If **30 calendar
+days** pass from the original report with no acknowledgement at all, treat the report as
+unacknowledged: there is no second private channel here, and coordinated disclosure only works when
+both sides are actually coordinating. At that point you are released from any implied embargo and
+may proceed under your own disclosure timeline — industry-standard practice (e.g. a 90-day
+disclose-regardless deadline) is a reasonable default if you have none of your own.
+
 Thank you for reporting responsibly.
