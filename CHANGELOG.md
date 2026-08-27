@@ -17,6 +17,23 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`tools/post_publish_gate.py` — verify a release actually reached the world, plus a nightly
+  check** — issue #105, **ADR-0081**. `release_gate.py` verifies a tag before drafting a Release;
+  nothing verified what happens *after* a human clicks Publish. The gap was not hypothetical: while
+  this issue was being worked, `v1.1.0` was found tagged and pushed but never actually released —
+  the tag was unsigned, `verify-tag` correctly refused it, and the tag sat for three days with no
+  GitHub Release and nothing on Packagist while `ROADMAP.md` read as though it had shipped, because
+  nothing checked. The new gate asks four questions of a tag: is it signed and verified, does a
+  non-draft GitHub Release exist for it, does the Release body match the canonical rendering of the
+  notes (a **prefix** match — GitHub appends its own auto-generated notes after the given body), and
+  does the version resolve on Packagist. Exit 0/1/2 distinguish "verified fine" from "a real
+  problem" from "could not even check" — the last never allowed to look like the first. Documented
+  as release.md's closing step, and **also run nightly** against the latest published Release,
+  because a manual step is exactly the mechanism that just failed — a release that slips through it
+  is now caught within a day instead of by accident. The broken, unpublished `v1.1.0` tag was
+  deleted (documented agent authority: an unpublished tag whose release run visibly failed);
+  re-tagging it signed is the maintainer's next action. No production code changes.
+
 - **`Hash::strict()` — the fail-closed password-hashing construction, as a named entry point** —
   issue #102, **ADR-0079**, spec **r27**. Equivalent to `new Hash(bcryptFallback: false)`: Argon2id,
   or refuse to construct. The behaviour already existed as a boolean argument a caller had to know
