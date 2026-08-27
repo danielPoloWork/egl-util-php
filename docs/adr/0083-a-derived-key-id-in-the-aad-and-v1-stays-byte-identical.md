@@ -123,8 +123,9 @@ arrives keep working.
   utility so both can share the convention, and that is what ships: the derivation, the label
   grammar (`egl/utils:keyid:v1`) and the `keyId ‖ …` layout are defined here as the shared
   convention, and `Hmac` adopts them unchanged when its own item lands — with the id covered by the
-  MAC, which is the signing-side equivalent of §1's AAD binding. Filed as a follow-up rather than
-  folded in, to keep one security-critical format change per review.
+  MAC, which is the signing-side equivalent of §1's AAD binding. Filed as
+  [#179](https://github.com/danielPoloWork/egl-util-php/issues/179) rather than folded in, to keep
+  one security-critical format change per review.
 - **A key id wider than four bytes.** Considered; rejected as cost without benefit. Eight bytes
   would add ~5 base64 characters to every token to reduce a collision probability that is already
   refused explicitly at construction rather than tolerated statistically.
@@ -170,7 +171,8 @@ the attempt count leaks nothing a caller could use.
 - **Known property, not a weakness:** a key id is a stable public label, so an observer can group
   tokens by key and see when a rotation happened. That is inherent to key identification and is
   what makes the window work; recorded so it is known rather than discovered.
-- **Known limitation:** `Hmac` still has no rotation story. Filed as a follow-up (§Alternatives),
+- **Known limitation:** `Hmac` still has no rotation story. Filed as
+  [#179](https://github.com/danielPoloWork/egl-util-php/issues/179),
   and its docblock already anticipated this grammar, so adopting it is additive there too.
 - **Rotation is now a documented operator procedure** rather than an open question: add the new key
   as `current` with the old one behind it, wait out the longest-lived token, then drop the old key —
