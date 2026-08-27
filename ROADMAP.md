@@ -30,8 +30,9 @@ API-freeze review below settled the whole line into a single first release, **`v
   M13's close-out. Additive under ADR-0059, so `^1.0` still resolves; the milestone mapping
   is not resumed, and M15 will not imply `v1.2.0` by itself.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-27 — Prefixing the key id would have been the bug](docs/journal/2026/08/2026-08-27-secret-key-ring-rotation.md).
+  [2026-08-27 — The objection was true when it was written, and we had already broken it](docs/journal/2026/08/2026-08-27-attest-the-sbom.md).
   Previous:
+  [2026-08-27 — Prefixing the key id would have been the bug](docs/journal/2026/08/2026-08-27-secret-key-ring-rotation.md),
   [2026-08-27 — The inventory had already grown, and nothing had noticed that either](docs/journal/2026/08/2026-08-27-internal-inventory-pinned.md),
   [2026-08-27 — The gap the issue described was already open](docs/journal/2026/08/2026-08-27-post-publish-verification.md),
   [2026-08-27 — Narrowing a decision instead of pretending it never happened](docs/journal/2026/08/2026-08-27-security-response-time-targets.md),

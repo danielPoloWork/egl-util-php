@@ -134,6 +134,14 @@ jobs:
     needs: [verify-tag, test-tagged-tree]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Declared on the job rather than raised workflow-wide, so `verify-tag` and the tagged-tree
+    # matrix keep the narrower default. A job-level block REPLACES the workflow-level one rather
+    # than merging with it, which is why `contents: write` is restated here — dropping it would
+    # leave this job unable to draft the Release it exists to draft.
+    permissions:
+      contents: write      # draft the GitHub Release
+      id-token: write      # the OIDC token the attestation is signed against
+      attestations: write  # write the attestation into this repository's store
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -171,6 +179,27 @@ jobs:
       # never reach a consumer's vendor/ and have no place asserting supply-chain provenance here.
       - name: Generate the CycloneDX SBOM
         run: composer CycloneDX:make-sbom --output-format=XML --output-file="$RUNNER_TEMP/bom.xml" --omit=dev
+
+      # Attest the SBOM (issue #115 criterion 3, ADR-0084).
+      #
+      # An SBOM is a supply-chain *claim*, and an unattested one attached to a Release is a claim
+      # anybody with write access to that Release can replace, with no way for a consumer to tell.
+      # This produces a signed SLSA provenance attestation tied to this workflow, this commit and
+      # this runner, verifiable with `gh attestation verify bom.xml --repo <owner/name>`.
+      #
+      # WHAT THIS DOES NOT COVER, because overclaiming here would be worse than not doing it: the
+      # artifact a consumer actually installs is the zip **Packagist builds from the tag**, which
+      # this workflow does not produce and therefore cannot attest. The assurance for that remains
+      # the signed tag — issue #115's first criterion, and the maintainer's to complete. This closes
+      # the link for the one artifact this pipeline does build.
+      #
+      # Placed BEFORE the draft, so it fails closed: a release whose SBOM could not be attested
+      # produces no draft at all rather than a published-but-unverifiable asset. That is ADR-0032's
+      # posture for everything else on this path.
+      - name: Attest the SBOM's provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/bom.xml
 
       - name: Draft the release (a human publishes it)
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
