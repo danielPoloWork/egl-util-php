@@ -30,6 +30,10 @@ contract (the "congruence checks"):
      every `#anchor` finds a heading in its target, and a `§ "Section"` reference immediately
      after a link names a real section of it (issue #116, ROADMAP 13.4, ADR-0069). Bare and
      numeric `§` forms are out of scope and the check says so on every run.
+  10. internal-inventory — the `@internal` symbols in `src/main` equal exactly the pinned
+      list in this file (issue #111). Removing a frozen symbol already trips the BC checker;
+      this closes the other direction — ADDING `@internal` to an already-frozen public symbol
+      silently moving it outside the 1.x contract, which nothing else would notice.
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -603,6 +607,111 @@ def check_links():
               "from every clone by design, so unresolvable rather than broken.")
 
 
+# ---------------------------------------------------------------------------
+# 10. `@internal` inventory pinned to ADR-0059's carve-out (issue #111)
+# ---------------------------------------------------------------------------
+# ADR-0059 froze the public API at v1.0.0 with exactly two symbols carved out as `@internal` —
+# documented public-for-mechanical-reasons, excluded from the BC contract by intent rather than
+# by the checker reading a docblock. The exclusion was guarded in one direction only: REMOVING an
+# `@internal` symbol trips `bc_gate.py` and forces a written override naming the ADR (a visible,
+# reviewed act). ADDING `@internal` to an already-frozen public symbol trips nothing at all — it
+# would silently move a symbol outside the 1.x contract, in the one direction that costs a
+# consumer rather than a maintainer.
+#
+# The inventory has already grown since ADR-0059's two-symbol table (2026-08-09): three more
+# `@internal` symbols shipped in the additive MINOR that followed, each new rather than freshly
+# excised from the frozen surface (`Base64Url`, `Uint64` — both extracted in RFC-0003 items;
+# `Page::__construct()` — RFC-0003's pagination unit). That growth was legitimate: a symbol that
+# did not exist at the v1.0.0 baseline cannot "break" by being excluded from it. What this check
+# pins is not the number two — it is that FUTURE growth takes the same visible shape: editing
+# EXPECTED_INTERNAL below, in a reviewed diff, rather than a docblock edit nobody else's tooling
+# reacts to.
+#
+# A regex scan, not a PHP parser — consistent with every other check in this file. Correct for
+# every symbol this project has ever marked `@internal`, and stated as a known limit rather than
+# hidden: an `@internal` tag inside a UNION type's docblock, an enum CASE, or a promoted
+# constructor property's own inline doc would not be recognised as one of the two shapes below
+# (class-level and method-level) and would fail this check by omission — loudly, as a
+# newly-detected symbol, never silently.
+_INTERNAL_DOC = re.compile(r"/\*\*.*?\*/", re.DOTALL)
+_INTERNAL_TAG = re.compile(r"^\s*\*\s*@internal\b", re.MULTILINE)
+_CLASS_DECL = re.compile(r"^\s*(?:final\s+|abstract\s+)?(?:class|interface|trait|enum)\s+(\w+)", re.MULTILINE)
+_METHOD_DECL = re.compile(
+    r"^\s*(?:public|private|protected)\s+(?:static\s+)?function\s+(\w+)\s*\(", re.MULTILINE
+)
+
+# The frozen inventory. Widening it — for a genuinely new `@internal` symbol, or for the free
+# lifetime of a future pre-2.0 line — is one line here, reviewed like any other change.
+EXPECTED_INTERNAL = {
+    "Security\\SecretKey::bytes()",          # ADR-0059's original carve-out
+    "Security\\Hash::selectAlgorithm()",     # ADR-0059's original carve-out
+    "Security\\Base64Url",                   # ADR-0065/RFC-0003 — class-level, extracted shared codec
+    "Security\\Uint64",                      # ADR-0067/RFC-0003 — class-level, extracted shared codec
+    "Persistence\\Page::__construct()",      # ADR-0064/RFC-0003 — construct only via Repository::fetchPage()
+}
+
+
+def check_internal_inventory():
+    name = "internal-inventory"
+    src_root = os.path.join(ROOT, CONFIG["src_main"])
+    if not os.path.isdir(src_root):
+        fail(name, f"{CONFIG['src_main']} does not exist")
+        return
+
+    found = set()
+    for dirpath, _dirs, filenames in os.walk(src_root):
+        for filename in filenames:
+            if not filename.endswith(".php"):
+                continue
+            path = os.path.join(dirpath, filename)
+            with open(path, encoding="utf-8") as handle:
+                text = handle.read()
+
+            rel_ns = os.path.relpath(dirpath, src_root).replace(os.sep, "\\")
+            rel_path = os.path.relpath(path, ROOT).replace(os.sep, "/")
+
+            for doc in _INTERNAL_DOC.finditer(text):
+                if not _INTERNAL_TAG.search(doc.group(0)):
+                    continue
+
+                after = text[doc.end():doc.end() + 400]
+                class_match = _CLASS_DECL.match(after.lstrip("\n\r \t"))
+                method_match = _METHOD_DECL.match(after.lstrip("\n\r \t"))
+
+                if class_match:
+                    symbol = f"{rel_ns}\\{class_match.group(1)}" if rel_ns != "." else class_match.group(1)
+                elif method_match:
+                    class_before = list(_CLASS_DECL.finditer(text[:doc.start()]))
+                    if not class_before:
+                        fail(name, f"{rel_path}: @internal method with no enclosing class found")
+                        continue
+                    owner = class_before[-1].group(1)
+                    qualified = f"{rel_ns}\\{owner}" if rel_ns != "." else owner
+                    symbol = f"{qualified}::{method_match.group(1)}()"
+                else:
+                    fail(name, f"{rel_path}: found @internal but could not identify the class or "
+                               "method it documents (neither a class/interface/trait/enum nor a "
+                               "method declaration immediately follows the docblock) — this check "
+                               "only recognises those two shapes; see the comment above it")
+                    continue
+
+                found.add(symbol)
+
+    missing = EXPECTED_INTERNAL - found
+    unexpected = found - EXPECTED_INTERNAL
+    for symbol in sorted(missing):
+        fail(name, f"{symbol} is in EXPECTED_INTERNAL but no longer carries @internal in "
+                   "src/main — either it was removed (a BC break — was bc_gate.py overridden "
+                   "with a written reason?) or its docblock changed shape enough that this "
+                   "check no longer recognises it")
+    for symbol in sorted(unexpected):
+        fail(name, f"{symbol} carries @internal in src/main but is not in "
+                   "consistency_lint.py's EXPECTED_INTERNAL — either it is a new, legitimate "
+                   "exclusion (add it to EXPECTED_INTERNAL, in a reviewed diff, per ADR-0059) or "
+                   "it is an ALREADY-FROZEN public symbol someone just moved outside the 1.x "
+                   "contract silently, which is exactly the gap this check exists to close")
+
+
 CHECKS = [
     check_version_lockstep,
     check_adr_index,
@@ -613,6 +722,7 @@ CHECKS = [
     check_i18n_freshness,
     check_posture,
     check_links,
+    check_internal_inventory,
 ]
 
 
