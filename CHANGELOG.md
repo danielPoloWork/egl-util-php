@@ -17,6 +17,20 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`consistency_lint.py` pins the `@internal` inventory, so widening ADR-0059's carve-out is
+  visible** — issue #111, **ADR-0082**. Removing an `@internal` symbol already trips
+  `bc_gate.py`; adding `@internal` to an already-frozen public symbol tripped nothing at all,
+  silently moving it outside the 1.x contract. A new tenth check asserts the `@internal` symbols
+  in `src/main` equal exactly a pinned set — five today, not the two ADR-0059's original table
+  named: `Base64Url` and `Uint64` (whole classes) and `Page::__construct()` shipped `@internal`
+  from day one in the additive MINOR that followed, legitimately, and nothing had recorded that
+  growth. Widening or narrowing the set is now a one-line, reviewed edit to the linter. Matched
+  strictly to the tag's own line (`@internal` as the first word after `*`), not a substring search
+  — `Base64Url.php`'s own docblock mentions the word twice, once in backtick-quoted prose and once
+  as the real tag, and only the second counts. Proved in both directions by hand against the real
+  tree (a symbol planted, a symbol removed) before `tools/tests/verify_internal_inventory.py`
+  shipped the repeatable seven-case proof, run on every PR. No production code changes.
+
 - **`tools/post_publish_gate.py` — verify a release actually reached the world, plus a nightly
   check** — issue #105, **ADR-0081**. `release_gate.py` verifies a tag before drafting a Release;
   nothing verified what happens *after* a human clicks Publish. The gap was not hypothetical: while

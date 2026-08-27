@@ -387,6 +387,13 @@ jobs:
       # is exactly what must not rot between releases, and this is where it gets checked.
       - name: Verify the BC gate's version-constant discount is narrow
         run: python tools/tests/verify_bc_gate.py
+      # The @internal inventory (issue #111). ADR-0059's carve-out is guarded in one direction by
+      # bc_gate.py: removing a frozen symbol trips it. ADDING @internal to an already-frozen public
+      # symbol trips nothing at all, which is the gap this check closes -- so, like every other gate
+      # in this project, it does not get trusted until it has been watched failing, in both
+      # directions, on synthetic data that does not depend on this tree's current five symbols.
+      - name: Verify the @internal inventory check can fail
+        run: python tools/tests/verify_internal_inventory.py
       # The dist's CONTENTS, not .gitattributes' rules (issue #119). A rule list cannot tell you
       # about a file nobody wrote a rule for, which is exactly how phpdoc.dist.xml shipped in
       # v1.1.0's archive. Runs on every PR, because the PR that adds a top-level file is the only
