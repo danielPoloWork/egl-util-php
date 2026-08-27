@@ -129,10 +129,13 @@ working copy and has no tag to compare against. `git tag -a v0.2.0` on a tree wh
 says `0.1.0` produces a release that installs as one version and reports itself as another, and
 nothing inside the tree disagrees with itself — so no lint notices.
 
-### Releasing the PSR-7 bridge
+### Releasing a bridge
 
-`egl/utils-psr7-bridge` versions **independently** of the core (ADR-0033 §3). Its releases are cut
-from package-scoped tags here and published to a generated, read-only split repository:
+Each bridge versions **independently** of the core and of the other bridges (ADR-0033 §3). Since
+issue #93 / ADR-0075 **one pipeline serves every bridge**, and the tag names the package it
+publishes — adding a third bridge needs a repository variable and no workflow edit. There are two
+today, `egl/utils-psr7-bridge` and `egl/utils-psr18-bridge`. Releases are cut from package-scoped
+tags here and published to a generated, read-only split repository per package:
 
 ```bash
 git tag -a -s utils-psr7-bridge-v0.1.0 -m "<headline>"
@@ -140,22 +143,37 @@ git push origin utils-psr7-bridge-v0.1.0
 ```
 
 `.github/workflows/bridge-release.yml` then verifies the tag is annotated and signed, checks it
-against `packages/utils-psr7-bridge/CHANGELOG.md`'s `## [X.Y.Z]` heading (a Composer library carries
-no version constant, so the changelog is what anchors the tag), runs the contract suite in **release
-mode**, splits the package and pushes it as a plain `vX.Y.Z`.
+against `packages/<package>/CHANGELOG.md`'s `## [X.Y.Z]` heading (a Composer library carries no
+version constant, so the changelog is what anchors the tag), runs the contract suite in **release
+mode**, splits the package and pushes it as a plain `vX.Y.Z`. Validate a tag's shape and changelog
+agreement before pushing it:
 
-Two things to know before cutting one:
+```bash
+python tools/bridge_release_gate.py --tag utils-psr7-bridge-v0.1.0
+```
 
-- **The core must be released first.** Release mode installs the package resolving `egl/utils` from
-  Packagist, exactly as a consumer would. That is the only evidence for the constraint the package
-  publishes, so it is never skipped — which means a bridge release is impossible until a core
-  version matching its constraint exists (ADR-0035 §2).
+Three things to know before cutting one:
+
+- **The core must be released first, and this precondition is now met.** Release mode installs the
+  package resolving `egl/utils` from Packagist, exactly as a consumer would. That is the only
+  evidence for the constraint the package publishes, so it is never skipped — which means a bridge
+  release was impossible until a core version matching its constraint existed (ADR-0035 §2).
+  **Note which core version that is:** Packagist serves only `v1.0.0`; the `v1.1.0` tag exists but
+  its publication never completed (issues #115, #105). `^1.0` therefore resolves to `v1.0.0`, which
+  satisfies both bridges' constraints.
+- **Release mode has been exercised, ahead of any tag** (issue #120, 2026-08-27). Both packages were
+  copied out of the monorepo, installed against Packagist and run: PSR-7 **65 tests / 202
+  assertions**, PSR-18 **28 tests / 72 assertions**, both green. This was the first time the gate
+  ADR-0035 §2 calls unfakeable had ever run, so the remaining risk in a first publication is the
+  *push*, not the package.
 - **`workflow_dispatch` is a dry run.** Running the workflow manually against an existing tag
-  validates everything and pushes nothing.
+  validates everything and pushes nothing. It needs an existing tag, so it cannot pre-validate a
+  release that has not been tagged — the gate command above is what covers that gap.
 
 ### One-time maintainer prerequisites
 
-Both are the maintainer's, not the agent's, and the first release cannot succeed without them.
+All of these are the maintainer's, not the agent's, and the first release cannot succeed without
+them.
 
 0. **The pre-push guard enabled**, once per clone: `git config core.hooksPath .githooks`. It
    refuses an unsigned or lightweight `v*.*.*` tag before it reaches the remote, which is where
@@ -183,17 +201,39 @@ Both are the maintainer's, not the agent's, and the first release cannot succeed
    reason to hurry the split repository** — step 3 is about *publishing* the bridge, not about
    defending its name. Do not conflate the two: the original issue did, and it made a solved
    problem look blocked.
-3. **For the bridge only** — a **split repository** and a token that can write to it:
-   - create the repository (e.g. `danielPoloWork/egl-utils-psr7-bridge`), empty, and treat it as
-     **read-only**: it is generated, and accepts no commits or pull requests;
-   - set the repository variable `BRIDGE_SPLIT_REPO` to its `owner/name`;
-   - set the secret `BRIDGE_SPLIT_TOKEN` to a token with write access to it — `GITHUB_TOKEN` cannot
-     write to another repository, which is why this one is needed;
-   - register `egl/utils-psr7-bridge` on Packagist, pointing at the split repository.
+3. **For the bridges only** — a **split repository per package**, and one token that can write to
+   them. Do this once per bridge; the token may cover every bridge.
 
-   Until the variable and secret exist, `bridge-release.yml` fails at its prerequisite step and says
-   what is missing — after the gates have passed, so the message distinguishes "not configured" from
-   "the release is bad".
+   **The repository variable is named per package**, derived from the package directory by
+   upper-casing it and turning `-` into `_` (ADR-0075) — *not* a single shared `BRIDGE_SPLIT_REPO`,
+   which is what this step said before issue #120 and would have failed the prerequisite check after
+   every other gate passed:
+
+   | Package | Repository variable | Suggested split repository |
+   |---|---|---|
+   | `utils-psr7-bridge` | `BRIDGE_SPLIT_REPO_UTILS_PSR7_BRIDGE` | `danielPoloWork/egl-utils-psr7-bridge` |
+   | `utils-psr18-bridge` | `BRIDGE_SPLIT_REPO_UTILS_PSR18_BRIDGE` | `danielPoloWork/egl-utils-psr18-bridge` |
+
+   For each bridge:
+   - create the repository, empty, and treat it as **read-only**: it is generated, and accepts no
+     commits or pull requests;
+   - set that package's repository variable to its `owner/name`;
+   - register the package (`egl/utils-psr7-bridge`, `egl/utils-psr18-bridge`) on Packagist, pointing
+     at its split repository. The `egl/` vendor is already locked to this account by `egl/utils`
+     (step 2), so neither name can be squatted and there is no reason to hurry this.
+
+   Then once, for all of them:
+   - set the secret `BRIDGE_SPLIT_TOKEN` to a token with write access to the split repositories —
+     `GITHUB_TOKEN` cannot write to another repository, which is why this one is needed.
+
+   Until a package's variable and the secret exist, `bridge-release.yml` fails at its prerequisite
+   step and names the exact variable it wants — after the gates have passed, so the message
+   distinguishes "not configured" from "the release is bad".
+
+   **The pipeline has never run.** Its "refuses to publish what it cannot prove installable"
+   property is therefore still unproven live, which is the whole of what issue #120 has left. The
+   gates it runs *before* the push have been reproduced by hand and are green (see *Releasing a
+   bridge* above), so the first real run is exercising the split and push, not the package.
 
 ## Boundary
 

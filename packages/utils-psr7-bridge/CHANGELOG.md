@@ -11,21 +11,34 @@ release does not imply a bridge release, or the reverse.
 
 ## [Unreleased]
 
-### Changed
+## [0.1.0] — 2026-08-27
 
-- **Core constraint widened to `egl/utils: ^1.0`** (was `^0.11`). The core's API-freeze review cut
-  its first release as `1.0.0` rather than `0.11.0` (**ADR-0059**), and a `0.x` caret does not
-  reach across a major — `^0.11` means `>=0.11.0 <0.12.0` and would have missed the only release
-  that exists. Caught in the core's release PR, before the first real install could fail on it.
+The first published version of this package (issue #120). **`0.1.0`, not `1.0.0`, and the
+minor is the claim being made**: the surface below is specified and contract-tested against two
+PSR-17 vendors, but the publication pipeline that ships it had never executed end to end when this
+version was cut, so a `1.0.0` would have promised stability for machinery with no run behind it. A
+`0.x` lets the first publication be corrected without spending a major. `docs/workflow/release.md`
+had used `utils-psr7-bridge-v0.1.0` as its worked example since the pipeline was written.
+
+**Release mode was exercised before the tag, not after** — the gate ADR-0035 §2 calls the one that
+cannot be faked, and which had never run: the package copied out of the monorepo, installed
+resolving `egl/utils` from Packagist exactly as a consumer would, and its contract suite run
+against that install. **65 tests, 202 assertions, green against `egl/utils v1.0.0`.**
+
+Note for a reader comparing against the core: Packagist serves **only `v1.0.0`** of `egl/utils`
+today. The core's `v1.1.0` tag exists but its publication never completed (issues #115, #105), so
+`^1.0` resolves to `v1.0.0` — which satisfies this package's constraint and is what the run above
+tested against.
 
 ### Added
 
 - Publication pipeline (roadmap item **8.3**, **ADR-0035**): this package is released from a signed
   `utils-psr7-bridge-vX.Y.Z` tag in the monorepo, verified and contract-tested against the
   **released** core before anything is pushed, then split to the generated repository as `vX.Y.Z`.
-  **The first release waits on the core.** Release mode resolves `egl/utils` from Packagist exactly
-  as a consumer would, and the core has no release yet — so no version of this package can be
-  published until it does. That is enforced rather than assumed.
+  **The first release waited on the core, and that precondition is now met.** Release mode resolves
+  `egl/utils` from Packagist exactly as a consumer would; until the core had a release, no version of
+  this package could be published, and that was enforced rather than assumed. Since #170 one pipeline
+  serves every bridge — the tag names the package it publishes.
   When cutting a version, add its `## [X.Y.Z]` heading here: it is what the release gate anchors the
   tag to, since a Composer library carries no version constant of its own.
 
@@ -48,3 +61,12 @@ release does not imply a bridge release, or the reverse.
   max level, this changelog and the package README — the boundary specified by
   [`docs/specs/02_spec_psr7_bridge.md`](../../docs/specs/02_spec_psr7_bridge.md) §2.
   Publication to Packagist lands in item **8.3**.
+
+### Notes
+
+- **The core constraint is `egl/utils: ^1.0`**, and it was `^0.11` for part of this package's
+  development. The core's API-freeze review cut its first release as `1.0.0` rather than `0.11.0`
+  (**ADR-0059**), and a `0.x` caret does not reach across a major — `^0.11` means
+  `>=0.11.0 <0.12.0` and would have missed the only release that exists. Caught in the core's
+  release PR, before the first real install could fail on it. Recorded as a note rather than under
+  *Changed*: nothing had been published yet for it to be a change **to**.
