@@ -2360,13 +2360,33 @@ milestone mapping. RFC-0004's eight governing constraints apply to every item be
 floor (only-raise, ADR-0017 — the multibyte corpora and policy-table discipline these items
 carry are not `low`-effort work).
 
-- [ ] 15.1 `Str` batch 1 — **FR-56**: `mask()` (fixed-length, keep-first/keep-last, multibyte),
+- [x] 15.1 `Str` batch 1 — **FR-56**: `mask()` (fixed-length, keep-first/keep-last, multibyte),
       `truncate()` (suffix-aware, refuses a length shorter than the suffix), `snakeCase()` /
       `camelCase()` (completing the family `pascalCase()` opened), `isUuid()` (optional version
       pin) / `isUlid()` (first-character overflow refused — FR-46's refuse-never-truncate read
       back). No ADR expected (items 2.2/2.4's precedent); escalates if review finds `mask()`
       security-relevant (RFC-0004; issue #197) — size: S · route: fast / medium *(raised from the
-      tool's fast/low floor)*
+      tool's fast/low floor; session model Sonnet 5 — route matched)*. *Delivered — spec **r30**
+      (FR-56); 3351 tests (+96, five new files: `StrMaskTest`, `StrTruncateTest`,
+      `StrCaseConversionTest`, `StrIsUuidTest`, `StrIsUlidTest`). **`snakeCase()`/`camelCase()`
+      share one private
+      word-splitting engine** rather than being independently hand-written — the design decision
+      the item's own text didn't spell out, but the one that makes
+      `camelCase(snakeCase($x)) === $x` a provable property for camelCase `$x` (asserted over a
+      four-value corpus) instead of a coincidence the two happened to agree on. The splitter is a
+      two-pass acronym-aware boundary insertion (`APIKey` → `api_key`, not `a_p_i_key`; a digit
+      stays with the letters before it unless directly followed by an uppercase letter —
+      `line2Item` → `line2_item`, a documented choice among two defensible ones). **`mask()`'s
+      refusal never contains the value being masked** — only the character counts — so a caller
+      logging the failure cannot accidentally log the secret it was trying to hide; the property
+      is itself asserted (`assertStringNotContainsString`), not just claimed in the docblock.
+      `isUuid()`/`isUlid()` are pure predicates: never throw on the value under test (only
+      `isUuid()`'s own `$version` argument can be a caller error), and the ULID overflow
+      boundary (`0`–`7` only) is enforced by the validation regex itself, not a separate check.
+      No new exception type (every refusal is the existing `InvalidArgumentException`
+      convention `random()`/`pad()` already use) — said out loud because an absence leaves no
+      trace. Zero new deptrac edges (436 allowed, 0 violations, 0 uncovered) and zero new
+      `require`/`suggest` entries, both expected for an additive `Support`-only batch.*
 - [ ] 15.2 `Str` batch 2 — **FR-57**: `before`/`after`/`between`/`beforeLast`/`afterLast`
       returning `?string` (`null` on a miss, never the subject unchanged — the probing arm of
       RFC-0004's missing-value grammar; empty needle refused), `normalizeEol()` (`Eol` enum, lone

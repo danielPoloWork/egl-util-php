@@ -11,8 +11,11 @@ use Psr\Clock\ClockInterface;
 /**
  * String utilities: URL-friendly slugs, UUIDs, CSPRNG tokens (spec §2 items 19–21), the
  * FR-31 additions — whitespace collapsing, blank-to-null, charset transcoding, multibyte-safe
- * padding, class-name and case helpers (spec r3, RFC-0002) — and the FR-46 time-sortable
- * identifiers, {@see self::ulid()} and {@see self::uuidV7()} (spec r18, RFC-0003).
+ * padding, class-name and case helpers (spec r3, RFC-0002) — the FR-46 time-sortable
+ * identifiers, {@see self::ulid()} and {@see self::uuidV7()} (spec r18, RFC-0003) — and the
+ * FR-56 batch: identifier validators, display masking, truncation, and the `snake_case()` /
+ * `camelCase()` pair completing the case family {@see self::pascalCase()} opened (spec r30,
+ * RFC-0004, roadmap item 15.1).
  *
  * **This class holds no state, and one test asserts it.** Every method is a pure function of its
  * arguments and the CSPRNG. That is load-bearing for FR-46: guaranteeing that two identifiers
@@ -44,6 +47,26 @@ final class Str
      * rather than this library's choice.
      */
     private const MAX_TIMESTAMP_MS = 281474976710655;
+
+    /**
+     * RFC 9562 textual form, with the version nibble captured: 8-4-4-12 hex groups, a version
+     * digit `1`–`8` opening the third group, and an RFC 4122 variant (`8`/`9`/`a`/`b`) opening
+     * the fourth — the two bit fields every defined UUID version fixes at those offsets.
+     * `Nil`/`Max` UUIDs (all-zero / all-`f`) and the historical Microsoft variant are
+     * deliberately outside this pattern: they carry no version to validate against.
+     */
+    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-([1-8])[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
+
+    /**
+     * A ULID (spec-conformant): 26 characters from Crockford's Base32, case-insensitively (the
+     * specification requires decoders to accept either case even though {@see self::ulid()}
+     * only ever emits uppercase). **The first character is restricted to `0`–`7`** — the two
+     * always-zero padding bits {@see self::ulid()}'s docblock names leave only 3 bits of real
+     * timestamp in that position, so `8`–`Z` there can never be produced by an encoder and
+     * names a value outside the 48-bit timestamp range (the ULID specification's own
+     * "overflow" boundary, `7ZZZZZZZZZZZZZZZZZZZZZZZZZ` being the largest valid value).
+     */
+    private const ULID_PATTERN = '/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i';
 
     private function __construct()
     {
@@ -104,6 +127,40 @@ final class Str
             \substr($hex, 16, 4),
             \substr($hex, 20, 12),
         );
+    }
+
+    /**
+     * Whether `$value` is a syntactically valid UUID: RFC 9562's 8-4-4-12 hex layout, a version
+     * digit `1`–`8` and the RFC 4122 variant bits (spec r30 FR-56, RFC-0004).
+     *
+     * A **predicate, not a sanitizer** — it never rewrites, and it never throws on a malformed
+     * `$value` (a validator that can fail two ways forces every caller to handle both; returning
+     * `false` for anything not conforming is the one answer a boundary check needs). Pass
+     * `$version` to additionally pin the version (`Str::isUuid($id, version: 7)` for FR-46's
+     * `uuidV7()`, `version: 4` for {@see self::uuid()}) — an out-of-range `$version` itself is a
+     * caller error and does throw, since that argument is not the value under test.
+     *
+     * **Deliberately excluded**: the Nil UUID (all zeros), the Max UUID (all `f`), and the
+     * historical Microsoft variant — none carries a version this method can check against, and
+     * accepting them under `$version = null` would make "valid UUID" mean "128 bits formatted
+     * like one" rather than "a UUID some defined version actually produced."
+     *
+     * @throws InvalidArgumentException if `$version` is given and outside `1`–`8`
+     */
+    public static function isUuid(string $value, ?int $version = null): bool
+    {
+        if ($version !== null && ($version < 1 || $version > 8)) {
+            throw new InvalidArgumentException(\sprintf(
+                '$version must be between 1 and 8, got %d.',
+                $version,
+            ));
+        }
+
+        if (\preg_match(self::UUID_PATTERN, $value, $matches) !== 1) {
+            return false;
+        }
+
+        return $version === null || (int) $matches[1] === $version;
     }
 
     /**
@@ -184,6 +241,22 @@ final class Str
     }
 
     /**
+     * Whether `$value` is a syntactically valid ULID: 26 characters, Crockford Base32,
+     * case-insensitive (spec r30 FR-56, RFC-0004).
+     *
+     * **The overflow boundary is enforced, not just the alphabet and length** — the first
+     * character is refused outside `0`–`7` (see {@see self::ULID_PATTERN}'s docblock for why
+     * that is exactly the range {@see self::ulid()} can produce), so a string that is
+     * alphabet-and-length-correct but names an instant beyond the 48-bit timestamp range is
+     * rejected rather than accepted as "close enough." A predicate, not a sanitizer: never
+     * throws, never rewrites.
+     */
+    public static function isUlid(string $value): bool
+    {
+        return \preg_match(self::ULID_PATTERN, $value) === 1;
+    }
+
+    /**
      * A CSPRNG token of `$length` characters drawn uniformly from `$alphabet`.
      *
      * Built on {@see random_int()} (CSPRNG-backed, rejection-sampled — no modulo bias), one
@@ -244,6 +317,119 @@ final class Str
         }
 
         return $value;
+    }
+
+    /**
+     * Masks the middle of `$value`, keeping `$keepStart` characters at the start and `$keepEnd`
+     * at the end — `mask('4111111111111111', keepEnd: 4)` → `****1111` (spec r30 FR-56,
+     * RFC-0004).
+     *
+     * **The masked segment has a fixed length (`$maskLength`), independent of how much was
+     * actually hidden.** That is the security property, not a formatting choice: a masked value
+     * whose *length* still varies with the input's length leaks exactly what masking is meant to
+     * hide — `***@x.com` versus `*********@x.com` already tells an observer the local part's
+     * length even though every character of it is gone. Keeping the mask a constant width closes
+     * that channel.
+     *
+     * Counts are **Unicode code points**, not bytes (`mb_strlen()`'s semantics without an
+     * `ext-mbstring` dependency — {@see self::padLeft()}'s house mechanism, reused).
+     *
+     * **Refuses rather than silently returning the value unmasked**: when `$keepStart +
+     * $keepEnd` covers the whole value, there is nothing left to mask and the "masked" result
+     * would just be the original value — a caller who asked for masking and silently got none is
+     * the failure mode this method exists to prevent. The refusal message states the character
+     * *counts* only; `$value` itself never appears in an exception, so a caller logging the
+     * failure cannot accidentally log the secret it was trying to mask.
+     *
+     * @throws InvalidArgumentException if `$keepStart`, `$keepEnd`, or `$maskLength` is
+     *                                   negative; if `$maskChar` is not exactly one character;
+     *                                   if `$value`/`$maskChar` is not valid UTF-8; or if
+     *                                   `$keepStart + $keepEnd` covers the whole value
+     */
+    public static function mask(
+        string $value,
+        int $keepStart = 0,
+        int $keepEnd = 0,
+        string $maskChar = '*',
+        int $maskLength = 4,
+    ): string {
+        if ($keepStart < 0) {
+            throw new InvalidArgumentException(\sprintf('$keepStart must be >= 0, got %d.', $keepStart));
+        }
+
+        if ($keepEnd < 0) {
+            throw new InvalidArgumentException(\sprintf('$keepEnd must be >= 0, got %d.', $keepEnd));
+        }
+
+        if ($maskLength < 0) {
+            throw new InvalidArgumentException(\sprintf('$maskLength must be >= 0, got %d.', $maskLength));
+        }
+
+        if (\count(self::codePoints($maskChar, '$maskChar')) !== 1) {
+            throw new InvalidArgumentException('$maskChar must be exactly one character.');
+        }
+
+        $points = self::codePoints($value, '$value');
+        $length = \count($points);
+
+        if ($keepStart + $keepEnd >= $length) {
+            throw new InvalidArgumentException(\sprintf(
+                'Str::mask(): keeping %d character(s) at the start and %d at the end leaves '
+                . 'nothing to mask in a %d-character value.',
+                $keepStart,
+                $keepEnd,
+                $length,
+            ));
+        }
+
+        $prefix = \implode('', \array_slice($points, 0, $keepStart));
+        $suffix = $keepEnd > 0 ? \implode('', \array_slice($points, -$keepEnd)) : '';
+
+        return $prefix . \str_repeat($maskChar, $maskLength) . $suffix;
+    }
+
+    /**
+     * Truncates `$value` to at most `$length` **characters** (Unicode code points), appending
+     * `$suffix` only when truncation actually happens (spec r30 FR-56, RFC-0004).
+     *
+     * The suffix is accounted for *inside* the budget: the result of a truncated value is never
+     * longer than `$length` characters including the suffix, so `truncate($x, 20)` never
+     * produces something 21+ characters wide because a `…` was tacked on afterward. A `$length`
+     * that already fits returns `$value` unchanged — no suffix is appended to a value that was
+     * never cut.
+     *
+     * **Refuses rather than truncating past the suffix**: a `$length` shorter than `$suffix`
+     * itself cannot produce a sensible result (there is no room left for any of the original
+     * value), and returning a bare fragment of the suffix would be silent nonsense rather than a
+     * signal that the caller's budget and suffix disagree.
+     *
+     * @throws InvalidArgumentException if `$length` is negative; if `$value`/`$suffix` is not
+     *                                   valid UTF-8; or if `$length` is shorter than `$suffix`
+     */
+    public static function truncate(string $value, int $length, string $suffix = '…'): string
+    {
+        if ($length < 0) {
+            throw new InvalidArgumentException(\sprintf('$length must be >= 0, got %d.', $length));
+        }
+
+        $points = self::codePoints($value, '$value');
+
+        if (\count($points) <= $length) {
+            return $value;
+        }
+
+        $suffixPoints = self::codePoints($suffix, '$suffix');
+        $suffixLength = \count($suffixPoints);
+
+        if ($length < $suffixLength) {
+            throw new InvalidArgumentException(\sprintf(
+                'Str::truncate(): a length of %d cannot fit a %d-character suffix.',
+                $length,
+                $suffixLength,
+            ));
+        }
+
+        return \implode('', \array_slice($points, 0, $length - $suffixLength)) . $suffix;
     }
 
     /**
@@ -387,6 +573,62 @@ final class Str
     }
 
     /**
+     * `snake_case` from words separated by whitespace, hyphens, underscores, **or camelCase /
+     * PascalCase transitions** — `"OrderLine"` / `"orderLine"` / `"order line"` all become
+     * `"order_line"` (spec r30 FR-56, RFC-0004). The DB-column ↔ property-name conversion the
+     * estate hand-rolls per project; {@see self::camelCase()} is its inverse, sharing the same
+     * word-splitting engine so the two agree about where one word ends and the next begins.
+     *
+     * **Acronym runs stay one word**: `"APIKey"` → `"api_key"`, not `"a_p_i_key"` — a run of
+     * uppercase letters splits *before its last member* only when that member opens a new
+     * lowercase word (`…API` + `Key…` → `…API_Key…`), the same two-pass rule most "decamelize"
+     * implementations use. **A digit stays attached to the letters before it** unless directly
+     * followed by an uppercase letter, which does start a new word: `"line2Item"` →
+     * `"line2_item"`, not `"line_2_item"` — a documented, tested choice among two defensible
+     * ones, not an oversight.
+     *
+     * Case mapping is ASCII-only, `pascalCase()`'s existing rule: multibyte characters inside a
+     * word pass through unchanged. Idempotent: an already-`snake_case` input has no separators to
+     * normalize and no case transitions to split, so it returns unchanged.
+     */
+    public static function snakeCase(string $value): string
+    {
+        return \implode('_', self::splitWords($value));
+    }
+
+    /**
+     * `camelCase` from the same word boundaries {@see self::snakeCase()} recognizes — the
+     * property-name ↔ DB-column conversion's other direction (spec r30 FR-56, RFC-0004).
+     *
+     * **Deliberately not built on {@see self::pascalCase()}**: that method treats an
+     * already-camelCase input as a single word (documented there as intentional, and pinned by
+     * its own test), which would silently flatten `"orderLine"` to `"orderline"` before this
+     * method could re-capitalize it. `camelCase()` instead shares {@see self::snakeCase()}'s
+     * word splitter, so `camelCase(snakeCase($x)) === $x` holds for any `$x` already in
+     * camelCase — the round-trip a `#[MapFrom]` convention (roadmap item 15.4) needs to be able
+     * to rely on.
+     *
+     * The first word is lowercased as a whole (not merely its first character): an
+     * acronym-leading word from {@see self::snakeCase()}'s split — `"api_key"`'s `"api"` — comes
+     * back as `"apiKey"`, never `"aPIKey"`.
+     */
+    public static function camelCase(string $value): string
+    {
+        $words = self::splitWords($value);
+
+        if ($words === []) {
+            return '';
+        }
+
+        $first = \array_shift($words);
+        foreach ($words as $word) {
+            $first .= \ucfirst($word);
+        }
+
+        return $first;
+    }
+
+    /**
      * The shared engine behind {@see self::padLeft()} / {@see self::padRight()}: mb_str_pad()
      * semantics over PCRE code-point counting, so the promise ("characters, not bytes") holds
      * with no extension dependency.
@@ -425,6 +667,63 @@ final class Str
         }
 
         return $count;
+    }
+
+    /**
+     * `$value` split into its Unicode code points, throwing (with the offending parameter
+     * named) on invalid UTF-8 — the same contract {@see self::countCodePoints()} pins for a
+     * plain count, exposed here as a list because {@see self::mask()} and
+     * {@see self::truncate()} need to slice by code point, not merely count them.
+     *
+     * @return list<string>
+     */
+    private static function codePoints(string $value, string $parameter): array
+    {
+        $points = \preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
+
+        if ($points === false) {
+            throw new InvalidArgumentException(\sprintf('%s is not valid UTF-8.', $parameter));
+        }
+
+        return $points;
+    }
+
+    /**
+     * The word-splitting engine shared by {@see self::snakeCase()} and {@see self::camelCase()}
+     * — every existing separator (whitespace, hyphen, underscore) normalized to one boundary,
+     * then a camelCase/acronym-aware boundary inserted before lowercasing and exploding. Kept as
+     * one function so the two public methods can never disagree about where a word starts.
+     *
+     * @return list<string> lowercase words, in order; empty when `$value` has no content
+     */
+    private static function splitWords(string $value): array
+    {
+        $normalized = \trim(\preg_replace('/[\s_\-]+/', '_', \trim($value)) ?? '', '_');
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        // Pass 1: a lowercase letter or digit immediately followed by an uppercase letter opens
+        // a new word ("orderLine" -> "order_Line"; "line2Item" -> "line2_Item" — the digit stays
+        // with what precedes it since this pass never looks at digits on the RIGHT).
+        $withBoundaries = \preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', $normalized) ?? $normalized;
+
+        // Pass 2: an acronym run (2+ uppercase letters) splits before its LAST member when that
+        // member opens a new lowercase word — "APIKey" -> "API_Key", not "A_P_I_Key" (pass 1
+        // alone never fires here: no lowercase/digit precedes any of "API"'s own letters).
+        $withBoundaries = \preg_replace('/([A-Z]+)([A-Z][a-z])/', '$1_$2', $withBoundaries) ?? $withBoundaries;
+
+        $collapsed = \trim(\preg_replace('/_+/', '_', $withBoundaries) ?? $withBoundaries, '_');
+
+        if ($collapsed === '') {
+            return [];
+        }
+
+        return \array_map(
+            static fn (string $word): string => \strtolower($word),
+            \explode('_', $collapsed),
+        );
     }
 
     private static function transliterateToAscii(string $value): string
