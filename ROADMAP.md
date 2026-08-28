@@ -2416,12 +2416,37 @@ carry are not `low`-effort work).
       uncomposed combining mark — item 12.4's width lesson, no single-width corpus. No new
       deptrac edges (436 allowed, 0 violations, 0 uncovered) and no ADR/new exception type,
       matching the route's expectation.*
-- [ ] 15.3 `DataTransferObject::toArray()` + `JsonSerializable` — **FR-51**, the missing inverse
+- [x] 15.3 `DataTransferObject::toArray()` + `JsonSerializable` — **FR-51**, the missing inverse
       of hydration. Recursive (nested DTOs, `Collection<T>` as list), backed enums to their
       backing value, pure enums refused with the property path; the round-trip property
       `X::fromArray($x->toArray()) == $x` asserted over the whole T-01 matrix is the contract;
       compiled/interpreted parity extended or export stays interpreter-only and the ADR says so
       (RFC-0004; issue #187) — size: M · route: frontier-reasoning / extra (adr, protected floor)
+      *(session model Fable 5 — route matched)*. *Delivered — **ADR-0086**, spec **r32** (FR-51);
+      3474 tests (+47: `DtoToArrayTest`, `DtoRoundTripTest`, four enum-collection legs in
+      `CollectionHydrationTest`, three new fixtures); two planted defects, both caught, each
+      reshaping what "caught" means here. **The design decision the item's own text did not
+      name: conversion is driven by each parameter's DECLARATION, never the value's runtime
+      type.** The first draft refused pure enums by runtime type — caught against the design's
+      own §1 argument before landing: a `mixed` position must export exactly what hydration
+      accepts there (the instance), or the round trip breaks silently. Plant A (runtime-type
+      enum conversion, the "obvious" implementation) was caught by **exactly one test** — the
+      enum-in-`mixed` case — which both proves the suite non-vacuous and names that test
+      load-bearing; the round-trip matrix alone cannot see the difference. **Companion widening
+      (ADR-0086 §2): `#[CollectionOf]` naming a backed enum now hydrates elements from backing
+      values** — the element-level asymmetry (a decoded JSON list of enum values did not
+      hydrate while the same value at a top-level enum parameter did) that export turned from a
+      curiosity into a broken round trip; plant B (widening removed) reddened five tests.
+      **Export is interpreter-only and optionless** (no ADR-0013 compiled variant — one
+      implementation, no second parity surface; the round-trip matrix still crosses compiled
+      hydration with interpreted export via `ScalarsDto`/`CompilableDto`), and the fixed-point
+      property (`export∘rebuild∘export` stable) rules out cumulative drift. The withers'
+      property read-back is now shared with export (`readBack()`), each caller keeping its own
+      refusal wording. One BC caveat named in the ADR rather than discovered: two new concrete
+      methods on a non-final abstract base. `benchToArrayWarm` records the cost; no budget
+      invented (ADR-0040). Zero new deptrac *rules* (447 allowed — the delta over master's 436
+      is the export code's own references inside already-granted layers; 0 violations,
+      0 uncovered), no new exception type.*
 - [ ] 15.4 `#[MapFrom]` hydration key mapping — **FR-52**: per-parameter attribute resolved once
       into `ClassMetadata` (ADR-0006's cache); strict both ways (mapped-key/param-name collisions
       and duplicate mappings refused by name at metadata build); `lenient()` semantics unchanged;

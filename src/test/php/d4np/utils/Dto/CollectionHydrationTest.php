@@ -8,6 +8,8 @@ use D4np\Utils\Dto\Collection;
 use D4np\Utils\Support\TypeMismatchException;
 use D4np\Utils\Tests\Dto\Fixture\AddressDto;
 use D4np\Utils\Tests\Dto\Fixture\BasketDto;
+use D4np\Utils\Tests\Dto\Fixture\Status;
+use D4np\Utils\Tests\Dto\Fixture\StatusesDto;
 use D4np\Utils\Tests\Dto\Fixture\TagsDto;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
@@ -149,6 +151,46 @@ final class CollectionHydrationTest extends TestCase
             self::fail('expected a hydration failure');
         } catch (\D4np\Utils\Support\UnknownKeyException $e) {
             self::assertSame('stops.0.county', $e->path());
+        }
+    }
+
+    /**
+     * ADR-0086 §2: a backing value under a backed-enum `#[CollectionOf]` resolves exactly as it
+     * would at a top-level enum parameter — the element-level asymmetry FR-51's export turned
+     * from a curiosity into a broken round trip.
+     */
+    public function testBackedEnumElementsHydrateFromTheirBackingValues(): void
+    {
+        $dto = StatusesDto::fromArray(['statuses' => ['active', 'inactive']]);
+
+        self::assertSame([Status::Active, Status::Inactive], $dto->statuses->toArray());
+    }
+
+    public function testBackedEnumElementsMayMixInstancesAndValues(): void
+    {
+        $dto = StatusesDto::fromArray(['statuses' => [Status::Active, 'inactive']]);
+
+        self::assertSame([Status::Active, Status::Inactive], $dto->statuses->toArray());
+    }
+
+    public function testAnUnknownBackingValueIsRefusedWithItsIndexAndTheAllowedValues(): void
+    {
+        try {
+            StatusesDto::fromArray(['statuses' => ['active', 'paused']]);
+            self::fail('expected a hydration failure');
+        } catch (TypeMismatchException $e) {
+            self::assertSame('statuses.1', $e->path());
+            self::assertStringContainsString("'active', 'inactive'", $e->getMessage());
+        }
+    }
+
+    public function testANonScalarElementUnderAnEnumAttributeIsStillRefused(): void
+    {
+        try {
+            StatusesDto::fromArray(['statuses' => [['not' => 'a value']]]);
+            self::fail('expected a hydration failure');
+        } catch (TypeMismatchException $e) {
+            self::assertSame('statuses.0', $e->path());
         }
     }
 }

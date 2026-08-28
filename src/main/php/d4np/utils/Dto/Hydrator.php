@@ -14,6 +14,7 @@ use D4np\Utils\Support\TypeMismatchException;
 use D4np\Utils\Support\UnknownKeyException;
 use ReflectionProperty;
 use TypeError;
+use UnitEnum;
 
 /**
  * Turns an array into a typed DTO, recursively (spec FR-01, ADR-0008).
@@ -89,6 +90,190 @@ final class Hydrator
      */
     public function withChanges(object $source, array $changes): object
     {
+        $current = $this->readBack(
+            $source,
+            'apply withers to',
+            'Withers rebuild through the constructor',
+        );
+
+        /** @var T */
+        return $this->hydrateAt($source::class, \array_merge($current, $changes), false, '');
+    }
+
+    /**
+     * The plain-array form of `$dto` — the inverse of {@see self::hydrate()} (spec FR-51,
+     * ADR-0086). The engine behind {@see DataTransferObject::toArray()}.
+     *
+     * Conversion is driven by each constructor parameter's **declaration**, mirroring the
+     * hydration branches exactly, which is what makes `fromArray(extract($x)) == $x` hold by
+     * construction rather than by test coverage: nested DTOs export recursively, backed enums as
+     * their backing value, `#[CollectionOf]`-typed collections as lists (DTO elements to arrays,
+     * backed-enum elements to values), and everything hydration passes through untouched —
+     * builtins, `mixed`, unions, plain arrays, attribute-less collection elements, and instances
+     * of classes outside this library's conversion vocabulary (`DateTimeImmutable`, a consumer's
+     * value object) — comes back exactly as it is. The output is plain data exactly as far as the
+     * declarations are plain; opaque values stay opaque rather than being guessed at.
+     *
+     * Export takes no options, deliberately: two callers exporting the same object must get
+     * the same array, or the round-trip property becomes a property of a configuration.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws HydrationException at any position DECLARED as a pure (non-backed) enum — a
+     *                            parameter of that type, or a `#[CollectionOf]` naming one: the
+     *                            declaration put the value in the enum vocabulary and gave it no
+     *                            data form, and both alternatives fail later and worse (the case
+     *                            name will not re-hydrate; the instance detonates inside
+     *                            `json_encode()` with no path). Also on a variadic or
+     *                            non-promoted constructor parameter, which cannot be read back.
+     */
+    public function extract(object $dto): array
+    {
+        return $this->extractAt($dto, '');
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws HydrationException
+     */
+    private function extractAt(object $dto, string $prefix): array
+    {
+        $current = $this->readBack(
+            $dto,
+            'export',
+            'toArray() reads the current values back through the constructor parameters',
+        );
+
+        // readBack() either returned a value for every parameter or threw, so every name is
+        // present here — no existence guard, or it would be dead code wearing a decision.
+        $meta = $this->cache->for($dto::class);
+        $exported = [];
+        foreach ($meta->parameters as $parameter) {
+            $exported[$parameter->name] = $this->extractValue(
+                $current[$parameter->name],
+                $parameter,
+                self::join($prefix, $parameter->name),
+            );
+        }
+
+        return $exported;
+    }
+
+    /**
+     * Convert one property value to its exported form — the inverse of {@see self::coerce()},
+     * branch for branch (ADR-0086 §1). The declaration decides, never the value's runtime type:
+     * a backed enum sitting in a `mixed` parameter is passed through as the instance hydration
+     * would accept there, because exporting its backing value would re-hydrate as a plain
+     * scalar and silently break the round trip.
+     *
+     * @throws HydrationException
+     */
+    private function extractValue(mixed $value, ParameterMetadata $parameter, string $path): mixed
+    {
+        $type = $parameter->type;
+
+        if ($value === null || $type === null || $type === 'mixed' || $parameter->isBuiltin) {
+            return $value;
+        }
+
+        if ($type === Collection::class && $value instanceof Collection) {
+            return $this->extractCollection($value, $parameter, $path);
+        }
+
+        if (\is_a($type, DataTransferObject::class, true) && $value instanceof DataTransferObject) {
+            return $this->extractAt($value, $path);
+        }
+
+        if (\is_a($type, BackedEnum::class, true) && $value instanceof BackedEnum) {
+            return $value->value;
+        }
+
+        // Declaration-driven, like every branch here: a parameter DECLARED as a pure enum is
+        // refused (the declaration put the value inside the enum vocabulary and gave it no data
+        // form), while a pure-enum instance sitting in a mixed/untyped/opaque position has
+        // already passed through above, as-is — the same as-is that makes its round trip exact.
+        if (\is_a($type, UnitEnum::class, true)) {
+            throw self::pureEnumRefusal($type, $path);
+        }
+
+        return $value;
+    }
+
+    /**
+     * The exported form of a `Collection` parameter — the inverse of
+     * {@see self::coerceCollection()}: with a `#[CollectionOf]` DTO type the elements become
+     * arrays, with a backed-enum type they become backing values (the shape §2's widening
+     * re-hydrates), and with no attribute they pass through untouched, exactly as hydration
+     * passed them in.
+     *
+     * @param Collection<mixed> $value
+     *
+     * @return list<mixed>
+     *
+     * @throws HydrationException
+     */
+    private function extractCollection(Collection $value, ParameterMetadata $parameter, string $path): array
+    {
+        $of = $parameter->attribute(CollectionOf::class);
+        $isDto = $of !== null && \is_a($of->type, DataTransferObject::class, true);
+        $isBackedEnum = $of !== null && \is_a($of->type, BackedEnum::class, true);
+        // Declaration-driven here too: only an attribute NAMING a pure enum triggers the
+        // refusal — per element, so an empty collection still exports as [] and round-trips. An
+        // attribute-less collection's elements pass through as-is, enums included, exactly as
+        // hydration passed them in.
+        $pureEnumType = $of !== null && !$isBackedEnum && \is_a($of->type, UnitEnum::class, true)
+            ? $of->type
+            : null;
+
+        $exported = [];
+        $index = 0;
+        foreach ($value as $element) {
+            $elementPath = self::join($path, (string) $index);
+
+            if ($isDto && $element instanceof DataTransferObject) {
+                $exported[] = $this->extractAt($element, $elementPath);
+            } elseif ($isBackedEnum && $element instanceof BackedEnum) {
+                $exported[] = $element->value;
+            } elseif ($pureEnumType !== null) {
+                throw self::pureEnumRefusal($pureEnumType, $elementPath);
+            } else {
+                $exported[] = $element;
+            }
+
+            $index++;
+        }
+
+        return $exported;
+    }
+
+    /**
+     * @param class-string $enum
+     */
+    private static function pureEnumRefusal(string $enum, string $path): HydrationException
+    {
+        return new HydrationException(\sprintf(
+            'Cannot export %s: it is a pure (non-backed) enum, which has no backing value to '
+            . 'represent it as data. Back the enum, or keep it out of exported DTOs.',
+            $enum,
+        ), $path);
+    }
+
+    /**
+     * Every constructor parameter's current value, read back from the property of the same name
+     * — the walk {@see self::withChanges()} and {@see self::extractAt()} share, each supplying
+     * its own wording for the two shapes that cannot be read back (ADR-0086 §4).
+     *
+     * A parameter with a declared default whose property does not exist is impossible here (a
+     * promoted parameter always has its property), so absence is always a refusal, never a skip
+     * — except for defaults handled by the callers themselves.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws HydrationException
+     */
+    private function readBack(object $source, string $activity, string $mechanism): array
+    {
         $class = $source::class;
         $meta = $this->cache->for($class);
 
@@ -96,10 +281,11 @@ final class Hydrator
         foreach ($meta->parameters as $parameter) {
             if ($parameter->isVariadic) {
                 // hydrateAt() refuses these anyway; stopping here keeps the message about the
-                // wither rather than about a payload the caller never wrote.
+                // caller's operation rather than about a payload the caller never wrote.
                 throw new HydrationException(\sprintf(
-                    'Cannot apply withers to %s: parameter "%s" is variadic, so the current '
+                    'Cannot %s %s: parameter "%s" is variadic, so the current '
                     . 'value cannot be read back as a single argument.',
+                    $activity,
                     $class,
                     $parameter->name,
                 ), $parameter->name);
@@ -107,24 +293,25 @@ final class Hydrator
 
             if (!\property_exists($source, $parameter->name)) {
                 throw new HydrationException(\sprintf(
-                    'Cannot apply withers to %s: constructor parameter "%s" has no property of '
-                    . 'the same name to read the current value from. Withers rebuild through the '
-                    . 'constructor, so every parameter must be recoverable — which promoted '
+                    'Cannot %s %s: constructor parameter "%s" has no property of '
+                    . 'the same name to read the current value from. %s, '
+                    . 'so every parameter must be recoverable — which promoted '
                     . 'properties always are.',
+                    $activity,
                     $class,
                     $parameter->name,
+                    $mechanism,
                 ), $parameter->name);
             }
 
             // Reflection rather than `$source->{$name}`: a promoted property may be private, and
             // this class is not in its scope. Since PHP 8.1 `getValue()` needs no
             // `setAccessible()`. It costs a reflection lookup per property, which is acceptable
-            // here — withers are not the path NFR-01 measures.
+            // here — neither withers nor export is the path NFR-01 measures.
             $current[$parameter->name] = (new ReflectionProperty($class, $parameter->name))->getValue($source);
         }
 
-        /** @var T */
-        return $this->hydrateAt($class, \array_merge($current, $changes), false, '');
+        return $current;
     }
 
     /**
@@ -325,6 +512,13 @@ final class Hydrator
             } elseif (\is_a($of->type, DataTransferObject::class, true) && \is_array($element)) {
                 /** @var array<string, mixed> $element */
                 $items[] = $this->hydrateAt($of->type, $element, $lenient, $elementPath);
+            } elseif (\is_a($of->type, BackedEnum::class, true) && (\is_int($element) || \is_string($element))) {
+                // The element-level mirror of coerceObject()'s enum branch (ADR-0086 §2): a
+                // backing value at a top-level enum parameter hydrated, the same value inside a
+                // #[CollectionOf] enum collection did not — and export producing lists of
+                // backing values (FR-51) makes that asymmetry a broken round trip rather than a
+                // curiosity. Additive: strictly more inputs accepted, none re-interpreted.
+                $items[] = $this->coerceBackedEnum($element, $of->type, $elementPath);
             } else {
                 throw TypeMismatchException::at($elementPath, $of->type, \get_debug_type($element));
             }

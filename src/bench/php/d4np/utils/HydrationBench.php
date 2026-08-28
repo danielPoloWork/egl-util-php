@@ -73,4 +73,21 @@ final class HydrationBench
             $p['j'],
         );
     }
+
+    /**
+     * FR-51's export over the same ten-scalar shape, hydrated once outside the timed revs.
+     *
+     * **Measured, not budgeted** (ADR-0086 §4, ADR-0040's discipline): export sits beside
+     * hydration on envelope/logging paths, so its cost is recorded from the same harness — but
+     * no spec NFR names a number for it yet, and a budget invented in a benchmark file would be
+     * this file deciding what the spec owns. The subject exists so the number is real when the
+     * decision is wanted.
+     */
+    public function benchToArrayWarm(): void
+    {
+        self::$exportSubject ??= TenScalarPropsDto::fromArray(TenScalarPropsDto::payload());
+        self::$exportSubject->toArray();
+    }
+
+    private static ?TenScalarPropsDto $exportSubject = null;
 }
