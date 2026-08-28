@@ -44,6 +44,34 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`Str` gains identifier validators, display masking, truncation, and `snakeCase()`/
+  `camelCase()`** — issue #197, spec **r30** (FR-56), the first item realized from
+  [RFC-0004](docs/rfc/0004-batteries-included-utility-surface.md)'s post-1.1.0 program
+  (roadmap item 15.1).
+  `Str::isUuid(value, version?)` and `Str::isUlid(value)` are pure predicates over RFC 9562's
+  UUID layout and Crockford Base32 respectively — never throwing on the value under test;
+  `isUlid()` additionally refuses the first-character overflow (`8`–`Z`) that an
+  alphabet-and-length check alone would miss, since `Str::ulid()`'s 48-bit timestamp can only
+  ever produce `0`–`7` there.
+  `Str::mask(value, keepStart, keepEnd, maskChar, maskLength)` hides the middle of a value
+  behind a **fixed-length** run of `maskChar`, independent of how much was actually hidden —
+  the security property, not a formatting choice, since a masked value whose length still
+  varies with the input leaks exactly what masking exists to hide. It **refuses** rather than
+  silently returning the value unmasked when `keepStart + keepEnd` covers the whole value, and
+  the refusal message states character counts only — `$value` itself never appears in an
+  exception.
+  `Str::truncate(value, length, suffix)` counts Unicode code points, keeps the suffix **inside**
+  the length budget, and refuses a `length` shorter than the suffix rather than returning a bare
+  fragment.
+  `Str::snakeCase()` / `Str::camelCase()` complete the case family `pascalCase()` opened: both
+  share one word-splitting engine (existing separators normalized, then a camelCase/
+  acronym-aware boundary inserted — `"APIKey"` becomes `"api_key"`, not `"a_p_i_key"`), which is
+  what makes `camelCase(snakeCase($x)) === $x` a provable property for camelCase `$x` — the
+  round trip a future `#[MapFrom]` hydration-mapping convention (roadmap item 15.4) depends on.
+  Additive; no ADR (items 2.2/2.4's precedent for a helper batch on an existing class) and no
+  new exception type — every refusal is the library's existing `InvalidArgumentException`
+  convention.
+
 - **`Hmac` accepts a `SecretKeyRing` — key rotation for signed URLs and webhook signatures, and a
   `v2.` format whose key id is authenticated by the MAC itself** — issue #179, **ADR-0085**, spec
   **r29** (FR-48b). The deferred half of #114's finding: `Hmac` had the identical
