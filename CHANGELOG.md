@@ -44,6 +44,29 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **`Str` gains segment extraction, line-ending normalization, and codepoint-safe
+  `length()`/`substr()`** — issue #207, spec **r31** (FR-57), roadmap item 15.2, companion to
+  r30's `Str` batch.
+  `Str::before()` / `after()` / `beforeLast()` / `afterLast()` return `?string` — `null` on a
+  missing needle, never the subject unchanged — and `Str::between(value, start, end)` finds
+  `end` starting **after** `start`'s match, so `between('<a><b>', '<', '>')` is `'a'`, the first
+  complete span, not the whole string. `before()`/`after()` satisfy
+  `before($s, $n) . $n . after($s, $n) === $s` whenever `$n` occurs, by construction: both are
+  sliced from the position the same `strpos()` call found. An empty needle is refused
+  everywhere, including inside `Str::containsAny(value, needles)`'s list — validated in a full
+  pass before any matching, so the refusal cannot depend on which needle happens to match
+  first.
+  `Str::normalizeEol(value, target = Eol::Lf)` collapses every line-ending convention a text
+  file can carry (`\r\n`, lone `\r`, `\n`) to `\n` first — in that order, since collapsing CRLF
+  before a lone CR is what keeps a Windows line ending from leaving a stray LF behind — then
+  expands to `target`. The new `Support\Eol` enum carries two cases, `Lf` and `CrLf`.
+  `Str::length()` / `Str::substr()` are codepoint-safe (`preg` `u`-mode, no `ext-mbstring`
+  dependency), replacing the `preg_split('//u', ...)` this library and the estate both
+  hand-rolled more than once; `substr()` is built on `array_slice()` over the codepoint list,
+  which gets native `substr()`'s full negative-offset contract for free instead of
+  reimplementing it. Both refuse invalid UTF-8.
+  Additive; no ADR (items 2.2/2.4's precedent) and no new exception type.
+
 - **`Str` gains identifier validators, display masking, truncation, and `snakeCase()`/
   `camelCase()`** — issue #197, spec **r30** (FR-56), the first item realized from
   [RFC-0004](docs/rfc/0004-batteries-included-utility-surface.md)'s post-1.1.0 program
