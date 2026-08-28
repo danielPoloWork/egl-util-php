@@ -2387,13 +2387,35 @@ carry are not `low`-effort work).
       convention `random()`/`pad()` already use) — said out loud because an absence leaves no
       trace. Zero new deptrac edges (436 allowed, 0 violations, 0 uncovered) and zero new
       `require`/`suggest` entries, both expected for an additive `Support`-only batch.*
-- [ ] 15.2 `Str` batch 2 — **FR-57**: `before`/`after`/`between`/`beforeLast`/`afterLast`
+- [x] 15.2 `Str` batch 2 — **FR-57**: `before`/`after`/`between`/`beforeLast`/`afterLast`
       returning `?string` (`null` on a miss, never the subject unchanged — the probing arm of
       RFC-0004's missing-value grammar; empty needle refused), `normalizeEol()` (`Eol` enum, lone
       CR covered), codepoint-safe `length()`/`substr()` via `preg //u` (ADR-0019's mechanism, one
       public home; invalid UTF-8 refused, `transcode()`'s stance), `containsAny()`. Property test:
       `before . needle . after === subject` (RFC-0004; issue #207) — size: S · route: fast /
-      medium *(raised from the tool's fast/low floor)*
+      medium *(raised from the tool's fast/low floor; session model Sonnet 5 — route matched)*.
+      *Delivered — spec **r31** (FR-57); 3427 tests (+76, three new files:
+      `StrSegmentExtractionTest`, `StrNormalizeEolTest`, `StrLengthSubstrTest`; new
+      `Support\Eol` enum). **The reconstruction property holds by construction, not by luck**:
+      `before()`/`after()` are both sliced from the position one shared `strpos()` call found,
+      so `before . needle . after === subject` cannot fail to hold whenever the needle is found
+      — asserted over a corpus rather than a single case. **A real defect found and fixed during
+      local verification, before it ever reached CI**: the first `containsAny()` validated each
+      needle for emptiness inside the SAME loop that checked for a match, so a matching needle
+      earlier in the list short-circuited past an empty one later in it — the refusal fired for
+      `['', 'world']` but silently passed for `['world', '']`, an order-dependent bug caught by
+      writing the "wrong order" case as its own test. Fixed by validating every needle in a
+      separate pass before any matching begins; both orders are now asserted. `substr()` is
+      built on `array_slice()` over the codepoint list rather than reimplementing `substr()`'s
+      negative-start/negative-length/`null`-to-end arithmetic a second time — a
+      pure-ASCII-corpus test asserts direct agreement with native `substr()` for that reason.
+      `normalizeEol()`'s collapse-before-expand ordering (CRLF before a lone CR) is what keeps a
+      Windows line ending from leaving a stray LF behind; pinned by an idempotence test in both
+      directions and a mixed-ending corpus (CRLF, lone CR, and LF all present in one input).
+      `length()`/`substr()` tested against a corpus spanning ASCII, 2/3/4-byte sequences and an
+      uncomposed combining mark — item 12.4's width lesson, no single-width corpus. No new
+      deptrac edges (436 allowed, 0 violations, 0 uncovered) and no ADR/new exception type,
+      matching the route's expectation.*
 - [ ] 15.3 `DataTransferObject::toArray()` + `JsonSerializable` — **FR-51**, the missing inverse
       of hydration. Recursive (nested DTOs, `Collection<T>` as list), backed enums to their
       backing value, pure enums refused with the property path; the round-trip property

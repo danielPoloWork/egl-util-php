@@ -15,7 +15,9 @@ use Psr\Clock\ClockInterface;
  * identifiers, {@see self::ulid()} and {@see self::uuidV7()} (spec r18, RFC-0003) — and the
  * FR-56 batch: identifier validators, display masking, truncation, and the `snake_case()` /
  * `camelCase()` pair completing the case family {@see self::pascalCase()} opened (spec r30,
- * RFC-0004, roadmap item 15.1).
+ * RFC-0004, roadmap item 15.1) — and the FR-57 batch: line-ending normalization, codepoint-safe
+ * `length()`/`substr()`, and the `before()`/`after()`/`between()` segment-extraction family
+ * (spec r31, RFC-0004, roadmap item 15.2).
  *
  * **This class holds no state, and one test asserts it.** Every method is a pure function of its
  * arguments and the CSPRNG. That is load-bearing for FR-46: guaranteeing that two identifiers
@@ -317,6 +319,195 @@ final class Str
         }
 
         return $value;
+    }
+
+    /**
+     * Normalizes every line ending in `$value` to `$target` (spec r31 FR-57, RFC-0004).
+     *
+     * All three endings a text file can carry are recognized on the way in — `\r\n`, a lone
+     * `\r` (the classic Mac OS 9 ending, the one every "CRLF vs LF" helper forgets), and `\n`
+     * itself — and collapsed to `\n` first before expanding to `$target`. **Order is
+     * load-bearing**: collapsing `\r\n` before a lone `\r` is what keeps a Windows line ending
+     * from leaving a stray `\n` behind; doing it the other way corrupts every CRLF in the input.
+     *
+     * Idempotent for the same reason `snakeCase()` is: after the first pass there is no `\r`
+     * left standing alone for a second pass to find (a target of `Eol::CrLf` re-collapses its
+     * own output before re-expanding it, byte-identically). A value already in `$target`'s form
+     * is returned unchanged — this method never rewrites what does not need rewriting.
+     */
+    public static function normalizeEol(string $value, Eol $target = Eol::Lf): string
+    {
+        $lf = \str_replace(["\r\n", "\r"], "\n", $value);
+
+        return $target === Eol::Lf ? $lf : \str_replace("\n", $target->value, $lf);
+    }
+
+    /**
+     * The substring of `$value` before the first occurrence of `$needle`, or `null` when
+     * `$needle` does not occur (spec r31 FR-57, RFC-0004).
+     *
+     * **Returns `null` on a miss, never `$value` unchanged.** Handing back the untouched subject
+     * is a silent guess about what the caller wanted done with a needle that was not there;
+     * `null` is the probing arm of this library's missing-value grammar ({@see Lookup}'s
+     * `tryLabel()` precedent) and puts the decision back where it belongs. Paired with
+     * {@see self::after()}, the identity `before($s, $n) . $n . after($s, $n) === $s` holds
+     * whenever both return non-`null` — proven by construction (both are computed from the same
+     * `strpos()` call's position), not merely tested for a handful of cases.
+     *
+     * Operates on bytes (`strpos()`/`substr()`), which is exactly what keeps this multibyte-safe
+     * **without** a `u`-mode dependency: a cut only ever happens at a byte offset where `$needle`
+     * itself was found, and a valid UTF-8 needle can only occur at valid UTF-8 boundaries — so
+     * neither returned half can end mid-character.
+     *
+     * @throws InvalidArgumentException if `$needle` is empty
+     */
+    public static function before(string $value, string $needle): ?string
+    {
+        self::refuseEmptyNeedle($needle);
+        $position = \strpos($value, $needle);
+
+        return $position === false ? null : \substr($value, 0, $position);
+    }
+
+    /**
+     * The substring of `$value` after the first occurrence of `$needle`, or `null` when
+     * `$needle` does not occur (spec r31 FR-57, RFC-0004). See {@see self::before()} for the
+     * missing-value rationale and the multibyte-safety argument; only the side differs.
+     *
+     * @throws InvalidArgumentException if `$needle` is empty
+     */
+    public static function after(string $value, string $needle): ?string
+    {
+        self::refuseEmptyNeedle($needle);
+        $position = \strpos($value, $needle);
+
+        return $position === false ? null : \substr($value, $position + \strlen($needle));
+    }
+
+    /**
+     * The substring of `$value` before the **last** occurrence of `$needle`, or `null` when
+     * `$needle` does not occur (spec r31 FR-57, RFC-0004). {@see self::before()}'s rationale and
+     * multibyte-safety argument apply unchanged; only which occurrence is searched differs.
+     *
+     * @throws InvalidArgumentException if `$needle` is empty
+     */
+    public static function beforeLast(string $value, string $needle): ?string
+    {
+        self::refuseEmptyNeedle($needle);
+        $position = \strrpos($value, $needle);
+
+        return $position === false ? null : \substr($value, 0, $position);
+    }
+
+    /**
+     * The substring of `$value` after the **last** occurrence of `$needle`, or `null` when
+     * `$needle` does not occur (spec r31 FR-57, RFC-0004). {@see self::before()}'s rationale and
+     * multibyte-safety argument apply unchanged; only which occurrence is searched differs.
+     *
+     * @throws InvalidArgumentException if `$needle` is empty
+     */
+    public static function afterLast(string $value, string $needle): ?string
+    {
+        self::refuseEmptyNeedle($needle);
+        $position = \strrpos($value, $needle);
+
+        return $position === false ? null : \substr($value, $position + \strlen($needle));
+    }
+
+    /**
+     * The substring of `$value` strictly between the first occurrence of `$start` and the next
+     * occurrence of `$end` that follows it, or `null` when either does not occur in that order
+     * (spec r31 FR-57, RFC-0004).
+     *
+     * `$end` is searched for **starting after `$start`'s match**, not merely "anywhere in
+     * `$value`" — so `between('<a><b>', '<', '>')` finds `a`, the first complete tag, rather than
+     * treating the whole string as one span. `$start === $end` is legal and composes as expected
+     * (`between('a,b,c', ',', ',')` is `'b'`, the first delimited segment).
+     *
+     * @throws InvalidArgumentException if `$start` or `$end` is empty
+     */
+    public static function between(string $value, string $start, string $end): ?string
+    {
+        self::refuseEmptyNeedle($start, '$start');
+        self::refuseEmptyNeedle($end, '$end');
+
+        $startPosition = \strpos($value, $start);
+        if ($startPosition === false) {
+            return null;
+        }
+
+        $contentStart = $startPosition + \strlen($start);
+        $endPosition = \strpos($value, $end, $contentStart);
+        if ($endPosition === false) {
+            return null;
+        }
+
+        return \substr($value, $contentStart, $endPosition - $contentStart);
+    }
+
+    /**
+     * Whether `$value` contains any one of `$needles` (spec r31 FR-57, RFC-0004) — the
+     * multi-needle form `str_contains()` does not cover, so callers stop hand-rolling a
+     * `foreach` loop over an allowlist of tokens to check for.
+     *
+     * **Every needle is validated before any is matched** — checking lazily during the search
+     * would make the refusal depend on which needle happens to match first: an empty string
+     * *after* one that matches would silently never be reached and never refused, so the same
+     * malformed `$needles` list would throw or not depending on argument order alone.
+     *
+     * @param list<string> $needles
+     *
+     * @throws InvalidArgumentException if `$needles` contains an empty string — native
+     *                                   `str_contains($x, '')` is unconditionally `true`, which
+     *                                   would make one blank entry (a stray config line, an
+     *                                   off-by-one `explode()`) silently satisfy every call
+     */
+    public static function containsAny(string $value, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            self::refuseEmptyNeedle($needle, '$needles');
+        }
+
+        foreach ($needles as $needle) {
+            if (\str_contains($value, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The length of `$value` in **Unicode code points**, not bytes (spec r31 FR-57, RFC-0004) —
+     * a public name for what {@see self::countCodePoints()} already computed privately for
+     * {@see self::padLeft()}/{@see self::padRight()}, exposed because the estate hand-rolls
+     * `preg_split('//u', $x)` counts in more than one place (the Mail group's RFC 2047 folding
+     * did exactly this) and one tested home beats N private copies.
+     *
+     * @throws InvalidArgumentException if `$value` is not valid UTF-8 — a length computed over
+     *                                   broken encoding is not a length, {@see self::transcode()}'s
+     *                                   strict-by-default stance applied here
+     */
+    public static function length(string $value): int
+    {
+        return self::countCodePoints($value, '$value');
+    }
+
+    /**
+     * `substr()`'s exact contract — negative `$start` counts from the end, a negative `$length`
+     * omits that many trailing characters, `null` means "to the end" — evaluated in **Unicode
+     * code points** rather than bytes (spec r31 FR-57, RFC-0004).
+     *
+     * Built on `array_slice()` rather than reimplementing the offset arithmetic: `array_slice()`
+     * already defines the identical negative-offset/negative-length semantics over a list, so
+     * applying it to {@see self::codePoints()}'s list gets `substr()`'s full contract for free,
+     * at code-point granularity, with nothing to get subtly wrong a second time.
+     *
+     * @throws InvalidArgumentException if `$value` is not valid UTF-8
+     */
+    public static function substr(string $value, int $start, ?int $length = null): string
+    {
+        return \implode('', \array_slice(self::codePoints($value, '$value'), $start, $length));
     }
 
     /**
@@ -724,6 +915,19 @@ final class Str
             static fn (string $word): string => \strtolower($word),
             \explode('_', $collapsed),
         );
+    }
+
+    /**
+     * The shared refusal behind {@see self::before()}/{@see self::after()}/
+     * {@see self::beforeLast()}/{@see self::afterLast()}/{@see self::between()}: an empty
+     * needle would make `strpos()` report a match at position 0 of everything, which is not "the
+     * needle was found" in any sense a caller meant.
+     */
+    private static function refuseEmptyNeedle(string $needle, string $parameter = '$needle'): void
+    {
+        if ($needle === '') {
+            throw new InvalidArgumentException(\sprintf('%s must not be empty.', $parameter));
+        }
     }
 
     private static function transliterateToAscii(string $value): string
