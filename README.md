@@ -378,6 +378,10 @@ and [`CONTRIBUTING.md`](CONTRIBUTING.md) for what a change must clear.
 | 12 | Security & channels | ✅ done |
 | 13 | Documentation & release hygiene (post-1.0) | ✅ done |
 | 14 | Post-1.0 functional seams (v1.1.0) | ✅ done |
+| 15 | Data & time foundations | ⏳ planned |
+| 16 | Input validation | ⏳ planned |
+| 17 | Formats & the serialization story | ⏳ planned |
+| 18 | Security hardening & resilience | ⏳ planned |
 
 ## License
 
