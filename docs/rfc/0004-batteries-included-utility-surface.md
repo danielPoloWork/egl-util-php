@@ -1,7 +1,10 @@
 # RFC-0004: The batteries-included surface — twenty additive units from the module-coverage review
 
-- **Status:** In review — awaiting the maintainer's approval. The Approval record below is
-  filled on that word, never by the author (`AGENTS.md` §6.1; no RFC self-approves).
+- **Status:** Accepted — approved by the maintainer's merge of
+  [PR #210](https://github.com/danielPoloWork/egl-util-php/pull/210) (2026-08-28, confirmed
+  in conversation: *"ho fatto il merge"*), the same shape RFC-0002's and RFC-0003's records
+  take. The record below was filled by this follow-up **after and because of** that word —
+  never by the author's own authority (`AGENTS.md` §6.1; no RFC self-approves).
 - **Author:** tech-lead (agent-drafted) · **Reviewers:** reviewer, enterprise-architect
   (seats worn by the session agent, disclosed in the Approval section — the 2026-08-06 plan
   pass's precedent) · **Approver:** tech-lead (the maintainer's word records it)
@@ -362,19 +365,21 @@ on all twenty issues, so `route_advice.py` is machine-verifiable from day one th
 phase ledger's known gap is re-encountered, not widened: the delivery machine sits at
 `scaffold` (only `→ audit` legal), as it has since 2026-08-03, and this design pass — like
 RFC-0002's and RFC-0003's — runs under the owner's routing of that gap; `refs.rfcs` gains
-`RFC-0004` in the same PR (state-writer step, authority-checked). `rfc_check.py` stays **red on
-this document until the Approval record below is filled — that red is the gate working**, not a
-defect to silence.
+`RFC-0004` in the same PR (state-writer step, authority-checked). `rfc_check.py` stayed **red on
+this document from drafting until the maintainer's approval filled the record — that red was the
+gate working**, not a defect to silence; it reads green as of the approval follow-up.
 
 ## Approval
 
-*Pending the maintainer's word. On approval, the fenced record below is completed with the
-approver role and the ISO date of that word — the marker line the RFC template defines. The
-author does not fill it (`AGENTS.md` §6.1). The marker is deliberately **not spelled out in
-this prose**: `rfc_check.py` matches the first marker-shaped line in the document, and a
-sentence quoting it would satisfy the gate on an unapproved RFC — the same
-text-search-finds-the-prose class as BUG-0001 and the `bridge_release_gate` defect, met here a
-third time and dodged by describing the tag instead of writing it (item 10.7's rule).*
+*Recorded on the maintainer's approval, given as the merge of
+[PR #210](https://github.com/danielPoloWork/egl-util-php/pull/210) (2026-08-28) — the RFC
+shipped with the record deliberately unfilled, and this follow-up completes it now that the
+human decision exists. One drafting rule stands and is worth keeping visible: the marker is
+**never spelled out in prose**, only in the fenced record below — `rfc_check.py` matches the
+first marker-shaped line in the document, and a sentence quoting it satisfied the gate on the
+unapproved draft during the design pass (the text-search-finds-the-prose class: BUG-0001, the
+`bridge_release_gate` defect, and now this — third sighting; dodged by describing the tag
+instead of writing it, item 10.7's rule).*
 
 Reviewers (structured findings, all resolved — **both seats worn by the session agent and
 disclosed as such**, the 2026-08-06 plan pass's precedent; an independent human pass supersedes
@@ -390,7 +395,7 @@ this table wherever the maintainer wants one):
 | A3 | enterprise-architect | FR-52 sits inside NFR-01's budgeted hydration path — a mapping-aware metadata walk could tax every unmapped DTO in the estate (NFR-01: ≤ 3× manual, item 3.7's compiled closure) | FR-52's acceptance criteria bind it: unattributed DTOs measure unchanged within the harness noise band on NFR-01's existing subject; mapped shapes may take the interpreted path with `HydrationParityTest` extended. Recorded under Scalability budgets |
 
 ```
-approved-by: (pending)
+approved-by: tech-lead (2026-08-28)
 ```
 
 ## References
