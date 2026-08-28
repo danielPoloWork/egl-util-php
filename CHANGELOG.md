@@ -44,6 +44,26 @@ the GitHub Release body. Editing "the release notes" almost always means that on
 
 ### Added
 
+- **Every DTO can now turn itself back into the array it was hydrated from —
+  `DataTransferObject::toArray()`, and `json_encode($dto)` serializes exactly that array** —
+  issue #187, **ADR-0086**, spec **r32** (FR-51), roadmap item 15.3.
+  `X::fromArray($x->toArray()) == $x` is a tested law over the whole T-01 matrix (nested DTOs,
+  collections, enums, defaults, nullables, `mixed`), plus a fixed-point property so repeated
+  round trips cannot accumulate drift. Conversion is driven by each constructor parameter's
+  **declaration**, mirroring hydration branch for branch: nested DTOs export recursively, backed
+  enums as their backing value, `#[CollectionOf]` collections as lists (DTO elements as arrays,
+  backed-enum elements as values), and everything hydration passes through untouched — plain
+  arrays, `mixed`, unions, instances of classes outside the conversion vocabulary — comes back
+  as-is. A position **declared** as a pure (non-backed) enum is refused with its path
+  (`ticket.direction`): it has no data form, and the alternatives fail later and worse. Export
+  takes no options, so two callers exporting one object cannot get two arrays.
+  **Companion widening**: a `#[CollectionOf]` naming a backed enum now hydrates elements from
+  their backing values too — a decoded JSON list like `['active', 'inactive']` becomes a
+  `Collection<Status>`, the element-level mirror of the top-level enum rule it always had.
+  `DataTransferObject` now implements `JsonSerializable`. One BC caveat, named in the ADR: the
+  two new concrete methods on the non-final abstract base will conflict with a subclass that
+  already declares an incompatible `toArray()`/`jsonSerialize()` of its own.
+
 - **`Str` gains segment extraction, line-ending normalization, and codepoint-safe
   `length()`/`substr()`** — issue #207, spec **r31** (FR-57), roadmap item 15.2, companion to
   r30's `Str` batch.
