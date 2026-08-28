@@ -19,6 +19,19 @@ decision in full, owner-confirmed by the RFC approval and the explicit plan inst
 minor). In the event none of those minors were published: with every milestone closed, the
 API-freeze review below settled the whole line into a single first release, **`v1.0.0`**.
 
+Extended at a third `plan` pass (2026-08-28) from **RFC-0004**
+([docs/rfc/0004-batteries-included-utility-surface.md](docs/rfc/0004-batteries-included-utility-surface.md),
+Accepted 2026-08-28 — the maintainer's merge of PR #210, recorded at PR #211) by the same
+three-role protocol — all roles worn by the session agent, per-artifact authority checked and
+recorded in the journal; scope = RFC-0004's four-milestone decision in full, owner-confirmed by
+the RFC approval and the explicit plan instruction. **M15–M18 imply no version numbers** —
+post-1.0 releases follow [`maintenance.md`](docs/workflow/maintenance.md)'s decision tree at
+release time (each milestone is *releasable* as one MINOR; the tree owns the actual numbers).
+Routes are machine-verifiable for the first time at plan: all twenty source issues carry their
+type labels, `route_advice.py --issue N` resolves sixteen to `frontier-reasoning / extra`
+(protected `label:adr` floor) and four to the `fast / low` floor, which the tech-lead **raised**
+to `fast / medium` (only-raise, ADR-0017) with the reason stated at each item.
+
 - **Versioning start:** pre-1.0 milestone-driven — one minor per milestone
   (M1 → `v0.1.0` … M7 → `v0.7.0`); the **1.0.0 decision is a dedicated post-M7
   API-freeze review**, not an automatic bump. **Held 2026-08-09 and settled by
@@ -30,8 +43,9 @@ API-freeze review below settled the whole line into a single first release, **`v
   M13's close-out. Additive under ADR-0059, so `^1.0` still resolves; the milestone mapping
   is not resumed, and M15 will not imply `v1.2.0` by itself.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-28 — Twenty units, zero new requires, and a gate that is red on purpose](docs/journal/2026/08/2026-08-28-rfc-0004-design-pass.md).
+  [2026-08-28 — Twenty-two items, four milestones, and the first plan whose routes a tool can check](docs/journal/2026/08/2026-08-28-rfc-0004-plan-pass.md).
   Previous:
+  [2026-08-28 — Twenty units, zero new requires, and a gate that is red on purpose](docs/journal/2026/08/2026-08-28-rfc-0004-design-pass.md),
   [2026-08-27 — The objection was true when it was written, and we had already broken it](docs/journal/2026/08/2026-08-27-attest-the-sbom.md),
   [2026-08-27 — Prefixing the key id would have been the bug](docs/journal/2026/08/2026-08-27-secret-key-ring-rotation.md),
   [2026-08-27 — The inventory had already grown, and nothing had noticed that either](docs/journal/2026/08/2026-08-27-internal-inventory-pinned.md),
@@ -2328,6 +2342,219 @@ signal, and become machine-verifiable only when **item 13.8** applies the type l
       "no catalogue entry" instead — both it and *Rate Limiting* are now table rows. Two operator
       facts written into the file store's docblock because nothing else would say them: each key
       costs **two inodes** (ADR-0005's sidecar lock), and nothing prunes expired files.*
+
+---
+
+## Milestone 15 — Data & time foundations (post-1.0) · size: L
+
+The first of [RFC-0004](docs/rfc/0004-batteries-included-utility-surface.md)'s four milestones
+(Accepted 2026-08-28, PR #210; approval recorded at PR #211): the seams the later milestones
+consume — no new dependencies, no new groups, every item additive on existing classes
+(ADR-0059). **Order inside the milestone is load-bearing**: 15.1 before 15.4 (the `#[MapFrom]`
+convention is defined in terms of `Str::snakeCase()`), 15.2 before M16 (the `Length` rule counts
+codepoints, not bytes), 15.3 before 15.4 (`toArray()` exists before mapping binds it to invert).
+**No version is implied** — post-1.0 releases follow
+[`maintenance.md`](docs/workflow/maintenance.md)'s decision tree at release time, not the
+milestone mapping. RFC-0004's eight governing constraints apply to every item below; the four
+`fast / medium` routes are a recorded tech-lead **raise** from `route_advice.py`'s `fast / low`
+floor (only-raise, ADR-0017 — the multibyte corpora and policy-table discipline these items
+carry are not `low`-effort work).
+
+- [ ] 15.1 `Str` batch 1 — **FR-56**: `mask()` (fixed-length, keep-first/keep-last, multibyte),
+      `truncate()` (suffix-aware, refuses a length shorter than the suffix), `snakeCase()` /
+      `camelCase()` (completing the family `pascalCase()` opened), `isUuid()` (optional version
+      pin) / `isUlid()` (first-character overflow refused — FR-46's refuse-never-truncate read
+      back). No ADR expected (items 2.2/2.4's precedent); escalates if review finds `mask()`
+      security-relevant (RFC-0004; issue #197) — size: S · route: fast / medium *(raised from the
+      tool's fast/low floor)*
+- [ ] 15.2 `Str` batch 2 — **FR-57**: `before`/`after`/`between`/`beforeLast`/`afterLast`
+      returning `?string` (`null` on a miss, never the subject unchanged — the probing arm of
+      RFC-0004's missing-value grammar; empty needle refused), `normalizeEol()` (`Eol` enum, lone
+      CR covered), codepoint-safe `length()`/`substr()` via `preg //u` (ADR-0019's mechanism, one
+      public home; invalid UTF-8 refused, `transcode()`'s stance), `containsAny()`. Property test:
+      `before . needle . after === subject` (RFC-0004; issue #207) — size: S · route: fast /
+      medium *(raised from the tool's fast/low floor)*
+- [ ] 15.3 `DataTransferObject::toArray()` + `JsonSerializable` — **FR-51**, the missing inverse
+      of hydration. Recursive (nested DTOs, `Collection<T>` as list), backed enums to their
+      backing value, pure enums refused with the property path; the round-trip property
+      `X::fromArray($x->toArray()) == $x` asserted over the whole T-01 matrix is the contract;
+      compiled/interpreted parity extended or export stays interpreter-only and the ADR says so
+      (RFC-0004; issue #187) — size: M · route: frontier-reasoning / extra (adr, protected floor)
+- [ ] 15.4 `#[MapFrom]` hydration key mapping — **FR-52**: per-parameter attribute resolved once
+      into `ClassMetadata` (ADR-0006's cache); strict both ways (mapped-key/param-name collisions
+      and duplicate mappings refused by name at metadata build); `lenient()` semantics unchanged;
+      `toArray()` (15.3) inverts the mapping. **Bound to NFR-01** (RFC-0004 finding A3):
+      unattributed DTOs measure unchanged within the harness noise band on NFR-01's existing
+      subject; mapped shapes may take the interpreted path with `HydrationParityTest` extended.
+      Class-level convention (`#[SnakeCaseKeys]`?) is the ADR's one open question (RFC-0004;
+      issue #188) — size: M · route: frontier-reasoning / extra (adr, protected floor)
+- [ ] 15.5 `Collection<T>` operations — **FR-53**: stable `sortBy` (ordering parameter local to
+      `Dto` — RFC-0004 finding R2: `Database\Sort` is a forbidden edge), `groupBy`/`keyBy`
+      (duplicates in `keyBy` refused naming key and both indices), `chunk`/`take`/`skip`/`slice`,
+      `some`/`every`/`contains`/`flatMap` — all read-only, keeping `@template-covariant` honest;
+      every signature holds at PHPStan max with no suppressions or the method is dropped rather
+      than annotated with a lie (ADR-0010 amendment) (RFC-0004; issue #200) — size: M · route:
+      frontier-reasoning / extra (adr, protected floor)
+- [ ] 15.6 `Support\Arr` — **FR-54**, the boundary array toolkit: dot paths on the
+      asserting/defaulting/probing family (`get`/`getOr`/`tryGet` — Lookup's names, now the
+      recorded convention), `has`/`set` (copy-returning), `undot`/`flatten`, `only`/`except`/
+      `pluck`, `keyBy`/`groupBy` (duplicate keys refused), `isList` guards, and the tabular half —
+      `transpose` (ragged refused naming the short row) and `column`. Immutability pinned (inputs
+      asserted unchanged). Linear algebra stays out: `markrogoyski/math-php` joins the third-party
+      picks in this item's PR (RFC-0004; issue #199) — size: M · route: frontier-reasoning /
+      extra (adr, protected floor)
+- [ ] 15.7 `Support\Dates` + `Support\DateRange` — **FR-55**: strict `fromFormat()`/
+      `fromIso8601()` refusing rollover (`getLastErrors()` warnings **plus** the re-format
+      round-trip — natively `'2026-02-31'` parses to March 3rd with no error), trailing garbage
+      and impossible times; DST-safe `startOfDay`/`endOfDay`/`startOfMonth`/`endOfMonth` with
+      explicit timezones; readonly `DateRange`, **half-open `[start, end)`** (adjacent billing
+      periods neither overlap nor gap), `contains`/`overlaps`/`iterateBy`. Nothing reads system
+      time (FR-45's rule); no Carbon sugar, no holiday calendars — stated (RFC-0004; issue #201)
+      — size: M · route: frontier-reasoning / extra (adr, protected floor)
+- [ ] 15.8 `Csv::readAssoc()` — **FR-58**, header-mapped rows: first row becomes keys; duplicate
+      headers, ragged rows and empty header cells refused naming line/column (FR-29's enforced
+      pairing mirrored to the read side); still a `Generator` (NFR-16's flatness applies);
+      completes `readAssoc()` → Validator (M16) → `fromArray()`, and with 15.4 the header names
+      need not match property names (RFC-0004; issue #208) — size: S · route: fast / medium
+      *(raised from the tool's fast/low floor)*
+
+---
+
+## Milestone 16 — Input validation (post-1.0) · size: M
+
+RFC-0004's second milestone: the new `D4np\Utils\Validation\` group — the typed middle the
+intake pipeline lacks (`Request` refuses shape, hydration refuses keys/types, nothing owns
+semantics). **The deliberate inversion of house style, stated**: validation **aggregates**
+violations instead of first-throwing, because a form needs every violation at once — exceptions
+are reserved for misuse of the validator itself (`RetryPolicy`'s `InvalidArgumentException`
+precedent). New deptrac layer, `Support`-only edge, proven discriminating with a planted
+violation (ADR-0012's discipline). Depends on 15.2 (codepoint `length()`).
+
+- [ ] 16.1 `Validation\{Validator, ViolationList, Violation}` — **FR-59**: rule-set walk over an
+      input array, `ViolationList` as a typed readonly value (per-field, machine-readable codes —
+      wording is the consumer's, per the i18n exclusion; deterministic order; N defects ⇒ N
+      violations in one pass), the group's deptrac layer + its exception-hierarchy entries (only
+      misuse throws) (RFC-0004; issue #189) — size: M · route: frontier-reasoning / extra (adr,
+      new group)
+- [ ] 16.2 Rule set v1 — **FR-60**: `Required`, `Length` (codepoints via 15.2, never bytes),
+      `Range`, `Pattern`, `OneOf`, `Email` — each a final readonly value, no callable-soup DSL.
+      The `Email` rule **re-derives** from the same primitive as `Mail\EmailAddress`
+      (`filter_var` + FR-43's documented deviations) — never imports it (forbidden edge) — with
+      RFC-0004 finding A1's **shared-corpus parity test** in the test tree pinning the two to
+      identical accept/reject; extraction into `Support` waits for a third consumer. Country
+      validators (IBAN/VAT) stay out per RFC-0004 Alternatives #7 (RFC-0004; issue #189) —
+      size: M · route: frontier-reasoning / extra (adr, protected floor)
+
+---
+
+## Milestone 17 — Formats & the serialization story (post-1.0) · size: M
+
+RFC-0004's third milestone: the codec fan-out under governing constraint 3 — **one canonical
+shape (arrays/DTOs), N codecs, composition is the converter**, no format registry ever. Optional
+capabilities ride [ADR-0021](docs/adr/0021-delegate-rich-html-and-escape-like-wildcards-with-a-portable-character.md)'s
+posture (suggest + call-site refusal + a dedicated deptrac layer + no foreign types in
+signatures). Zero new `require` entries (RFC-0004 finding A2). New exception types join
+`ExceptionHierarchyTest`'s pinned lists in the PR that adds each.
+
+- [ ] 17.1 `Support\Yaml` — **FR-61**: `decode()`/`encode()` over `symfony/yaml` in `suggest`;
+      the safe subset is pinned as a **mechanism** (parse flags are class constants, never
+      parameters — no object construction, no custom tags, no constant resolution, each refused
+      by name); absent package throws naming the requirement; `encode()` refuses objects (DTOs go
+      through 15.3's `toArray()` first); billion-laughs-shaped documents refused or proven
+      bounded, measured (RFC-0004; issue #202) — size: M · route: frontier-reasoning / extra
+      (adr, protected floor)
+- [ ] 17.2 `Support\Ini` — **FR-62**: typed decode over `parse_ini_string` — parse failure throws
+      (never `false` + warning), scanner policy stated beside `Env::get()`'s coercion table so the
+      two never disagree about `"true"`, duplicate keys refused naming the key, file variant
+      through `File::read()` (no second I/O path) (RFC-0004; issue #203) — size: S · route:
+      fast / medium *(raised from the tool's fast/low floor)*
+- [ ] 17.3 NDJSON — **FR-63**: `Json::readLines()` (Generator, malformed line refused naming the
+      1-based line, blanks skipped per `Csv::read()`'s phantom-row reasoning, trailing-partial-line
+      policy stated normatively) and `Json::writeLines()` (through `File::writeStream()` — no
+      partial file on a mid-iteration throw; LF only). NFR-16 flatness both directions;
+      `Json::writeLines($p, Csv::read($csv))` is the conversion story in one line (RFC-0004;
+      issue #205) — size: S · route: frontier-reasoning / extra (adr, protected floor)
+- [ ] 17.4 `Support\Serialized::decode()` — **FR-64**, safe unserialize: scalars/arrays only by
+      default, explicit `class-string` allowlist opt-in, objects refused **naming the class** —
+      never degraded to `__PHP_Incomplete_Class` (PHP's own mitigation degrades silently, the
+      opposite of this library's posture); the `allowed_classes` derivation asserted as a
+      mechanism; no `encode()` — the docblock says to migrate off the format; honest limit stated
+      (an allowlisted gadget's `__wakeup` still runs); threat-model row (security — RFC-0004;
+      issue #204) — size: M · route: frontier-reasoning / extra (security, adr — protected floor)
+- [ ] 17.5 `Support\Xml::decode()` — **FR-65**: DOCTYPE refused by default (XXE and entity
+      expansion die in one move), `LIBXML_NONET` always, libxml error state captured/restored,
+      typed `XmlException` naming line/column; return shape (faithful DOM vs lossy array) is the
+      ADR's decision. **Sequenced last in M17 deliberately** — RFC-0002's estate survey surfaced
+      no XML call sites, so the maintainer can defer this one on demand evidence without
+      unthreading anything (RFC-0004; issue #192) — size: M · route: frontier-reasoning / extra
+      (security, adr — protected floor)
+
+---
+
+## Milestone 18 — Security hardening & resilience (post-1.0) · size: L
+
+RFC-0004's fourth milestone: the trust-boundary batch. Every item is security-surface or
+data-handling — mandatory ADR (enterprise posture, AGENTS.md §7), ADR-0027 mechanism assertions,
+every new `hash_equals()` registered in T-03's completeness registry (BUG-0001's repaired
+guard), and a `docs/security/threat-model.md` row per new untrusted-input boundary in the same
+PR. **18.1 before 18.2** (every archive entry name passes `Path::join()` before a byte is
+written). RFC-0004 finding R3 stands recorded: if capacity wants a split, 18.1–18.2 are the
+natural cut line; sequential solo capacity makes it moot for now.
+
+- [ ] 18.1 `Support\Path` — **FR-66**: `join()` refusing (never normalizing away) absolute
+      segments, `..`, NUL, drive/UNC prefixes — naming the offending segment; `within()` as the
+      predicate; `sanitizeFilename()` (one basename, strips directory parts, refuses empty/
+      dot-only rather than inventing a name — deliberately not a slugger). Generalizes ADR-0061's
+      hashed-keys defense into a public primitive; **lexical guarantees, the symlink limit stated
+      in the ADR** — plus whether `within()` offers a realpath mode (RFC-0004; issue #191) —
+      size: M · route: frontier-reasoning / extra (security, adr — protected floor)
+- [ ] 18.2 `Support\Archive::extractZip()` — **FR-67**: every entry through 18.1's `Path::join()`
+      before any write; symlink entries refused; the **`ExtractionBudget` is a required
+      parameter** (total/per-entry bytes, entry count, ratio ceiling — an unbounded signature IS
+      the vulnerability, so none exists); sizes measured while inflating, never trusted from the
+      attacker-controlled header (ADR-0054's reasoning, different header); a refused extraction
+      removes what it already wrote; `ext-zip` in `suggest` (RFC-0004; issue #206; depends on
+      18.1) — size: M · route: frontier-reasoning / extra (security, adr — protected floor)
+- [ ] 18.3 `Security\Totp` — **FR-68**, RFC 6238 over RFC 4226: `SecretKey`-only material,
+      explicit algorithm allowlist (`sha1` stays for the authenticator ecosystem — the ADR
+      records why HMAC-SHA1 is acceptable where bare SHA-1 is not), digits 6/8, period 30 s,
+      `verify()` against FR-45's clock with an explicit ±N-step window pinned in both directions
+      (±N verifies, ±(N+1) refused); `hash_equals` registered in T-03's registry; an `@internal`
+      RFC 4648 Base32 codec joins `Base64Url` (ADR-0082's inventory grows, pinned in the same
+      PR); RFC test vectors against `FrozenClock`; the replay limit stated as consumer state
+      (RFC-0004; issue #190) — size: M · route: frontier-reasoning / extra (security, adr —
+      protected floor)
+- [ ] 18.4 `Security\SignedUrl` — **FR-69**: `sign()`/`verify()` over `Hmac` + `Support\Url` —
+      the deliverable is **canonicalization** (scheme, host, port, path, complete query minus the
+      signature parameter, defined encoding and order), so reordered, added and removed
+      parameters all fail; a URL already carrying the signature parameter refused; expiry and
+      key rotation ride FR-48/FR-48b unchanged; forgery corpus + a conformance vector pinning the
+      canonical byte string; proxy-rewrite limits stated (ADR-0025's `isSecure()` stance, one
+      level up) (RFC-0004; issue #194) — size: M · route: frontier-reasoning / extra (security,
+      adr — protected floor)
+- [ ] 18.5 `Errors\RedactingLogger` — **FR-70**, ADR-0055's decorator seam, third application:
+      case-insensitive context-key redaction against a pinned default list (exact-inventory test,
+      ADR-0082's style — extending is additive, shrinking is not), a **fixed marker** never
+      length-preserving, nested arrays and ADR-0029's walked-throwable form covered; a fake leaf
+      asserts the leaf **received** the marker (mechanism, not absence); free-text message
+      scanning out of scope and stated — keys are the contract (RFC-0004; issue #193) — size: S ·
+      route: frontier-reasoning / extra (security, adr — protected floor)
+- [ ] 18.6 Decide the circuit breaker — **FR-71's ADR**, item 14.6's decision-only shape. What it
+      settles: the **placement** (in `Security` beside the limiter, or the CAS store contract
+      extracted to `Support` — layering forbids `Support → Security`, and extraction is a
+      BC-relevant move the ADR must own), the three-state machine's thresholds/cooldown semantics
+      over FR-45's clock, half-open probe admission via CAS (bounded, never whoever-races-first),
+      and store-failure-is-never-a-closed-breaker (ADR-0061's stance). **This item consumes
+      RFC-0004's reversal of FR-49's non-goal** — the spec annotation lands here (annotated,
+      never erased; ADR-0041's rule) (RFC-0004; issue #196) — size: S · route:
+      frontier-reasoning / extra (adr, decision-heavy — protected floor)
+- [ ] 18.7 Implement the circuit breaker per 18.6's ADR — **FR-71**: the three-state breaker,
+      consumed **opt-in** (`Retrier`'s rule — a library that silently refuses to call a
+      dependency has changed failure semantics unasked); store-contract suite runs against every
+      shipped store through one data provider (ADR-0067's discipline); skew and contention legs
+      (a behind-clock node never re-closes early; concurrent half-open probes bounded via CAS);
+      patterns catalogue row moves Candidate → Implemented (RFC-0004; issue #196; depends on
+      18.6) — size: M · route: frontier-reasoning / extra (security, adr — protected floor)
 
 ---
 

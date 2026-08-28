@@ -9,7 +9,7 @@
 # .eados-core/orchestrator/project.yaml.template
 
 schema_version: 1
-manifest_rev: 8
+manifest_rev: 9
 domain: software             # Q0.4 development target -> .eados-core/orchestrator/domains/software.yaml
 
 delivery_state:
@@ -22,9 +22,9 @@ delivery_state:
   # M14 rather than left wrong in the field being edited. `releases: []` is a separate, untouched
   # gap — v1.0.0 shipped 2026-08-09 (see docs/releases/v1.0.0.md); recording it belongs to the
   # release process, not to this plan pass.
-  # RFC-0004 recorded at its design pass (2026-08-28, In review — approval pending); its
-  # M15–M18 join `milestones` at the plan pass that creates them, not here.
-  refs: { rfcs: ['RFC-0001', 'RFC-0002', 'RFC-0003', 'RFC-0004'], milestones: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14'], prs: [1], releases: [] }
+  # RFC-0004 recorded at its design pass (2026-08-28; Accepted at PR #210's merge, recorded at
+  # PR #211). M15–M18 recorded at the third plan pass (2026-08-28) that created them.
+  refs: { rfcs: ['RFC-0001', 'RFC-0002', 'RFC-0003', 'RFC-0004'], milestones: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16', 'M17', 'M18'], prs: [1], releases: [] }
 
 identity:
   project_name:    "egl-util-php"        # carried from the existing GitHub repository
