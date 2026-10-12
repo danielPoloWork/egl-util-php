@@ -74,7 +74,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.toolchain == 'php-8.1' && '8.1' || matrix.toolchain == 'php-8.2' && '8.2' || '8.3' }}
           # No coverage driver here on purpose. This job never passed a --coverage flag, so pcov
@@ -176,7 +176,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           # The floor, not the ceiling. Driver type coercion is the one behaviour in this leg that
           # changed across the 8.x line, so the version that reveals a difference is the oldest one
@@ -273,7 +273,7 @@ jobs:
           msmtp --version | head -1
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
           coverage: none
@@ -425,7 +425,7 @@ jobs:
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
       - run: vendor/bin/php-cs-fixer fix --dry-run --diff
@@ -437,7 +437,7 @@ jobs:
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
       - run: composer normalize --dry-run
@@ -465,7 +465,7 @@ jobs:
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.1' }
       - run: composer update --no-interaction --prefer-lowest
       - run: vendor/bin/phpunit
@@ -482,7 +482,7 @@ jobs:
       - name: Check for deptrac.yaml (job self-enables when it lands)
         id: cfg
         run: echo "present=$([ -f deptrac.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         if: steps.cfg.outputs.present == 'true'
         with: { php-version: '8.3' }
       - if: steps.cfg.outputs.present == 'true'
@@ -522,7 +522,7 @@ jobs:
       - name: Check for infection.json5 (job self-enables when it lands)
         id: cfg
         run: echo "present=$([ -f infection.json5 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         if: steps.cfg.outputs.present == 'true'
         with: { php-version: '8.3', coverage: pcov }
       - if: steps.cfg.outputs.present == 'true'
@@ -547,7 +547,7 @@ jobs:
             --min-msi=70 --no-progress --no-interaction -j2
       - name: Keep the mutation report
         if: steps.cfg.outputs.present == 'true' && always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-report
           path: build/logs/infection*
@@ -581,7 +581,7 @@ jobs:
           # treating an unresolvable base as an empty diff — but failing loudly on every PR is not
           # the arrangement we want, so the history is here.
           fetch-depth: 0
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
           coverage: pcov
@@ -667,7 +667,7 @@ jobs:
           fi
       - name: Set up PHP
         if: steps.cfg.outputs.present == 'true'
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'   # spec NFR-06 benchmark methodology — not the build matrix
           coverage: none       # instrumentation would distort the measurements
@@ -783,7 +783,7 @@ jobs:
           esac
       - name: Keep the reports
         if: steps.cfg.outputs.present == 'true' && always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: benchmark-reports
           path: build/logs/*.xml
@@ -886,7 +886,7 @@ jobs:
       - name: Set up PHP
         # Both runs need this, so it is gated on there being ANY tag rather than on the mode.
         if: steps.scope.outputs.previous != ''
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           # The tool's own floor, not this library's. See the header comment.
           php-version: '8.3'
@@ -952,7 +952,7 @@ jobs:
 
       - name: Keep the report-only comparison
         if: always() && steps.scope.outputs.frozen != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backward-compatibility-report-frozen
           path: |
@@ -990,7 +990,7 @@ jobs:
 
       - name: Keep the BC report
         if: always() && steps.scope.outputs.release_pr == 'true' && steps.scope.outputs.previous != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backward-compatibility-report
           path: bc-report.md
@@ -1050,7 +1050,7 @@ jobs:
 
       - name: Set up PHP
         if: steps.pkg.outputs.ready == 'true'
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           # The package's own floor. The bridge must not narrow the core's, and the core supports 8.1.
           php-version: '8.1'
