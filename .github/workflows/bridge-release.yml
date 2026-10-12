@@ -106,7 +106,7 @@ jobs:
           fi
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           # The package's floor, which is the core's. A release must install where it claims to.
           php-version: '8.1'
